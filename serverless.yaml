@@ -1,7 +1,0 @@
-provider:
-  environment:
-    DYNAMODB_ENDPOINT: http://localhost:8000
-    S3_ENDPOINT: http://localhost:4566
-
-plugins:
-  - serverless-offline
