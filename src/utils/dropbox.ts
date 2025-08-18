@@ -1,0 +1,160 @@
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { Dropbox } from "../../sdk/dropbox";
+import type { sharing, files } from "../../sdk/dropbox";
+
+const UPLOAD_BATCH_SIZE = 3;
+
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+});
+
+export class DropboxService {
+  private dbx: Dropbox;
+
+  constructor(accessToken: string) {
+    this.dbx = new Dropbox({
+      accessToken,
+      fetch: fetch,
+    });
+  }
+
+  async folderExists(folderName: string): Promise<boolean> {
+    const folderPath = `/xpegdrop/${folderName}`;
+
+    try {
+      await this.dbx.filesGetMetadata({ path: folderPath });
+      return true; // Folder exists
+    } catch (err: any) {
+      if (err?.error?.error_summary?.includes("path/not_found")) {
+        return false; // Folder does not exist
+      }
+      console.error("Error checking Dropbox folder existence:", err);
+      throw new Error("Failed to check Dropbox folder existence");
+    }
+  }
+
+  async uploadFolder(files: File[], folderName: string): Promise<string> {
+    try {
+      const folderPath = `/xpegdrop/${folderName}`;
+
+      // Create folder
+      await this.dbx.filesCreateFolderV2({
+        path: folderPath,
+        autorename: true,
+      });
+
+      // Function to upload a single file with retry on 429
+      const uploadFile = async (file: File) => {
+        const arrayBuffer = await file.arrayBuffer();
+        const contents = new Uint8Array(arrayBuffer);
+
+        let uploaded = false;
+        while (!uploaded) {
+          try {
+            await this.dbx.filesUpload({
+              path: `${folderPath}/${file.name}`,
+              contents,
+              mode: "add" as unknown as files.WriteMode,
+              autorename: false,
+            });
+            uploaded = true;
+          } catch (err: any) {
+            if (err.status === 429 && err?.error?.error?.retry_after) {
+              const waitMs = (err.error.error.retry_after + 1) * 1000;
+              console.warn(`Rate limit hit, retrying after ${waitMs} ms`);
+              await new Promise((r) => setTimeout(r, waitMs));
+            } else {
+              throw err;
+            }
+          }
+        }
+      };
+
+      // Upload in batches of UPLOAD_BATCH_SIZE
+      for (let i = 0; i < files.length; i += UPLOAD_BATCH_SIZE) {
+        const batch = files.slice(i, i + UPLOAD_BATCH_SIZE);
+        await Promise.all(batch.map((file) => uploadFile(file)));
+        // Optional small delay between batches to be extra safe
+        await new Promise((r) => setTimeout(r, 500));
+      }
+
+      // Create shared link
+      const sharedLinkResponse =
+        await this.dbx.sharingCreateSharedLinkWithSettings({
+          path: folderPath,
+          settings: {
+            requested_visibility:
+              "public" as unknown as sharing.RequestedVisibility,
+          },
+        });
+
+      return sharedLinkResponse.result.url;
+    } catch (error) {
+      console.error("Dropbox upload error:", error);
+      throw new Error("Failed to upload folder to Dropbox");
+    }
+  }
+
+  async createSharedLink(path: string): Promise<string> {
+    try {
+      const response = await this.dbx.sharingCreateSharedLinkWithSettings({
+        path,
+        settings: {
+          requested_visibility:
+            "public" as unknown as sharing.RequestedVisibility,
+        },
+      });
+
+      return response.result.url;
+    } catch (error) {
+      console.error("Error creating shared link:", error);
+      throw error;
+    }
+  }
+
+  async listFiles(
+    folderPath: string
+  ): Promise<{ name: string; preview_url: string; thumbnail_url: string }[]> {
+    try {
+      const response = await this.dbx.filesListFolder({ path: folderPath });
+
+      const imageFiles = response.result.entries.filter(
+        (entry) =>
+          entry[".tag"] === "file" &&
+          /\.(jpg|jpeg|png|gif|webp)$/i.test(entry.name)
+      );
+
+      const filesWithLinks = await Promise.all(
+        imageFiles.map(async (file) => {
+          // Full preview link
+          const linkRes = await this.dbx.filesGetTemporaryLink({
+            path: file.path_lower!,
+          });
+
+          // Thumbnail
+          const thumbnailRes = await this.dbx.filesGetThumbnailV2({
+            resource: { ".tag": "path", path: file.path_lower! },
+            format: { ".tag": "jpeg" }, // or "png"
+            size: { ".tag": "w2048h1536" }, // available sizes: w32h32, w64h64, w128h128, etc.
+          });
+
+          const thumbnailBase64 = Buffer.from(
+            (thumbnailRes.result as any).fileBinary,
+            "binary"
+          ).toString("base64");
+          const thumbnail_url = `data:image/jpeg;base64,${thumbnailBase64}`;
+
+          return {
+            name: file.name,
+            preview_url: linkRes.result.link,
+            thumbnail_url,
+          };
+        })
+      );
+
+      return filesWithLinks;
+    } catch (error) {
+      throw error;
+    }
+  }
+}
