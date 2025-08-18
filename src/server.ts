@@ -5,6 +5,7 @@ import authRoutes from "./routes/authRoutes";
 import projectRoutes from "./routes/projectRoutes";
 import dropboxRoutes from "./routes/dropboxRoutes";
 import usersRoutes from "./routes/usersRoutes";
+import { APIGatewayProxyEvent } from "aws-lambda";
 import { errorHandler } from "./middleware/errorMiddleware";
 import serverless from "serverless-http";
 
@@ -46,4 +47,11 @@ if (process.env.NODE_ENV !== "production") {
     console.log(`Server running on port ${port}`);
   });
 }
-export const handler = serverless(app);
+
+export const handler = serverless(app, {
+  request: (_: Request, event: APIGatewayProxyEvent) => {
+    if (event.isBase64Encoded && event.body) {
+      event.body = Buffer.from(event.body, "base64").toString("utf8");
+    }
+  },
+});
