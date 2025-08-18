@@ -51,33 +51,44 @@ if (process.env.NODE_ENV !== "production") {
 
 export const handler = serverless(app, {
   request: async (req: Request, event: APIGatewayProxyEvent) => {
-    let body = event.body;
+    let body: string | null | Buffer<ArrayBuffer> | multipart.MultipartRequest= event.body;
 
     if (body) {
       // Decode base64
       if (event.isBase64Encoded) {
-        body = Buffer.from(body, "base64").toString("utf8");
+        // Keep it as Buffer, do NOT convert to string
+        body = Buffer.from(body, "base64");
+      } else {
+        body = Buffer.from(body, "utf8");
       }
 
       // If JSON content
-      if (event.headers["content-type"]?.includes("application/json")) {
+      if (body && event.headers["content-type"]?.includes("application/json")) {
         try {
-          body = JSON.parse(body);
+          body = JSON.parse(body.toString()); // parse JSON safely
         } catch { }
       }
 
-      // // If multipart/form-data
-      // if (event.headers["content-type"]?.includes("multipart/form-data")) {
-      //   try {
-      //     const parsed = await multipart.parse(event);
-      //     body = parsed; // parsed.files and parsed.fields
-      //   } catch (err) {
-      //     console.error("Multipart parse error:", err);
-      //   }
-      // }
+      // If multipart/form-data
+      if (event.headers["content-type"]?.includes("multipart/form-data")) {
+        try {
+          // Temporarily override body with Buffer
+          const originalBody = event.body;
+          (event as any).body = body; // body is already a Buffer
+
+          const parsed = await multipart.parse(event);
+          body = parsed; // parsed.files and parsed.fields
+
+          // Restore original event.body (optional)
+          (event as any).body = originalBody;
+        } catch (err) {
+          console.error("Multipart parse error:", err);
+        }
+      }
     }
 
     // Assign to Express req.body
     (req as any).body = body;
   },
 });
+

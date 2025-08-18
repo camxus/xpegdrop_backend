@@ -35,7 +35,7 @@ import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
 
 const upload = multer({
   storage: multer.memoryStorage(), // stores file in memory for direct upload to S3
-  limits: { fileSize: 5 * 1024 * 1024 * 10 }, // 50MB limit (optional)
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit (optional)
 });
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
