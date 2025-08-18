@@ -7,29 +7,6 @@ provider:
   runtime: nodejs20.x
   stage: ${opt:stage, 'prod'}
   region: eu-west-1
-
-functions:
-  httpApi:
-    cors:
-      allowedOrigins:
-        - ${env:FRONTEND_URL}
-        - http://xpegdrop.eba-enjhhiwz.eu-west-1.elasticbeanstalk.com
-      allowedHeaders:
-        - Content-Type
-        - Authorization
-      allowedMethods:
-        - GET
-        - POST
-        - PUT
-        - DELETE
-      allowCredentials: true
-    authorizers:
-      jwtAuthorizer:
-        type: request
-        functionName: authorizer
-        identitySource: $request.header.Authorization
-        enableSimpleResponses: true
-
   environment:
     AWS_REGION_CODE: ${env:AWS_REGION_CODE, 'eu-west-1'}
     DROPBOX_CLIENT_ID: ${env:DROPBOX_CLIENT_ID}
@@ -129,6 +106,19 @@ functions:
       - httpApi:
           path: /health
           method: GET
+    cors:
+      allowedOrigins:
+        - ${env:FRONTEND_URL}
+        - http://xpegdrop.eba-enjhhiwz.eu-west-1.elasticbeanstalk.com
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+      allowCredentials: true
 
   # Authorizer function
   authorizer:
