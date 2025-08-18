@@ -63,18 +63,18 @@ export const handler = serverless(app, {
       if (event.headers["content-type"]?.includes("application/json")) {
         try {
           body = JSON.parse(body);
-        } catch {}
+        } catch { }
       }
 
-      // If multipart/form-data
-      if (event.headers["content-type"]?.includes("multipart/form-data")) {
-        try {
-          const parsed = await multipart.parse(event);
-          body = parsed; // parsed.files and parsed.fields
-        } catch (err) {
-          console.error("Multipart parse error:", err);
-        }
-      }
+      // // If multipart/form-data
+      // if (event.headers["content-type"]?.includes("multipart/form-data")) {
+      //   try {
+      //     const parsed = await multipart.parse(event);
+      //     body = parsed; // parsed.files and parsed.fields
+      //   } catch (err) {
+      //     console.error("Multipart parse error:", err);
+      //   }
+      // }
     }
 
     // Assign to Express req.body
