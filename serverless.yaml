@@ -20,6 +20,7 @@ provider:
     S3_APP_BUCKET: ${env:S3_APP_BUCKET}
 
   httpApi:
+    payload: '2.0'
     cors:
       allowedOrigins:
         - ${env:FRONTEND_URL}
