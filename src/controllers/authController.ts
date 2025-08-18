@@ -124,7 +124,6 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  console.log("VALIDATION ERROR", req.body)
   const { error, value } = signInSchema.validate(req.body);
   if (error) throw validationErrorHandler(error);
 

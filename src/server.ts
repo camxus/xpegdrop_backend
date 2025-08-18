@@ -8,6 +8,7 @@ import usersRoutes from "./routes/usersRoutes";
 import { APIGatewayProxyEvent } from "aws-lambda";
 import { errorHandler } from "./middleware/errorMiddleware";
 import serverless from "serverless-http";
+import multipart from "lambda-multipart-parser";
 
 dotenv.config();
 
@@ -49,21 +50,34 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export const handler = serverless(app, {
-  request: (req: Request, event: APIGatewayProxyEvent) => {
+  request: async (req: Request, event: APIGatewayProxyEvent) => {
     let body = event.body;
 
     if (body) {
+      // Decode base64
       if (event.isBase64Encoded) {
         body = Buffer.from(body, "base64").toString("utf8");
       }
-      if (typeof body === "string") {
+
+      // If JSON content
+      if (event.headers["content-type"]?.includes("application/json")) {
         try {
           body = JSON.parse(body);
         } catch {}
       }
+
+      // If multipart/form-data
+      if (event.headers["content-type"]?.includes("multipart/form-data")) {
+        try {
+          const parsed = await multipart.parse(event);
+          body = parsed; // parsed.files and parsed.fields
+        } catch (err) {
+          console.error("Multipart parse error:", err);
+        }
+      }
     }
 
-    // manually set req.body so Express sees it
+    // Assign to Express req.body
     (req as any).body = body;
   },
 });
