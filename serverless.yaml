@@ -65,6 +65,9 @@ functions:
       - httpApi:
           path: /api/auth/set-new-password
           method: POST
+      - httpApi:
+          path: /api/auth/presign-url
+          method: GET
 
       # Dropbox routes (public)
       - httpApi:

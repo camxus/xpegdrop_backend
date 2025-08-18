@@ -51,7 +51,7 @@ if (process.env.NODE_ENV !== "production") {
 
 export const handler = serverless(app, {
   request: async (req: Request, event: APIGatewayProxyEvent) => {
-    let body: string | null | Buffer<ArrayBuffer> | multipart.MultipartRequest= event.body;
+    let body: any = event.body;
 
     if (body) {
       // Decode base64

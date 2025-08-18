@@ -14,14 +14,17 @@ import {
   updateProjectSchema,
 } from "../utils/validation/projectValidation";
 import axios from "axios";
-import { CreateProjectInput, UpdateProjectInput, Project } from "../types";
+import { CreateProjectInput, UpdateProjectInput, Project, S3Location } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { DropboxService } from "../utils/dropbox";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { Request, Response } from "express";
 import multer from "multer";
+import { deleteItemImage, getItemFile } from "../utils/s3";
+import { S3Client } from "@aws-sdk/client-s3";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
+const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 
@@ -41,9 +44,12 @@ export const createProject = asyncHandler(
     if (error) throw validationErrorHandler(error);
 
     const { name, description } = value as CreateProjectInput;
+
+    let fileLocations = typeof value.file_locations === "string" ? JSON.parse(value.file_locations as string || "[]") : value.file_locations
+
     const files = req.files as Express.Multer.File[];
 
-    if (!files || files.length === 0) {
+    if (!files || !files.length && !fileLocations || !fileLocations.length) {
       return res.status(400).json({ error: "No files provided" });
     }
 
@@ -65,11 +71,32 @@ export const createProject = asyncHandler(
       );
 
       // Convert multer files to File objects for Dropbox upload
-      const dropboxFiles = files.map((file) => {
-        const blob = new Blob([file.buffer], { type: file.mimetype });
-        return new File([blob], file.originalname, { type: file.mimetype });
-      });
+      const getFiles = async (): Promise<File[]> => {
+        if (files) {
+          // Already in memory
+          return files.map((file) => {
+            const blob = new Blob([file.buffer], { type: file.mimetype });
+            return new File([blob], file.originalname, { type: file.mimetype });
+          });
+        }
 
+        if (fileLocations) {
+          // Fetch from S3 in parallel
+          const s3Files = await Promise.all(
+            fileLocations.map(async (location: S3Location) => {
+              const file = await getItemFile(s3Client, location);
+              await deleteItemImage(s3Client, location)
+              return file.file; // file is already a File object
+            })
+          );
+
+          return s3Files;
+        }
+
+        return []; // No files
+      };
+
+      const dropboxFiles = await getFiles()
       try {
         if (await dropboxService.folderExists(name)) {
           return res.status(400).json({

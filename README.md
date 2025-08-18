@@ -43,7 +43,7 @@ See `.env.example` for required configuration.
 - first_name (string)
 - last_name (string)
 - bio (string, optional)
-- avatar_url (object, optional)
+- avatar (object, optional)
 - dropbox_access_token (string, optional)
 - created_at (string)
 - updated_at (string, optional)

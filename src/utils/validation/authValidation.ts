@@ -7,7 +7,7 @@ export const signUpSchema = Joi.object({
   first_name: Joi.string().min(1).max(50).required(),
   last_name: Joi.string().min(1).max(50).required(),
   bio: Joi.string().max(500).optional(),
-  avatar_url: Joi.string().uri().optional(),
+  avatar: Joi.string().optional(),
   dropbox: Joi.string().optional()
 });
 

@@ -1,3 +1,8 @@
+
+export interface S3Location {
+  bucket: string
+  key: string
+}
 export interface SignUpInput {
   username: string;
   email: string;
@@ -5,7 +10,7 @@ export interface SignUpInput {
   first_name: string;
   last_name: string;
   bio?: string;
-  avatar_url?: string;
+  avatar?: S3Location;
   dropbox?: {
     access_token?: string;
     refresh_token?: string;
@@ -24,7 +29,7 @@ export interface User {
   first_name: string;
   last_name: string;
   bio?: string;
-  avatar_url?: string;
+  avatar?: S3Location | string;
   dropbox?: {
     access_token?: string;
     refresh_token?: string;
@@ -61,7 +66,7 @@ export interface UpdateUserInput {
   first_name?: string;
   last_name?: string;
   bio?: string;
-  avatar_url?: string;
+  avatar?: S3Location;
   dropbox?: {
     access_token?: string;
     refresh_token?: string;

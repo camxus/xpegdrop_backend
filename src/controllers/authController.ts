@@ -6,7 +6,7 @@ import {
   GetItemCommand,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   signUpSchema,
@@ -28,10 +28,11 @@ import {
   ConfirmForgotPasswordCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { v4 as uuidv4 } from "uuid";
-import { getSignedImage, saveItemImage } from "../utils/s3";
+import { copyItemImage, getSignedImage, saveItemImage } from "../utils/s3";
 import crypto from "crypto";
 import multer from "multer";
 import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const upload = multer({
   storage: multer.memoryStorage(), // stores file in memory for direct upload to S3
@@ -52,8 +53,11 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
   const { error, value } = signUpSchema.validate(req.body);
   if (error) throw validationErrorHandler(error);
 
-  const { password, email, username, first_name, last_name, bio, dropbox } =
+  const { password, email, username, first_name, last_name, bio, } =
     value as SignUpInput;
+
+  let dropbox = typeof value.dropbox === "string" ? JSON.parse(value.dropbox as string || "{}") : value.dropbox
+  let avatar = typeof value.avatar === "string" ? JSON.parse(value.avatar as string || "{}") : value.avatar
 
   try {
     // Cognito signup
@@ -72,18 +76,38 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       ],
     });
 
-    // const response = await cognito.send(command);
+    const response = await cognito.send(command);
 
     // Auto-confirm (development only)
-    // await cognito.send(
-    //   new AdminConfirmSignUpCommand({
-    //     UserPoolId: process.env.COGNITO_USER_POOL_ID!,
-    //     Username: username,
-    //   })
-    // );
+    await cognito.send(
+      new AdminConfirmSignUpCommand({
+        UserPoolId: process.env.COGNITO_USER_POOL_ID!,
+        Username: username,
+      })
+    );
 
-    const userSub = "62c59454-2021-703a-0b4d-de7b62dffb92"// || response.UserSub!;
-    let avatar_url = null;
+    const userSub = response.UserSub!;
+    const key = (ext: string) => `profile_images/${userSub}.${ext}`;
+
+    if (avatar) {
+      const s3Client = new S3Client({ region: process.env.AWS_REGION });
+
+      // Determine file extension
+      const ext = avatar.key.split(".").pop();
+
+      const destination = await copyItemImage(s3Client, { bucket: avatar.bucket, key: avatar.key }, { bucket: process.env.S3_APP_BUCKET!, key: key(ext!) })
+
+      // Delete temp file
+      await s3Client.send(
+        new DeleteObjectCommand({
+          Bucket: process.env.S3_TEMP_BUCKET,
+          Key: avatar.key,
+        })
+      );
+
+      avatar = destination
+    }
+
 
     if (req.file) {
       const mimeType = req.file.mimetype; // e.g., image/png
@@ -93,10 +117,10 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
         throw new Error("Unsupported avatar file type.");
       }
 
-      const key = `profile_images/${userSub}.${ext}`;
 
-      avatar_url = await saveItemImage(s3Client, key, req.file.buffer);
+      avatar = await saveItemImage(s3Client, key(ext), req.file.buffer);
     }
+
     const userData = {
       user_id: userSub,
       username,
@@ -104,8 +128,8 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       first_name,
       last_name,
       bio: bio || null,
-      avatar_url,
-      dropbox: typeof dropbox === "string" ? JSON.parse(dropbox as string || "{}") : dropbox,
+      avatar,
+      dropbox,
       created_at: new Date().toISOString(),
     };
 
@@ -116,7 +140,7 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       })
     );
 
-    res.status(201).json({ user: userData });
+    res.status(201).json({ user: { ...userData, avatar: await getSignedImage(s3Client, { s3location: userData.avatar }) } });
   } catch (error: any) {
     console.error("Signup error:", error);
     res.status(400).json({ error: error.message });
@@ -179,10 +203,10 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       userDetails = unmarshall(userDetailsResponse.Item);
 
       // Get signed URL for avatar if it exists
-      if (userDetails.avatar_url) {
-        userDetails.avatar_url = await getSignedImage(
+      if (userDetails.avatar) {
+        userDetails.avatar = await getSignedImage(
           s3Client,
-          userDetails.avatar_url.key
+          userDetails.avatar.key
         );
       }
     }
@@ -306,3 +330,20 @@ export const setNewPassword = asyncHandler(
     }
   }
 );
+
+export const getPresignURL = asyncHandler(async (req: Request, res: Response) => {
+  const { bucket, key, content_type } = req.query;
+
+  const command = new PutObjectCommand({
+    Bucket: (bucket || process.env.S3_TEMP_BUCKET) as string,
+    Key: key as string,
+    ContentType: content_type as string
+  });
+
+  const signedUrl = await getSignedUrl(s3Client as any, command as any, { expiresIn: 300 }); // 5 minutes
+
+  res.status(200).json({
+    upload_url: signedUrl,
+    key,
+  });
+});
