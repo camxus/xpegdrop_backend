@@ -122,6 +122,5 @@ functions:
     handler: src/auth.authenticate
 
 plugins:
-  - serverless-auto-swagger
   - serverless-offline
   - serverless-dotenv-plugin
