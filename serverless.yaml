@@ -9,6 +9,8 @@ provider:
   region: eu-west-1
   httpApi:
     cors:
+      allowedOrigins:
+        - http://xpegdrop.eba-enjhhiwz.eu-west-1.elasticbeanstalk.com/
       allowedHeaders:
         - Content-Type
         - Authorization
