@@ -49,10 +49,19 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export const handler = serverless(app, {
-  request: (_: Request, event: APIGatewayProxyEvent) => {
-    console.log("EVENT", event.body, event)
-    if (event.isBase64Encoded && event.body) {
-      event.body = Buffer.from(event.body, "base64").toString("utf8");
+  request: (_req: Request, event: APIGatewayProxyEvent) => {
+    if (event.body) {
+      if (event.isBase64Encoded) {
+        event.body = Buffer.from(event.body, "base64").toString("utf8");
+      }
+      // parse string body to JSON so express.json() sees an object
+      if (typeof event.body === "string") {
+        try {
+          event.body = JSON.parse(event.body);
+        } catch (err) {
+          console.warn("Failed to parse body as JSON", err);
+        }
+      }
     }
   },
 });
