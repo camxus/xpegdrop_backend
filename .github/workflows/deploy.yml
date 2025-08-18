@@ -35,8 +35,8 @@ jobs:
           AWS_REGION_CODE: eu-west-1
           DROPBOX_CLIENT_ID: ${{ secrets.DROPBOX_CLIENT_ID }}
           DROPBOX_CLIENT_SECRET: ${{ secrets.DROPBOX_CLIENT_SECRET }}
-          BACKEND_URL: ${{ vars.COGNITO_CLIENT_ID }}
-          FRONTEND_URL: ${{ vars.COGNITO_CLIENT_ID }}
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           COGNITO_SECRET: ${{ secrets.COGNITO_SECRET }}
           COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
