@@ -119,6 +119,12 @@ functions:
         - PUT
         - DELETE
       allowCredentials: true
+    authorizers:
+      jwtAuthorizer:
+        type: request
+        functionName: authorizer
+        identitySource: $request.header.Authorization
+        enableSimpleResponses: true
 
   # Authorizer function
   authorizer:
