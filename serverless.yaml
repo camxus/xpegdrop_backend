@@ -1,0 +1,127 @@
+org: camxus
+app: xpegdrop
+service: rest-api
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: ${opt:stage, 'prod'}
+  region: eu-west-1
+  httpApi:
+    cors:
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+      allowCredentials: true
+    authorizers:
+      jwtAuthorizer:
+        type: request
+        functionName: authorizer
+        identitySource: $request.header.Authorization
+        enableSimpleResponses: true
+
+  environment:
+    AWS_REGION_CODE: ${env:AWS_REGION_CODE, 'eu-west-1'}
+    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}
+
+functions:
+  # Main API handler
+  api:
+    handler: src/server.handler
+    events:
+      # Auth routes (public)
+      - httpApi:
+          path: /api/auth/signup
+          method: POST
+      - httpApi:
+          path: /api/auth/login
+          method: POST
+      - httpApi:
+          path: /api/auth/refresh-token
+          method: POST
+      - httpApi:
+          path: /api/auth/forgot-password
+          method: POST
+      - httpApi:
+          path: /api/auth/confirm-password
+          method: POST
+      - httpApi:
+          path: /api/auth/set-new-password
+          method: POST
+
+      # Dropbox routes (public)
+      - httpApi:
+          path: /api/dropbox/auth-url
+          method: GET
+      - httpApi:
+          path: /api/dropbox/callback
+          method: GET
+
+      # Projects routes
+      - httpApi:
+          path: /api/projects/share/{username}/{projectName}
+          method: GET
+      - httpApi:
+          path: /api/projects
+          method: POST
+          authorizer: jwtAuthorizer
+      - httpApi:
+          path: /api/projects
+          method: GET
+          authorizer: jwtAuthorizer
+      - httpApi:
+          path: /api/projects/{projectId}
+          method: GET
+          authorizer: jwtAuthorizer
+      - httpApi:
+          path: /api/projects/{projectId}
+          method: PUT
+          authorizer: jwtAuthorizer
+      - httpApi:
+          path: /api/projects/{projectId}
+          method: DELETE
+          authorizer: jwtAuthorizer
+
+      # Users routes
+      - httpApi:
+          path: /api/users/username/{username}
+          method: GET
+      - httpApi:
+          path: /api/users
+          method: GET
+          authorizer: jwtAuthorizer
+      - httpApi:
+          path: /api/users/{userId}
+          method: GET
+          authorizer: jwtAuthorizer
+      - httpApi:
+          path: /api/users
+          method: PUT
+          authorizer: jwtAuthorizer
+      - httpApi:
+          path: /api/users
+          method: DELETE
+          authorizer: jwtAuthorizer
+      - httpApi:
+          path: /api/users/dropbox-token
+          method: PUT
+          authorizer: jwtAuthorizer
+
+      # Health check
+      - httpApi:
+          path: /health
+          method: GET
+
+  # Authorizer function
+  authorizer:
+    handler: src/auth.authenticate
+
+plugins:
+  - serverless-auto-swagger
+  - serverless-offline
+  - serverless-dotenv-plugin
