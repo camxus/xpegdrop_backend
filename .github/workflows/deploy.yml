@@ -31,6 +31,14 @@ jobs:
       - name: Deploy to Serverless
         env:
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-          COGNITO_CLIENT_ID: ${{ vars.COGNITO_CLIENT_ID }}
+          COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
           AWS_REGION_CODE: eu-west-1
+          DROPBOX_CLIENT_ID: ${{ secrets.DROPBOX_CLIENT_ID }}
+          DROPBOX_CLIENT_SECRET: ${{ secrets.DROPBOX_CLIENT_SECRET }}
+          BACKEND_URL: ${{ vars.COGNITO_CLIENT_ID }}
+          FRONTEND_URL: ${{ vars.COGNITO_CLIENT_ID }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          COGNITO_SECRET: ${{ secrets.COGNITO_SECRET }}
+          COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+          S3_APP_BUCKET: ${{ secrets.S3_APP_BUCKET }}
         run: yarn deploy --stage prod
