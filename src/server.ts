@@ -6,11 +6,12 @@ import projectRoutes from './routes/projectRoutes';
 import dropboxRoutes from './routes/dropboxRoutes';
 import usersRoutes from './routes/usersRoutes';
 import { errorHandler } from './middleware/errorMiddleware';
+import serverless from 'serverless-http';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const port = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
@@ -31,6 +32,9 @@ app.get('/health', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
+export const handler = serverless(app);
