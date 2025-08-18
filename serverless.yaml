@@ -19,6 +19,27 @@ provider:
     COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
     S3_APP_BUCKET: ${env:S3_APP_BUCKET}
 
+  httpApi:
+    cors:
+      allowedOrigins:
+        - ${env:FRONTEND_URL}
+        - http://xpegdrop.eba-enjhhiwz.eu-west-1.elasticbeanstalk.com
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+      allowCredentials: true
+    authorizers:
+      jwtAuthorizer:
+        type: request
+        functionName: authorizer
+        identitySource: $request.header.Authorization
+        enableSimpleResponses: true
+
 functions:
   # Main API handler
   api:
@@ -106,25 +127,6 @@ functions:
       - httpApi:
           path: /health
           method: GET
-    cors:
-      allowedOrigins:
-        - ${env:FRONTEND_URL}
-        - http://xpegdrop.eba-enjhhiwz.eu-west-1.elasticbeanstalk.com
-      allowedHeaders:
-        - Content-Type
-        - Authorization
-      allowedMethods:
-        - GET
-        - POST
-        - PUT
-        - DELETE
-      allowCredentials: true
-    authorizers:
-      jwtAuthorizer:
-        type: request
-        functionName: authorizer
-        identitySource: $request.header.Authorization
-        enableSimpleResponses: true
 
   # Authorizer function
   authorizer:
