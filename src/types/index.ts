@@ -40,6 +40,7 @@ export interface Project {
   description?: string | null;
   share_url: string;
   is_public: boolean;
+  approved_emails: string[];
   dropbox_folder_path?: string;
   dropbox_shared_link?: string;
   created_at: string;

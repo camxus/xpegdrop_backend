@@ -70,10 +70,19 @@ export const createProject = asyncHandler(
         return new File([blob], file.originalname, { type: file.mimetype });
       });
 
-      if (await dropboxService.folderExists(name)) {
-        return res.status(400).json({
-          error: `A Dropbox folder named "${name}" already exists. Please choose another name.`,
-        });
+      try {
+        if (await dropboxService.folderExists(name)) {
+          return res.status(400).json({
+            error: `A Dropbox folder named "${name}" already exists. Please choose another name.`,
+          });
+        }
+      } catch (err: any) {
+        if (err?.status === 401 && req.user.dropbox.refresh_token) {
+          await dropboxService.refreshDropboxToken(req.user);
+          await dropboxService.folderExists(name);
+        } else {
+          throw err;
+        }
       }
 
       const dropboxSharedLink = await dropboxService.uploadFolder(
@@ -94,6 +103,7 @@ export const createProject = asyncHandler(
         description: description || null,
         share_url: shareUrl,
         is_public: true,
+        approved_emails: [],
         dropbox_folder_path: `/${name}`,
         dropbox_shared_link: dropboxSharedLink,
         created_at: new Date().toISOString(),

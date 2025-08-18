@@ -37,8 +37,6 @@ export const handleDropboxCallback = asyncHandler(async (req: Request, res: Resp
   const code = req.query.code as string;
 
   const redirectUri = `${process.env.BACKEND_URL}/api/dropbox/callback`;
-
-  console.log(DROPBOX_CLIENT_SECRET)
   
   const tokenRes = await axios.post("https://api.dropbox.com/oauth2/token", new URLSearchParams({
     code,

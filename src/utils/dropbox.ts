@@ -1,10 +1,16 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Dropbox } from "../../sdk/dropbox";
 import type { sharing, files } from "../../sdk/dropbox";
+import axios from "axios";
+import qs from "qs";
+import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
+import { User } from "../types";
 
 const UPLOAD_BATCH_SIZE = 3;
+const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 
-const s3Client = new S3Client({
+const client = new DynamoDBClient({
   region: process.env.AWS_REGION,
 });
 
@@ -156,5 +162,35 @@ export class DropboxService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async refreshDropboxToken(user: User) {
+    const res = await axios.post(
+      "https://api.dropbox.com/oauth2/token",
+      qs.stringify({
+        refresh_token: user.dropbox?.refresh_token,
+        grant_type: "refresh_token",
+        client_id: process.env.DROPBOX_CLIENT_ID!,
+        client_secret: process.env.DROPBOX_CLIENT_SECRET!,
+      }),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+
+    this.dbx = new Dropbox({
+      accessToken: res.data.access_token,
+      fetch: fetch,
+    });
+
+    // TODO: persist new accessToken back to DynamoDB for future calls
+    await client.send(
+      new UpdateItemCommand({
+        TableName: USERS_TABLE,
+        Key: marshall({ user_id: user.user_id }),
+        UpdateExpression: "SET dropbox.access_token = :t",
+        ExpressionAttributeValues: marshall({ ":t": res.data.access_token }),
+      })
+    );
+
+    return res.data.access_token as string;
   }
 }
