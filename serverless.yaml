@@ -12,6 +12,7 @@ functions:
   httpApi:
     cors:
       allowedOrigins:
+        - ${env:FRONTEND_URL}
         - http://xpegdrop.eba-enjhhiwz.eu-west-1.elasticbeanstalk.com
       allowedHeaders:
         - Content-Type
