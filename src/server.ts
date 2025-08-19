@@ -77,6 +77,8 @@ if (process.env.NODE_ENV !== "production") {
 
 export const handler = serverless(app, {
   request: async (req: Request, event: APIGatewayProxyEvent) => {
+    console.log("Raw API Gateway event:", event);
+
     let body: any = event.body;
 
     if (body) {
