@@ -40,24 +40,24 @@ export const authorizeHandler = async (
   const jwtToken = token.slice(7);
 
   try {
-    const decoded = await new Promise((resolve, reject) => {
-      jwt.verify(
-        jwtToken,
-        getKey,
-        {
-          algorithms: ["RS256"],
-          audience: audience,
-          issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
-        },
-        (err, decodedToken) => {
-          if (err) reject(err);
-          else resolve(decodedToken);
-        }
-      );
-    });
+    // const decoded = await new Promise((resolve, reject) => {
+    //   jwt.verify(
+    //     jwtToken,
+    //     getKey,
+    //     {
+    //       algorithms: ["RS256"],
+    //       audience: audience,
+    //       issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
+    //     },
+    //     (err, decodedToken) => {
+    //       if (err) reject(err);
+    //       else resolve(decodedToken);
+    //     }
+    //   );
+    // });
 
     console.log("Authorization success");
-    return generatePolicy("user", "Allow", event.methodArn, decoded as any);
+    return generatePolicy("user", "Allow", event.methodArn);
   } catch (err) {
     console.error("Authorization error:", err);
     return generatePolicy("user", "Deny", event.methodArn);
