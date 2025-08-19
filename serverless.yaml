@@ -81,18 +81,18 @@ resources:
             - Id: ExpireAfter1Day
               Status: Enabled
               ExpirationInDays: 1
-        CorsConfiguration:
-          CorsRules:
-            - AllowedOrigins:
-                - ${env:FRONTEND_URL}
-              AllowedHeaders:
-                - "*"
-              AllowedMethods:
-                - GET
-                - PUT
-                - POST
-              ExposedHeaders:
-                - ETag
+        # CorsConfiguration:
+        #   CorsRules:
+        #     - AllowedOrigins:
+        #         - ${env:FRONTEND_URL}
+        #       AllowedHeaders:
+        #         - "*"
+        #       AllowedMethods:
+        #         - GET
+        #         - PUT
+        #         - POST
+        #       ExposedHeaders:
+        #         - ETag
 
 functions:
   # Main API handler
