@@ -61,7 +61,6 @@ provider:
         - POST
         - PUT
         - DELETE
-        - OPTIONS
       allowCredentials: true
     # authorizers:
     #   jwtAuthorizer:
@@ -94,7 +93,6 @@ resources:
               - POST
               - DELETE
               - HEAD
-              - OPTIONS
             ExposedHeaders:
               - ETag
               - x-amz-request-id
