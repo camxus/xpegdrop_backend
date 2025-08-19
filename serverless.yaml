@@ -43,6 +43,11 @@ provider:
         - dynamodb:Scan
       Resource: arn:aws:dynamodb:eu-west-1:439125467255:table/Projects
 
+    - Effect: Allow
+      Action:
+        - cognito-idp:AdminConfirmSignUp
+      Resource: arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL
+
   httpApi:
     payload: "2.0"
     cors:
@@ -80,6 +85,7 @@ resources:
           CorsRules:
             - AllowedOrigins:
                 - ${env:FRONTEND_URL}
+                - http://xpegdrop.eba-enjhhiwz.eu-west-1.elasticbeanstalk.com
               AllowedHeaders:
                 - "*"
               AllowedMethods:
