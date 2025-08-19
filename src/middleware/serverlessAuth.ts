@@ -46,7 +46,7 @@ export const authorizeHandler = async (
         getKey,
         {
           algorithms: ["RS256"],
-          audience,
+          audience: audience,
           issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
         },
         (err, decodedToken) => {
