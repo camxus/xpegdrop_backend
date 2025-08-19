@@ -119,8 +119,13 @@ functions:
           method: POST
       - httpApi:
           path: /api/auth/presign-url
+          method: OPTIONS
+          cors: true   # no authorizer here
+      - httpApi:
+          path: /api/auth/presign-url
           method: GET
-
+          authorizer: jwtAuthorizer
+          
       # Dropbox routes (public)
       - httpApi:
           path: /api/dropbox/auth-url
