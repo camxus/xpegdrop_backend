@@ -337,7 +337,7 @@ export const setNewPassword = asyncHandler(
 );
 
 export const getPresignURL = asyncHandler(async (req: Request, res: Response) => {
-  const { bucket, key, content_type } = req.query;
+  const { bucket = "", key, content_type } = req.query;
 
   const command = new PutObjectCommand({
     Bucket: (bucket || process.env.S3_TEMP_BUCKET) as string,
