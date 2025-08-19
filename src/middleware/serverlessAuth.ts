@@ -31,6 +31,7 @@ function getKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
 export const authorizeHandler = async (
   event: APIGatewayRequestAuthorizerEvent
 ): Promise<APIGatewayAuthorizerResult> => {
+  console.log("Authorization started");
   const token = event.headers?.authorization;
   if (!token || !token.startsWith("Bearer ")) {
     return generatePolicy("user", "Deny", event.methodArn);
@@ -55,6 +56,7 @@ export const authorizeHandler = async (
       );
     });
 
+    console.log("Authorization success");
     return generatePolicy("user", "Allow", event.methodArn, decoded as any);
   } catch (err) {
     console.error("Authorization error:", err);
