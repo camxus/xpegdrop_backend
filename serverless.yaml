@@ -120,7 +120,6 @@ functions:
       - httpApi:
           path: /api/auth/presign-url
           method: GET
-          authorizer: jwtAuthorizer
           
       # Dropbox routes (public)
       - httpApi:
