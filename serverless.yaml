@@ -76,6 +76,7 @@ resources:
             - Id: ExpireAfter1Day
               Status: Enabled
               ExpirationInDays: 1
+      DeletionPolicy: Retain
 
 functions:
   # Main API handler
