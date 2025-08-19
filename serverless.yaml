@@ -191,7 +191,7 @@ functions:
 
   # Authorizer function
   authorizer:
-    handler: src/auth.authenticate
+    handler: src/middleware/auth.authenticate
 
 plugins:
   - serverless-offline
