@@ -15,49 +15,51 @@ export interface AuthenticatedRequest extends Request {
 }
 
 export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  // Skip preflight
+  if (req.method === "OPTIONS") return next();
+
   try {
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No token provided' });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return safeRes(res, 401, { error: "No token provided" });
     }
 
     const token = authHeader.substring(7);
 
     // Verify token with Cognito
-    const userResponse = await cognito.send(
-      new GetUserCommand({
-        AccessToken: token,
-      })
-    );
+    const userResponse = await cognito.send(new GetUserCommand({ AccessToken: token }));
 
     const userAttributes = userResponse.UserAttributes?.reduce((acc, attr) => {
-      if (attr.Name && attr.Value) {
-        acc[attr.Name] = attr.Value;
-      }
+      if (attr.Name && attr.Value) acc[attr.Name] = attr.Value;
       return acc;
     }, {} as Record<string, string>) || {};
 
-    const sub = userAttributes['sub'];
+    const sub = userAttributes["sub"];
 
     // Get user details from DynamoDB
     const userDetailsResponse = await client.send(
-      new GetItemCommand({
-        TableName: USERS_TABLE,
-        Key: marshall({ user_id: sub }),
-      })
+      new GetItemCommand({ TableName: USERS_TABLE, Key: marshall({ user_id: sub }) })
     );
 
     if (!userDetailsResponse.Item) {
-      return res.status(401).json({ error: 'User not found' });
+      return safeRes(res, 401, { error: "User not found" });
     }
 
-    const userDetails = unmarshall(userDetailsResponse.Item);
-    req.user = userDetails;
-    
+    req.user = unmarshall(userDetailsResponse.Item);
     next();
   } catch (error: any) {
-    console.error('Authentication error:', error);
-    return res.status(401).json({ error: 'Invalid token' });
+    console.error("Authentication error:", error);
+
+    // Cognito token expired or other auth errors
+    return safeRes(res, 401, { error: "Invalid or expired token" });
   }
 };
+
+function safeRes(res: any, status: number, body: any) {
+  if (res && typeof res.status === "function" && typeof res.json === "function") {
+    return res.status(status).json(body);
+  }
+  // If res is not a normal Express response (serverless context), just log
+  console.log("Response fallback:", status, body);
+  return null;
+}
