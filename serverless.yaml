@@ -70,13 +70,12 @@ resources:
     UploadsBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: ${env:S3_TEMP_BUCKET}
+        BucketName: ${env:S3_TEMP_BUCKET}-${self:provider.stage}
         LifecycleConfiguration:
           Rules:
             - Id: ExpireAfter1Day
               Status: Enabled
               ExpirationInDays: 1
-      DeletionPolicy: Retain
 
 functions:
   # Main API handler
