@@ -144,23 +144,23 @@ functions:
       - httpApi:
           path: /api/projects
           method: POST
-          authorizer: jwtAuthorizer
+          # authorizer: jwtAuthorizer
       - httpApi:
           path: /api/projects
           method: GET
-          authorizer: jwtAuthorizer
+          # authorizer: jwtAuthorizer
       - httpApi:
           path: /api/projects/{projectId}
           method: GET
-          authorizer: jwtAuthorizer
+          # authorizer: jwtAuthorizer
       - httpApi:
           path: /api/projects/{projectId}
           method: PUT
-          authorizer: jwtAuthorizer
+          # authorizer: jwtAuthorizer
       - httpApi:
           path: /api/projects/{projectId}
           method: DELETE
-          authorizer: jwtAuthorizer
+          # authorizer: jwtAuthorizer
 
       # Users routes
       - httpApi:
@@ -169,23 +169,23 @@ functions:
       - httpApi:
           path: /api/users
           method: GET
-          authorizer: jwtAuthorizer
+          # authorizer: jwtAuthorizer
       - httpApi:
           path: /api/users/{userId}
           method: GET
-          authorizer: jwtAuthorizer
+          # authorizer: jwtAuthorizer
       - httpApi:
           path: /api/users
           method: PUT
-          authorizer: jwtAuthorizer
+          # authorizer: jwtAuthorizer
       - httpApi:
           path: /api/users
           method: DELETE
-          authorizer: jwtAuthorizer
+          # authorizer: jwtAuthorizer
       - httpApi:
           path: /api/users/dropbox-token
           method: PUT
-          authorizer: jwtAuthorizer
+          # authorizer: jwtAuthorizer
 
       # Health check
       - httpApi:
