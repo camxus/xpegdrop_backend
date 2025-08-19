@@ -119,6 +119,10 @@ functions:
           method: POST
       - httpApi:
           path: /api/auth/presign-url
+          method: OPTIONS
+          cors: true
+      - httpApi:
+          path: /api/auth/presign-url
           method: GET
           authorizer: jwtAuthorizer
 
