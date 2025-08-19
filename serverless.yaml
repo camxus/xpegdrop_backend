@@ -94,6 +94,7 @@ resources:
               - POST
               - DELETE
               - HEAD
+              - OPTIONS
             ExposedHeaders:
               - ETag
               - x-amz-request-id

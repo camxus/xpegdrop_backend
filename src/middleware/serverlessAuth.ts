@@ -60,19 +60,22 @@ const generatePolicy = (
 
 // Lambda authorizer
 export const authorizeHandler = async (event: APIGatewayRequestAuthorizerEvent) => {
+  console.log("here")
   try {
     // Allow OPTIONS requests without auth
     if (event.httpMethod === 'OPTIONS') {
+      console.log("is options")
       return generatePolicy('user', 'Allow', event.methodArn);
     }
-
+    
     const token = event.headers?.authorization;
     if (!token || !token.startsWith('Bearer ')) {
       return generatePolicy('user', 'Deny', event.methodArn);
     }
-
+    
+    console.log("checking jwt")
     const jwtToken = token.slice(7);
-
+    
     const decoded: any = await new Promise((resolve, reject) => {
       jwt.verify(
         jwtToken,
@@ -88,25 +91,13 @@ export const authorizeHandler = async (event: APIGatewayRequestAuthorizerEvent) 
         }
       );
     });
-
+    
+    console.log(decoded)
     const sub = decoded.sub;
     if (!sub) throw new Error('Token missing sub claim');
 
-    // Fetch user from DynamoDB
-    const dynamo = new DynamoDBClient({ region });
-    const userResponse = await dynamo.send(
-      new GetItemCommand({
-        TableName: USERS_TABLE,
-        Key: marshall({ user_id: sub }),
-      })
-    );
-
-    if (!userResponse.Item) throw new Error('User not found');
-
-    const user = unmarshall(userResponse.Item);
-
     // Attach user info to context for downstream Lambda
-    return generatePolicy('user', 'Allow', event.methodArn, { sub: user.user_id, email: user.email });
+    return generatePolicy('user', 'Allow', event.methodArn, { sub: decoded.sub });
   } catch (err) {
     console.error('Authorization error:', err);
     return generatePolicy('user', 'Deny', event.methodArn);
