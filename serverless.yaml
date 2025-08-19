@@ -53,6 +53,7 @@ provider:
     cors:
       allowedOrigins:
         - ${env:FRONTEND_URL}
+        - http://localhost:3000
       allowedHeaders:
         - Content-Type
         - Authorization
@@ -84,6 +85,7 @@ resources:
         CorsRules:
           - AllowedOrigins:
               -  ${env:FRONTEND_URL}
+              -  http://localhost:3000
             AllowedHeaders:
               - Authorization
               - Content-Type
