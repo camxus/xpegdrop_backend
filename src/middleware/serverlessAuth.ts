@@ -1,4 +1,4 @@
-import { APIGatewayRequestAuthorizerEvent, APIGatewayAuthorizerResult } from "aws-lambda";
+import { APIGatewayRequestAuthorizerEventV2 } from "aws-lambda";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 
@@ -19,69 +19,53 @@ function getKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
   if (!header.kid) {
     return callback(new Error("No KID in token header"));
   }
-  client.getSigningKey(header.kid, function (err, key) {
-    if (err) {
-      return callback(err);
-    }
+  client.getSigningKey(header.kid, (err, key) => {
+    if (err) return callback(err);
     const signingKey = key?.getPublicKey();
     callback(null, signingKey);
   });
 }
 
 export const authorizeHandler = async (
-  event: APIGatewayRequestAuthorizerEvent
-): Promise<APIGatewayAuthorizerResult> => {
-  console.log("Authorization started", audience, process.env.COGNITO_CLIENT_ID);
+  event: APIGatewayRequestAuthorizerEventV2
+) => {
+  console.log("Authorization started", audience);
+
   const token = event.headers?.authorization;
   if (!token || !token.startsWith("Bearer ")) {
-    return generatePolicy("user", "Deny", event.methodArn);
+    return { isAuthorized: false };
   }
 
   const jwtToken = token.slice(7);
 
   try {
-    // const decoded = await new Promise((resolve, reject) => {
+    // const decoded = await new Promise<jwt.JwtPayload>((resolve, reject) => {
     //   jwt.verify(
     //     jwtToken,
     //     getKey,
     //     {
     //       algorithms: ["RS256"],
-    //       audience: audience,
+    //       audience,
     //       issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
     //     },
     //     (err, decodedToken) => {
     //       if (err) reject(err);
-    //       else resolve(decodedToken);
+    //       else resolve(decodedToken as jwt.JwtPayload);
     //     }
     //   );
     // });
 
-    console.log(JSON.stringify(generatePolicy("user", "Allow", event.methodArn)), event);
-
     console.log("Authorization success");
-    return generatePolicy("user", "Allow", event.methodArn);
+
+    return {
+      isAuthorized: true,
+      // context: {
+      //   sub: decoded.sub,
+      //   username: decoded["cognito:username"] || decoded["username"],
+      // },
+    };
   } catch (err) {
     console.error("Authorization error:", err);
-    return generatePolicy("user", "Deny", event.methodArn);
+    return { isAuthorized: false };
   }
 };
-
-const generatePolicy = (
-  principalId: string,
-  effect: "Allow" | "Deny",
-  resource: string,
-  context?: Record<string, any>
-) => ({
-  principalId,
-  policyDocument: {
-    Version: "2012-10-17",
-    Statement: [
-      {
-        Action: "execute-api:Invoke",
-        Effect: effect,
-        Resource: resource,
-      },
-    ],
-  },
-  context,
-});
