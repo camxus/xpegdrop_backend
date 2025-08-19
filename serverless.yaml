@@ -62,12 +62,12 @@ provider:
         - PUT
         - DELETE
       allowCredentials: true
-    # authorizers:
-    #   jwtAuthorizer:
-    #     type: request
-    #     functionName: authorizer
-    #     identitySource:
-    #       - $request.header.Authorization
+    authorizers:
+      newJwtAuthorizer:
+        type: request
+        functionName: authorizer
+        identitySource:
+          - $request.header.Authorization
 
 resources:
  Resources:
@@ -142,23 +142,23 @@ functions:
       - httpApi:
           path: /api/projects
           method: POST
-          # authorizer: jwtAuthorizer
+          authorizer: newJwtAuthorizer
       - httpApi:
           path: /api/projects
           method: GET
-          # authorizer: jwtAuthorizer
+          authorizer: newJwtAuthorizer
       - httpApi:
           path: /api/projects/{projectId}
           method: GET
-          # authorizer: jwtAuthorizer
+          authorizer: newJwtAuthorizer
       - httpApi:
           path: /api/projects/{projectId}
           method: PUT
-          # authorizer: jwtAuthorizer
+          authorizer: newJwtAuthorizer
       - httpApi:
           path: /api/projects/{projectId}
           method: DELETE
-          # authorizer: jwtAuthorizer
+          authorizer: newJwtAuthorizer
 
       # Users routes
       - httpApi:
@@ -167,23 +167,23 @@ functions:
       - httpApi:
           path: /api/users
           method: GET
-          # authorizer: jwtAuthorizer
+          authorizer: newJwtAuthorizer
       - httpApi:
           path: /api/users/{userId}
           method: GET
-          # authorizer: jwtAuthorizer
+          authorizer: newJwtAuthorizer
       - httpApi:
           path: /api/users
           method: PUT
-          # authorizer: jwtAuthorizer
+          authorizer: newJwtAuthorizer
       - httpApi:
           path: /api/users
           method: DELETE
-          # authorizer: jwtAuthorizer
+          authorizer: newJwtAuthorizer
       - httpApi:
           path: /api/users/dropbox-token
           method: PUT
-          # authorizer: jwtAuthorizer
+          authorizer: newJwtAuthorizer
 
       # Health check
       - httpApi:
