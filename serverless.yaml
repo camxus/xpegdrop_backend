@@ -62,6 +62,7 @@ provider:
         - POST
         - PUT
         - DELETE
+        - OPTIONS
       allowCredentials: true
     authorizers:
       newJwtAuthorizer:
