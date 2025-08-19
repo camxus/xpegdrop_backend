@@ -63,12 +63,12 @@ provider:
         - DELETE
         - OPTIONS
       allowCredentials: true
-    authorizers:
-      jwtAuthorizer:
-        type: request
-        functionName: authorizer
-        identitySource:
-          - $request.header.Authorization
+    # authorizers:
+    #   jwtAuthorizer:
+    #     type: request
+    #     functionName: authorizer
+    #     identitySource:
+    #       - $request.header.Authorization
 
 resources:
  Resources:
