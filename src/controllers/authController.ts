@@ -337,18 +337,33 @@ export const setNewPassword = asyncHandler(
 );
 
 export const getPresignURL = asyncHandler(async (req: Request, res: Response) => {
-  const { bucket = "", key, content_type } = req.query;
+  try {
+    const bucket = (req.query.bucket as string) || process.env.S3_TEMP_BUCKET;
+    const key = req.query.key as string;
+    const content_type = req.query.content_type as string;
 
-  const command = new PutObjectCommand({
-    Bucket: (bucket || process.env.S3_TEMP_BUCKET) as string,
-    Key: key as string,
-    ContentType: content_type as string
-  });
+    if (!key || !content_type) {
+      return res.status(400).json({ message: "Missing key or content_type" });
+    }
 
-  const signedUrl = await getSignedUrl(s3Client as any, command as any, { expiresIn: 300 }); // 5 minutes
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ContentType: content_type,
+    });
 
-  res.status(200).json({
-    upload_url: signedUrl,
-    key,
-  });
+    const signedUrl = await getSignedUrl(s3Client as any, command as any, { expiresIn: 300 }); // 5 min
+
+    res.setHeader("Access-Control-Allow-Origin", "*"); // or your frontend URL
+    res.setHeader("Access-Control-Allow-Methods", "OPTIONS,GET,POST");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+
+    res.status(200).json({
+      upload_url: signedUrl,
+      key,
+    });
+  } catch (err: any) {
+    console.error("Error generating presigned URL:", err);
+    res.status(500).json({ message: "Internal server error", error: err.message });
+  }
 });
