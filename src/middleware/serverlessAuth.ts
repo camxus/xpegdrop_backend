@@ -56,6 +56,8 @@ export const authorizeHandler = async (
     //   );
     // });
 
+    console.log(JSON.stringify(generatePolicy("user", "Allow", event.methodArn)));
+
     console.log("Authorization success");
     return generatePolicy("user", "Allow", event.methodArn);
   } catch (err) {
