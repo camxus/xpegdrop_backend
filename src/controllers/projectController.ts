@@ -45,7 +45,30 @@ export const createProject = asyncHandler(
 
     const { name, description } = value as CreateProjectInput;
 
-    let fileLocations = typeof value.file_locations === "string" ? JSON.parse(value.file_locations as string || "[]") : value.file_locations
+    let fileLocations
+    if (Array.isArray(value.file_locations)) {
+      // If it's already an array of objects
+      fileLocations = value.file_locations.map((item: string) => {
+        if (typeof item === "string") {
+          try {
+            return JSON.parse(item);
+          } catch {
+            return item; // leave as string if JSON.parse fails
+          }
+        }
+        return item;
+      });
+    } else if (typeof value.file_locations === "string") {
+      // Single stringified JSON
+      try {
+        fileLocations = JSON.parse(value.file_locations);
+      } catch {
+        fileLocations = [value.file_locations];
+      }
+    } else {
+      // Single object
+      fileLocations = [value.file_locations];
+    }
 
     const files = req.files as Express.Multer.File[];
 
