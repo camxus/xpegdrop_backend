@@ -1,0 +1,445 @@
+{
+  "/Users/cam/Projects/pegdrop_backend/serverless.yaml": {
+    "versionFramework": "4.18.0",
+    "servicePath": "/Users/cam/Projects/pegdrop_backend/serverless.yaml",
+    "serviceConfigFileName": "serverless.yaml",
+    "service": {
+      "org": "xpegdrop",
+      "app": "xpegdrop",
+      "service": "rest-api",
+      "provider": {
+        "name": "aws",
+        "runtime": "nodejs20.x",
+        "stage": "prod",
+        "region": "eu-west-1",
+        "environment": {
+          "AWS_REGION_CODE": "eu-west-1",
+          "DROPBOX_CLIENT_ID": "00v32yk2v341que",
+          "DROPBOX_CLIENT_SECRET": "<REDACTED>",
+          "BACKEND_URL": "http://localhost:3001",
+          "FRONTEND_URL": "http://localhost:3000",
+          "JWT_SECRET": "<REDACTED>",
+          "COGNITO_CLIENT_ID": "akivk0eejshi03nnl8nop0c7n",
+          "COGNITO_SECRET": "<REDACTED>",
+          "COGNITO_USER_POOL_ID": "eu-west-1_w1TVjSotL",
+          "S3_APP_BUCKET": "xpegdrop-app-bucket",
+          "S3_TEMP_BUCKET": "xpegdrop-temp-bucket"
+        },
+        "iamRoleStatements": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "cognito-idp:AdminConfirmSignUp"
+            ],
+            "Resource": "arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL"
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "dynamodb:GetItem",
+              "dynamodb:PutItem",
+              "dynamodb:UpdateItem",
+              "dynamodb:Query",
+              "dynamodb:Scan"
+            ],
+            "Resource": "arn:aws:dynamodb:eu-west-1:439125467255:table/Users"
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "dynamodb:GetItem",
+              "dynamodb:PutItem",
+              "dynamodb:UpdateItem",
+              "dynamodb:Query",
+              "dynamodb:Scan"
+            ],
+            "Resource": "arn:aws:dynamodb:eu-west-1:439125467255:table/Projects"
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "cognito-idp:AdminConfirmSignUp"
+            ],
+            "Resource": "arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL"
+          }
+        ],
+        "httpApi": {
+          "payload": "2.0",
+          "cors": {
+            "allowedOrigins": [
+              "http://localhost:3000",
+              "http://localhost:3000"
+            ],
+            "allowedHeaders": [
+              "Content-Type",
+              "Authorization"
+            ],
+            "allowedMethods": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE"
+            ],
+            "allowCredentials": "<REDACTED>"
+          },
+          "authorizers": {
+            "newJwtAuthorizer": {
+              "type": "request",
+              "functionName": "authorizer",
+              "identitySource": "$request.header.Authorization"
+            }
+          }
+        },
+        "versionFunctions": true
+      },
+      "resources": {
+        "Resources": {
+          "UploadsBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketName": "xpegdrop-temp-bucket",
+              "LifecycleConfiguration": {
+                "Rules": [
+                  {
+                    "Id": "ExpireAfter1Day",
+                    "Status": "Enabled",
+                    "ExpirationInDays": 1
+                  }
+                ]
+              },
+              "CorsConfiguration": {
+                "CorsRules": [
+                  {
+                    "AllowedOrigins": [
+                      "http://localhost:3000",
+                      "http://localhost:3000"
+                    ],
+                    "AllowedHeaders": [
+                      "Authorization",
+                      "Content-Type"
+                    ],
+                    "AllowedMethods": [
+                      "GET",
+                      "PUT",
+                      "POST",
+                      "DELETE",
+                      "HEAD"
+                    ],
+                    "ExposedHeaders": [
+                      "ETag",
+                      "x-amz-request-id",
+                      "x-amz-id-2"
+                    ],
+                    "MaxAge": 3000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "functions": {
+        "api": {
+          "handler": "src/server.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/api/auth/signup",
+                "method": "POST"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/auth/login",
+                "method": "POST"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/auth/refresh-token",
+                "method": "POST"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/auth/forgot-password",
+                "method": "POST"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/auth/confirm-password",
+                "method": "POST"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/auth/set-new-password",
+                "method": "POST"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/auth/presign-url",
+                "method": "GET"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/dropbox/auth-url",
+                "method": "GET"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/dropbox/callback",
+                "method": "GET"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/projects/share/{username}/{projectName}",
+                "method": "GET"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/projects",
+                "method": "POST",
+                "authorizer": "newJwtAuthorizer"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/projects",
+                "method": "GET",
+                "authorizer": "newJwtAuthorizer"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/projects/{projectId}",
+                "method": "GET",
+                "authorizer": "newJwtAuthorizer"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/projects/{projectId}",
+                "method": "PUT",
+                "authorizer": "newJwtAuthorizer"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/projects/{projectId}",
+                "method": "DELETE",
+                "authorizer": "newJwtAuthorizer"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/users/username/{username}",
+                "method": "GET"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/users",
+                "method": "GET",
+                "authorizer": "newJwtAuthorizer"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/users/{userId}",
+                "method": "GET",
+                "authorizer": "newJwtAuthorizer"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/users",
+                "method": "PUT",
+                "authorizer": "newJwtAuthorizer"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/users",
+                "method": "DELETE",
+                "authorizer": "newJwtAuthorizer"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/api/users/dropbox-token",
+                "method": "PUT",
+                "authorizer": "newJwtAuthorizer"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/health",
+                "method": "GET"
+              }
+            }
+          ],
+          "name": "rest-api-prod-api"
+        },
+        "authorizer": {
+          "handler": "src/middleware/serverlessAuth.authorizeHandler",
+          "events": [],
+          "name": "rest-api-prod-authorizer"
+        }
+      },
+      "plugins": [
+        "serverless-offline",
+        "serverless-dotenv-plugin"
+      ]
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs20.x",
+      "stage": "prod",
+      "region": "eu-west-1",
+      "environment": {
+        "AWS_REGION_CODE": "eu-west-1",
+        "DROPBOX_CLIENT_ID": "00v32yk2v341que",
+        "DROPBOX_CLIENT_SECRET": "<REDACTED>",
+        "BACKEND_URL": "http://localhost:3001",
+        "FRONTEND_URL": "http://localhost:3000",
+        "JWT_SECRET": "<REDACTED>",
+        "COGNITO_CLIENT_ID": "akivk0eejshi03nnl8nop0c7n",
+        "COGNITO_SECRET": "<REDACTED>",
+        "COGNITO_USER_POOL_ID": "eu-west-1_w1TVjSotL",
+        "S3_APP_BUCKET": "xpegdrop-app-bucket",
+        "S3_TEMP_BUCKET": "xpegdrop-temp-bucket"
+      },
+      "iamRoleStatements": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "cognito-idp:AdminConfirmSignUp"
+          ],
+          "Resource": "arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "dynamodb:GetItem",
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:Query",
+            "dynamodb:Scan"
+          ],
+          "Resource": "arn:aws:dynamodb:eu-west-1:439125467255:table/Users"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "dynamodb:GetItem",
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:Query",
+            "dynamodb:Scan"
+          ],
+          "Resource": "arn:aws:dynamodb:eu-west-1:439125467255:table/Projects"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "cognito-idp:AdminConfirmSignUp"
+          ],
+          "Resource": "arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL"
+        }
+      ],
+      "httpApi": {
+        "payload": "2.0",
+        "cors": {
+          "allowedOrigins": [
+            "http://localhost:3000",
+            "http://localhost:3000"
+          ],
+          "allowedHeaders": [
+            "Content-Type",
+            "Authorization"
+          ],
+          "allowedMethods": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE"
+          ],
+          "allowCredentials": "<REDACTED>"
+        },
+        "authorizers": {
+          "newJwtAuthorizer": {
+            "type": "request",
+            "functionName": "authorizer",
+            "identitySource": "$request.header.Authorization"
+          }
+        }
+      },
+      "versionFunctions": true
+    },
+    "dashboard": {
+      "isEnabledForService": true,
+      "requiredAuthentication": false,
+      "orgFeaturesInUse": {
+        "providers": false,
+        "monitoring": false
+      },
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": "mKysX7qgdwX6TRFm8Q",
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "serviceRawFile": "org: xpegdrop\napp: xpegdrop\nservice: rest-api\n\nprovider:\n  name: aws\n  runtime: nodejs20.x\n  stage: ${opt:stage, 'prod'}\n  region: eu-west-1\n  environment:\n    AWS_REGION_CODE: ${env:AWS_REGION_CODE, 'eu-west-1'}\n    DROPBOX_CLIENT_ID: ${env:DROPBOX_CLIENT_ID}\n    DROPBOX_CLIENT_SECRET: ${env:DROPBOX_CLIENT_SECRET}\n    BACKEND_URL: ${env:BACKEND_URL}\n    FRONTEND_URL: ${env:FRONTEND_URL}\n    JWT_SECRET: ${env:JWT_SECRET}\n    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}\n    COGNITO_SECRET: ${env:COGNITO_SECRET}\n    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}\n    S3_APP_BUCKET: ${env:S3_APP_BUCKET}\n    S3_TEMP_BUCKET: ${env:S3_TEMP_BUCKET}\n  iamRoleStatements:\n    - Effect: Allow\n      Action:\n        - cognito-idp:AdminConfirmSignUp\n      Resource: arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL\n\n    - Effect: Allow\n      Action:\n        - dynamodb:GetItem\n        - dynamodb:PutItem\n        - dynamodb:UpdateItem\n        - dynamodb:Query\n        - dynamodb:Scan\n      Resource: arn:aws:dynamodb:eu-west-1:439125467255:table/Users\n\n    - Effect: Allow\n      Action:\n        - dynamodb:GetItem\n        - dynamodb:PutItem\n        - dynamodb:UpdateItem\n        - dynamodb:Query\n        - dynamodb:Scan\n      Resource: arn:aws:dynamodb:eu-west-1:439125467255:table/Projects\n\n    - Effect: Allow\n      Action:\n        - cognito-idp:AdminConfirmSignUp\n      Resource: arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL\n\n  httpApi:\n    payload: \"2.0\"\n    cors:\n      allowedOrigins:\n        - ${env:FRONTEND_URL}\n        - http://localhost:3000\n      allowedHeaders:\n        - Content-Type\n        - Authorization\n      allowedMethods:\n        - GET\n        - POST\n        - PUT\n        - DELETE\n      allowCredentials: true\n    authorizers:\n      newJwtAuthorizer:\n        type: request\n        functionName: authorizer\n        identitySource:\n          - $request.header.Authorization\n\nresources:\n Resources:\n  UploadsBucket:\n    Type: AWS::S3::Bucket\n    Properties:\n      BucketName: ${env:S3_TEMP_BUCKET}\n      LifecycleConfiguration:\n        Rules:\n          - Id: ExpireAfter1Day\n            Status: Enabled\n            ExpirationInDays: 1\n      CorsConfiguration:\n        CorsRules:\n          - AllowedOrigins:\n              -  ${env:FRONTEND_URL}\n              -  http://localhost:3000\n            AllowedHeaders:\n              - Authorization\n              - Content-Type\n            AllowedMethods:\n              - GET\n              - PUT\n              - POST\n              - DELETE\n              - HEAD\n            ExposedHeaders:\n              - ETag\n              - x-amz-request-id\n              - x-amz-id-2\n            MaxAge: 3000\n\nfunctions:\n  # Main API handler\n  api:\n    handler: src/server.handler\n    events:\n      # Auth routes (public)\n      - httpApi:\n          path: /api/auth/signup\n          method: POST\n      - httpApi:\n          path: /api/auth/login\n          method: POST\n      - httpApi:\n          path: /api/auth/refresh-token\n          method: POST\n      - httpApi:\n          path: /api/auth/forgot-password\n          method: POST\n      - httpApi:\n          path: /api/auth/confirm-password\n          method: POST\n      - httpApi:\n          path: /api/auth/set-new-password\n          method: POST\n      - httpApi:\n          path: /api/auth/presign-url\n          method: GET\n\n      # Dropbox routes (public)\n      - httpApi:\n          path: /api/dropbox/auth-url\n          method: GET\n      - httpApi:\n          path: /api/dropbox/callback\n          method: GET\n\n      # Projects routes\n      - httpApi:\n          path: /api/projects/share/{username}/{projectName}\n          method: GET\n      - httpApi:\n          path: /api/projects\n          method: POST\n          authorizer: newJwtAuthorizer\n      - httpApi:\n          path: /api/projects\n          method: GET\n          authorizer: newJwtAuthorizer\n      - httpApi:\n          path: /api/projects/{projectId}\n          method: GET\n          authorizer: newJwtAuthorizer\n      - httpApi:\n          path: /api/projects/{projectId}\n          method: PUT\n          authorizer: newJwtAuthorizer\n      - httpApi:\n          path: /api/projects/{projectId}\n          method: DELETE\n          authorizer: newJwtAuthorizer\n\n      # Users routes\n      - httpApi:\n          path: /api/users/username/{username}\n          method: GET\n      - httpApi:\n          path: /api/users\n          method: GET\n          authorizer: newJwtAuthorizer\n      - httpApi:\n          path: /api/users/{userId}\n          method: GET\n          authorizer: newJwtAuthorizer\n      - httpApi:\n          path: /api/users\n          method: PUT\n          authorizer: newJwtAuthorizer\n      - httpApi:\n          path: /api/users\n          method: DELETE\n          authorizer: newJwtAuthorizer\n      - httpApi:\n          path: /api/users/dropbox-token\n          method: PUT\n          authorizer: newJwtAuthorizer\n\n      # Health check\n      - httpApi:\n          path: /health\n          method: GET\n\n  # Authorizer function\n  authorizer:\n    handler: src/middleware/serverlessAuth.authorizeHandler\n\nplugins:\n  - serverless-offline\n  - serverless-dotenv-plugin\n",
+    "command": [
+      "remove"
+    ],
+    "options": {},
+    "orgId": "e14f5209-4d27-4236-8416-d4e201508773",
+    "orgName": "xpegdrop",
+    "userId": "FPqbHp453lH1ryFD8F",
+    "userName": "camxus",
+    "serviceProviderAwsAccountId": "439125467255",
+    "serviceProviderAwsCfStackName": "rest-api-prod",
+    "serviceProviderAwsCfStackId": "arn:aws:cloudformation:eu-west-1:439125467255:stack/rest-api-prod/2ab16440-7c4d-11f0-bb4d-0aaafdf5cf69",
+    "serviceProviderAwsCfStackCreated": "2025-08-18T16:05:32.269Z",
+    "serviceProviderAwsCfStackUpdated": "2025-08-19T16:56:30.618Z",
+    "serviceProviderAwsCfStackStatus": "UPDATE_COMPLETE",
+    "serviceProviderAwsCfStackOutputs": [
+      {
+        "OutputKey": "AuthorizerLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:eu-west-1:439125467255:function:rest-api-prod-authorizer:59",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-rest-api-prod-AuthorizerLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "ApiLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:eu-west-1:439125467255:function:rest-api-prod-api:59",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-rest-api-prod-ApiLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "HttpApiId",
+        "OutputValue": "f38ndq9ke6",
+        "Description": "Id of the HTTP API",
+        "ExportName": "sls-rest-api-prod-HttpApiId"
+      },
+      {
+        "OutputKey": "ServerlessDeploymentBucketName",
+        "OutputValue": "serverless-framework-deployments-eu-west-1-6e8c4094-5598",
+        "ExportName": "sls-rest-api-prod-ServerlessDeploymentBucketName"
+      },
+      {
+        "OutputKey": "HttpApiUrl",
+        "OutputValue": "https://f38ndq9ke6.execute-api.eu-west-1.amazonaws.com",
+        "Description": "URL of the HTTP API",
+        "ExportName": "sls-rest-api-prod-HttpApiUrl"
+      }
+    ]
+  }
+}
