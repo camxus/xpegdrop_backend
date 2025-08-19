@@ -33,7 +33,6 @@ import crypto from "crypto";
 import multer from "multer";
 import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { AuthenticatedRequest } from "../middleware/auth";
 
 const upload = multer({
   storage: multer.memoryStorage(), // stores file in memory for direct upload to S3
@@ -228,7 +227,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const refreshToken = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
+  async (req: Request, res: Response) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
@@ -243,10 +242,6 @@ export const refreshToken = asyncHandler(
         ClientId: process.env.COGNITO_CLIENT_ID,
         AuthParameters: {
           REFRESH_TOKEN: refreshToken,
-          SECRECT_HASH: crypto
-            .createHmac("SHA256", process.env.COGNITO_SECRET!)
-            .update(req.user?.username + process.env.COGNITO_CLIENT_ID)
-            .digest("base64"),
         },
       });
 
@@ -337,33 +332,22 @@ export const setNewPassword = asyncHandler(
 );
 
 export const getPresignURL = asyncHandler(async (req: Request, res: Response) => {
-  try {
-    const bucket = (req.query.bucket as string) || process.env.S3_TEMP_BUCKET;
-    const key = req.query.key as string;
-    const content_type = req.query.content_type as string;
+  console.log("STARTED")
+  const { bucket = '', key, content_type } = req.query;
+  console.log("RECIEVED", req.query)
+  
+  const command = new PutObjectCommand({
+    Bucket: (bucket || process.env.S3_TEMP_BUCKET) as string,
+    Key: key as string,
+    ContentType: content_type as string
+  });
+  console.log("step", command)
+  
+  const signedUrl = await getSignedUrl(s3Client as any, command as any, { expiresIn: 300 }); // 5 minutes
+  console.log("signedUrl", signedUrl)
 
-    if (!key || !content_type) {
-      return res.status(400).json({ message: "Missing key or content_type" });
-    }
-
-    const command = new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      ContentType: content_type,
-    });
-
-    const signedUrl = await getSignedUrl(s3Client as any, command as any, { expiresIn: 300 }); // 5 min
-
-    res.setHeader("Access-Control-Allow-Origin", "*"); // or your frontend URL
-    res.setHeader("Access-Control-Allow-Methods", "OPTIONS,GET,POST");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-
-    res.status(200).json({
-      upload_url: signedUrl,
-      key,
-    });
-  } catch (err: any) {
-    console.error("Error generating presigned URL:", err);
-    res.status(500).json({ message: "Internal server error", error: err.message });
-  }
+  res.status(200).json({
+    upload_url: signedUrl,
+    key,
+  });
 });
