@@ -33,6 +33,7 @@ import crypto from "crypto";
 import multer from "multer";
 import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { AuthenticatedRequest } from "../middleware/auth";
 
 const upload = multer({
   storage: multer.memoryStorage(), // stores file in memory for direct upload to S3
@@ -331,7 +332,7 @@ export const setNewPassword = asyncHandler(
   }
 );
 
-export const getPresignURL = asyncHandler(async (req: Request, res: Response) => {
+export const getPresignURL = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   console.log("STARTED")
   const { bucket = '', key, content_type } = req.query;
   console.log("RECIEVED", req.query)
