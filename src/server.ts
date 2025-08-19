@@ -87,19 +87,6 @@ export const handler = serverless(app, {
       }
     }
 
-    if (event.httpMethod === 'OPTIONS') {
-      return {
-        statusCode: 204,
-        headers: {
-          'Access-Control-Allow-Origin': process.env.FRONTEND_URL,
-          'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
-          'Access-Control-Allow-Credentials': 'true'
-        },
-        body: ''
-      };
-    }
-
     // Assign to Express req.body
     (req as any).body = body;
   },
