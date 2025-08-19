@@ -71,28 +71,34 @@ provider:
           - $request.header.Authorization
 
 resources:
-  Resources:
-    UploadsBucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: ${env:S3_TEMP_BUCKET}
-        LifecycleConfiguration:
-          Rules:
-            - Id: ExpireAfter1Day
-              Status: Enabled
-              ExpirationInDays: 1
-        # CorsConfiguration:
-        #   CorsRules:
-        #     - AllowedOrigins:
-        #         - ${env:FRONTEND_URL}
-        #       AllowedHeaders:
-        #         - "*"
-        #       AllowedMethods:
-        #         - GET
-        #         - PUT
-        #         - POST
-        #       ExposedHeaders:
-        #         - ETag
+ Resources:
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ${env:S3_TEMP_BUCKET}
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireAfter1Day
+            Status: Enabled
+            ExpirationInDays: 1
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              -  ${env:FRONTEND_URL}
+            AllowedHeaders:
+              - Authorization
+              - Content-Type
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            ExposedHeaders:
+              - ETag
+              - x-amz-request-id
+              - x-amz-id-2
+            MaxAge: 3000
 
 functions:
   # Main API handler
@@ -187,7 +193,7 @@ functions:
 
   # Authorizer function
   authorizer:
-    handler: src/middleware/auth.authenticate
+    handler: src/middleware/serverlessAuth.authorizeHandler
 
 plugins:
   - serverless-offline
