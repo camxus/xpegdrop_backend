@@ -15,6 +15,31 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+app.use((req, res, next) => {
+  console.log("Incoming request:", {
+    method: req.method,
+    path: req.path,
+    headers: req.headers,
+    body: req.body, // may be empty for preflight OPTIONS
+  });
+  next();
+});
+
+// Handle OPTIONS preflight explicitly
+app.options("*", (req, res) => {
+  console.log("Preflight OPTIONS request:", {
+    method: req.method,
+    path: req.path,
+    headers: req.headers,
+  });
+  res.set({
+    "Access-Control-Allow-Origin": process.env.FRONTEND_URL,
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Credentials": "true",
+  }).sendStatus(204);
+});
+
 // Middleware
 app.use(
   cors({
