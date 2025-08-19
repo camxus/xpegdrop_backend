@@ -67,8 +67,7 @@ provider:
       newJwtAuthorizer:
         type: request
         functionName: authorizer
-        identitySource:
-          - $request.header.Authorization
+        identitySource: $request.header.Authorization
 
 resources:
  Resources:
