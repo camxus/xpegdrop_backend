@@ -33,6 +33,7 @@ import crypto from "crypto";
 import multer from "multer";
 import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { AuthenticatedRequest } from "../middleware/auth";
 
 const upload = multer({
   storage: multer.memoryStorage(), // stores file in memory for direct upload to S3
@@ -227,7 +228,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const refreshToken = asyncHandler(
-  async (req: Request, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
@@ -242,6 +243,10 @@ export const refreshToken = asyncHandler(
         ClientId: process.env.COGNITO_CLIENT_ID,
         AuthParameters: {
           REFRESH_TOKEN: refreshToken,
+          SECRECT_HASH: crypto
+            .createHmac("SHA256", process.env.COGNITO_SECRET!)
+            .update(req.user?.username + process.env.COGNITO_CLIENT_ID)
+            .digest("base64"),
         },
       });
 
