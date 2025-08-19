@@ -31,7 +31,7 @@ function getKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
 export const authorizeHandler = async (
   event: APIGatewayRequestAuthorizerEvent
 ): Promise<APIGatewayAuthorizerResult> => {
-  console.log("Authorization started");
+  console.log("Authorization started", audience, process.env.COGNITO_CLIENT_ID);
   const token = event.headers?.authorization;
   if (!token || !token.startsWith("Bearer ")) {
     return generatePolicy("user", "Deny", event.methodArn);
