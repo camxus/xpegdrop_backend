@@ -53,7 +53,6 @@ provider:
     cors:
       allowedOrigins:
         - ${env:FRONTEND_URL}
-        - http://xpegdrop.eba-enjhhiwz.eu-west-1.elasticbeanstalk.com
       allowedHeaders:
         - Content-Type
         - Authorization
@@ -85,7 +84,6 @@ resources:
           CorsRules:
             - AllowedOrigins:
                 - ${env:FRONTEND_URL}
-                - http://xpegdrop.eba-enjhhiwz.eu-west-1.elasticbeanstalk.com
               AllowedHeaders:
                 - "*"
               AllowedMethods:
