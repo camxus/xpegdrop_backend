@@ -41,4 +41,5 @@ jobs:
           COGNITO_SECRET: ${{ secrets.COGNITO_SECRET }}
           COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
           S3_APP_BUCKET: ${{ secrets.S3_APP_BUCKET }}
+          S3_TEMP_BUCKET: ${{ secrets.S3_TEMP_BUCKET }}
         run: yarn deploy --stage prod
