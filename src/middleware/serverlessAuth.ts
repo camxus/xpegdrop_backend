@@ -39,30 +39,30 @@ export const authorizeHandler = async (
   const jwtToken = token.slice(7);
 
   try {
-    // const decoded = await new Promise<jwt.JwtPayload>((resolve, reject) => {
-    //   jwt.verify(
-    //     jwtToken,
-    //     getKey,
-    //     {
-    //       algorithms: ["RS256"],
-    //       audience,
-    //       issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
-    //     },
-    //     (err, decodedToken) => {
-    //       if (err) reject(err);
-    //       else resolve(decodedToken as jwt.JwtPayload);
-    //     }
-    //   );
-    // });
+    const decoded = await new Promise<jwt.JwtPayload>((resolve, reject) => {
+      jwt.verify(
+        jwtToken,
+        getKey,
+        {
+          algorithms: ["RS256"],
+          audience,
+          issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
+        },
+        (err, decodedToken) => {
+          if (err) reject(err);
+          else resolve(decodedToken as jwt.JwtPayload);
+        }
+      );
+    });
 
     console.log("Authorization success");
 
     return {
       isAuthorized: true,
-      // context: {
-      //   sub: decoded.sub,
-      //   username: decoded["cognito:username"] || decoded["username"],
-      // },
+      context: {
+        sub: decoded.sub,
+        username: decoded["cognito:username"] || decoded["username"],
+      },
     };
   } catch (err) {
     console.error("Authorization error:", err);
