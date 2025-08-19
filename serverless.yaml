@@ -1,6 +1,6 @@
 org: xpegdrop
 app: xpegdrop
-service: xpegdrop-rest-api
+service: rest-api
 
 provider:
   name: aws
