@@ -15,6 +15,8 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+console.log(process.env.FRONTEND_URL, process.env)
+
 // Middleware
 app.use(
   cors({
