@@ -31,8 +31,8 @@ jobs:
       - name: Generate Serverless Env
         env:
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-          COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
           AWS_REGION_CODE: eu-west-1
+          COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
           DROPBOX_CLIENT_ID: ${{ secrets.DROPBOX_CLIENT_ID }}
           DROPBOX_CLIENT_SECRET: ${{ secrets.DROPBOX_CLIENT_SECRET }}
           BACKEND_URL: ${{ vars.BACKEND_URL }}
@@ -45,4 +45,7 @@ jobs:
         run: yarn gen:serverless:env
 
       - name: Deploy to Serverless
+        env:
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+          AWS_REGION_CODE: eu-west-1
         run: yarn deploy --stage prod
