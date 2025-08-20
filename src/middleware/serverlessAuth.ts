@@ -63,7 +63,7 @@ export const authorizeHandler = async (
       );
     });
 
-    console.error("Authorization success: ", event.methodArn, event, decoded);
+    console.log("Authorization success: ", event.methodArn, event, decoded);
     return generatePolicy("user", "Allow", event.methodArn, decoded as any);
   } catch (err) {
     console.error("Authorization error:", err);
