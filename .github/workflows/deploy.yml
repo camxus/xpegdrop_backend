@@ -42,6 +42,4 @@ jobs:
           COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
           S3_APP_BUCKET: ${{ secrets.S3_APP_BUCKET }}
           S3_TEMP_BUCKET: ${{ secrets.S3_TEMP_BUCKET }}
-          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-          AWS_REGION_CODE: eu-west-1
         run: yarn gen:serverless:env && yarn deploy --stage prod
