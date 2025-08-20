@@ -107,7 +107,7 @@ export const deleteItemImage = async (
   try {
     await client.send(
       new DeleteObjectCommand({
-        Bucket: s3location.bucket,
+        Bucket: s3location.bucket || process.env.S3_TEMP_BUCKET,
         Key: s3location.key,
       })
     );
@@ -144,9 +144,6 @@ export const getItemFile = async (
     throw new Error("Invalid S3 location");
   }
 
-
-  console.log(process.env.S3_TEMP_BUCKET)
-  
   try {
     const command = new GetObjectCommand({
       Bucket: location.bucket || process.env.S3_TEMP_BUCKET,
