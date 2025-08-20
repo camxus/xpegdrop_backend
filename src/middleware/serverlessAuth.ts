@@ -48,7 +48,6 @@ export const authorizeHandler = async (
   const jwtToken = token.slice(7);
 
   try {
-    console.log("Authorization started", event.routeArn, event)
     const decoded = await new Promise((resolve, reject) => {
       jwt.verify(
         jwtToken,
@@ -73,15 +72,12 @@ export const authorizeHandler = async (
               new Error(`Invalid client_id: expected ${audience}, got ${clientId}`)
             );
           }
-
-          console.log("JWT verification success", decodedToken);
           resolve(decodedToken);
         }
       );
     });
 
 
-    console.log("Authorization success: ", decoded);
     return generatePolicy("user", "Allow", event.routeArn, {
       sub: (decoded as any).sub,
       username: (decoded as any).username,

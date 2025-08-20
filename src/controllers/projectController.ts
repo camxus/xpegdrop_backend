@@ -40,7 +40,6 @@ export const uploadMiddleware = upload.array("files", 50); // Allow up to 50 fil
 
 export const createProject = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    console.log("started create", req)
     const { error, value } = createProjectSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
@@ -67,7 +66,6 @@ export const createProject = asyncHandler(
       const username = req.user.username;
 
       // Upload folder to Dropbox
-      console.log("user:", req.user)
       const dropboxService = new DropboxService(
         req.user.dropbox?.access_token!
       );
@@ -86,10 +84,7 @@ export const createProject = asyncHandler(
           // Fetch from S3 in parallel
           const s3Files = await Promise.all(
             fileLocations.map(async (location: S3Location) => {
-              console.log("getting file")
-
               const file = await getItemFile(s3Client, location);
-              console.log(file)
               await deleteItemImage(s3Client, location)
               return file.file; // file is already a File object
             })
