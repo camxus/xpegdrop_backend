@@ -8,8 +8,7 @@
     "dev": "nodemon src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "deploy": "serverless deploy",
-    "aws:configure": "open ~/.aws/credentials",
-    "gen:serverless:env": "node generate-serverless-env.js"
+    "aws:configure": "open ~/.aws/credentials"
   },
   "keywords": [],
   "author": "",
