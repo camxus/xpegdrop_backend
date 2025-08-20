@@ -39,7 +39,7 @@ export const authorizeHandler = async (
   const jwtToken = token.slice(7);
 
   try {
-    console.log("Authorization started", process.env.FRONTEND_URL)
+    console.log("Authorization started", process.env.FRONTEND_URL, jwt.decode(jwtToken))
     const decoded = await new Promise((resolve, reject) => {
       jwt.verify(
         jwtToken,
