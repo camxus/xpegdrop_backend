@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Router } from 'express';
 import {
   getUser,
   getCurrentUser,
@@ -10,7 +10,7 @@ import {
 import { authenticate } from '../middleware/auth';
 import { uploadAvatar } from '../controllers/authController';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Public routes
 router.get('/username/:username', getUserByUsername);

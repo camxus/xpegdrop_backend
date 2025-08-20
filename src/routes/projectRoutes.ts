@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Router } from 'express';
 import {
   createProject,
   getProjects,
@@ -10,7 +10,7 @@ import {
 } from '../controllers/projectController';
 import { authenticate } from '../middleware/auth';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Public route for share URLs
 router.get('/share/:username/:projectName', getProjectByShareUrl);

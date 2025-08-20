@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, RequestHandler, Response } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validationErrorHandler } from "../middleware/errorMiddleware";
 import {
@@ -48,7 +48,7 @@ const cognito = new CognitoIdentityProviderClient({
   region: process.env.AWS_REGION_CODE,
 });
 
-export const uploadAvatar = upload.single("avatar");
+export const uploadAvatar: RequestHandler = upload.single("avatar");
 
 export const signup = asyncHandler(async (req: Request, res: Response) => {
   const { error, value } = signUpSchema.validate(req.body);

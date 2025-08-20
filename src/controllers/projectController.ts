@@ -18,7 +18,7 @@ import { CreateProjectInput, UpdateProjectInput, Project, S3Location } from "../
 import { v4 as uuidv4 } from "uuid";
 import { DropboxService } from "../utils/dropbox";
 import { AuthenticatedRequest } from "../middleware/auth";
-import { Request, Response } from "express";
+import { Request, RequestHandler, Response } from "express";
 import multer from "multer";
 import { deleteItemImage, getItemFile } from "../utils/s3";
 import { S3Client } from "@aws-sdk/client-s3";
@@ -36,7 +36,7 @@ const upload = multer({
   },
 });
 
-export const uploadMiddleware = upload.array("files", 50); // Allow up to 50 files
+export const uploadMiddleware: RequestHandler = upload.array("files", 50); // Allow up to 50 files
 
 export const createProject = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {

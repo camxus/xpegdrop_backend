@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Router } from "express";
 import {
   createRating,
   getRatings,
@@ -7,7 +7,7 @@ import {
 } from "../controllers/ratingsController";
 import { authenticate } from "../middleware/auth";
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Create a new rating
 router.post("/", createRating);

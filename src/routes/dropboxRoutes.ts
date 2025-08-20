@@ -4,7 +4,7 @@ import {
   handleDropboxCallback,
 } from "../controllers/dropboxController"
 
-const router = Router()
+const router: Router = Router()
 
 router.get("/auth-url", getDropboxAuthUrl)
 router.get("/callback", handleDropboxCallback)
