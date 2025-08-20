@@ -1,11 +1,15 @@
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config(); // Load variables from .env into process.env
+require('dotenv').config(); // Load local .env if present
 
-// Collect all env vars in current Node process (from GitHub Actions or .env)
-const envVars = Object.keys(process.env).filter((key) => process.env[key] !== undefined);
+// Keys to ignore for Serverless
+const rejectedKeys = ['_', 'PWD', 'OLDPWD', 'SHLVL', 'PATH', 'HOME'];
 
-// Convert to YAML format
+// Collect env vars dynamically but exclude rejected keys
+const envVars = Object.keys(process.env)
+  .filter((key) => process.env[key] !== undefined && !rejectedKeys.includes(key));
+
+// Convert to Serverless YAML format
 const lines = envVars.map((key) => {
   return `${key}: \${env:${key}}`;
 });
@@ -17,4 +21,4 @@ const outputPath = path.join(__dirname, '.serverless', 'env.yaml');
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, yamlContent, 'utf8');
 
-console.log(`✅ Generated ${outputPath} from environment variables (GitHub or .env)`);
+console.log(`✅ Generated ${outputPath} from environment variables, excluding rejected keys`);
