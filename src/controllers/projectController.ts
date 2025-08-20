@@ -53,7 +53,7 @@ export const createProject = asyncHandler(
       return res.status(400).json({ error: "No files provided" });
     }
 
-    if (!req.user?.dropbox.access_token) {
+    if (!req.user?.dropbox?.access_token) {
       return res.status(400).json({
         error:
           "Dropbox access token not found. Please connect your Dropbox account.",
@@ -159,7 +159,7 @@ export const getProjects = asyncHandler(
           TableName: PROJECTS_TABLE,
           FilterExpression: "user_id = :userId",
           ExpressionAttributeValues: marshall({
-            ":userId": req.user.user_id,
+            ":userId": req.user?.user_id,
           }),
         })
       );
@@ -198,7 +198,7 @@ export const getProject = asyncHandler(
       const project = unmarshall(response.Item);
 
       // Ensure user owns the project
-      if (project.user_id !== req.user.user_id) {
+      if (project.user_id !== req.user?.user_id) {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
@@ -234,7 +234,7 @@ export const updateProject = asyncHandler(
 
       const project = unmarshall(getRes.Item);
 
-      if (project.user_id !== req.user.user_id) {
+      if (project.user_id !== req.user?.user_id) {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
@@ -303,7 +303,7 @@ export const deleteProject = asyncHandler(
 
       const project = unmarshall(getRes.Item);
 
-      if (project.user_id !== req.user.user_id) {
+      if (project.user_id !== req.user?.user_id) {
         return res.status(403).json({ error: "Unauthorized" });
       }
 

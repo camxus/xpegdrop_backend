@@ -79,6 +79,22 @@
     method: PUT
     authorizer: newJwtAuthorizer
 
+# Ratings routes
+- httpApi:
+    path: /api/ratings/{projectId}
+    method: GET
+- httpApi:
+    path: /api/ratings
+    method: POST
+- httpApi:
+    path: /api/ratings/{ratingId}
+    method: PUT
+- httpApi:
+    path: /api/ratings/{ratingId}
+    method: DELETE
+    authorizer: newJwtAuthorizer
+
+
 # Health check
 - httpApi:
     path: /health

@@ -11,7 +11,8 @@ import {
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import { Request, Response } from "express";
-import { AuthenticatedRequest } from "../middleware/auth";
+import { authenticate, AuthenticatedRequest } from "../middleware/auth";
+import { User } from "../types";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const RATINGS_TABLE = process.env.DYNAMODB_RATINGS_TABLE || "Ratings";
@@ -104,8 +105,19 @@ export const updateRating = asyncHandler(
         })
       );
 
+
       if (!getRes.Item) {
         return res.status(404).json({ error: "Rating not found" });
+      }
+
+      const rating = getRes.Item as unknown as Rating
+
+      if (rating.user_id !== "anonymous") {
+        const user = (await authenticate(req, res, () => { })) as User
+        const userId = user.user_id; // or AuthenticatedRequest type
+        if (userId !== rating.user_id) {
+          return res.status(400).json({ error: "user_id mismatch" });
+        }
       }
 
       await client.send(

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { CognitoIdentityProviderClient, GetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
+import { User } from '../types';
 
 const cognito = new CognitoIdentityProviderClient({
   region: process.env.AWS_REGION_CODE,
@@ -11,13 +12,13 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || 'Users';
 
 export interface AuthenticatedRequest extends Request {
-  user?: any;
+  user?: User;
 }
 
 export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No token provided' });
     }
@@ -52,10 +53,11 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
       return res.status(401).json({ error: 'User not found' });
     }
 
-    const userDetails = unmarshall(userDetailsResponse.Item);
+    const userDetails = unmarshall(userDetailsResponse.Item) as User;
     req.user = userDetails;
-  
+
     next();
+    return req.user
   } catch (error: any) {
     console.error('Authentication error:', error);
     return res.status(401).json({ error: 'Invalid token' });
