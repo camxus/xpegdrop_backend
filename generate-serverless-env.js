@@ -21,4 +21,6 @@ const outputPath = path.join(__dirname, '.serverless', 'env.yaml');
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, yamlContent, 'utf8');
 
-console.log(`✅ Generated ${outputPath} from environment variables, excluding rejected keys`);
+console.log(yamlContent)
+
+console.log(`✅ Generated ${outputPath} from environment variables`);
