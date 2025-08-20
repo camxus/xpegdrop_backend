@@ -11,7 +11,7 @@ const UPLOAD_BATCH_SIZE = 3;
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 
 const client = new DynamoDBClient({
-  region: process.env.AWS_REGION,
+  region: process.env.AWS_REGION_CODE,
 });
 
 export class DropboxService {

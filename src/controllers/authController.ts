@@ -91,7 +91,7 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
     const key = (ext: string) => `profile_images/${userSub}.${ext}`;
 
     if (avatar) {
-      const s3Client = new S3Client({ region: process.env.AWS_REGION });
+      const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 
       // Determine file extension
       const ext = avatar.key.split(".").pop();

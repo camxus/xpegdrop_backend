@@ -146,7 +146,7 @@ export const updateUser = asyncHandler(
 
 
       if (avatar) {
-        const s3Client = new S3Client({ region: process.env.AWS_REGION });
+        const s3Client = new S3Client({ region: process.env._CODE });
 
         // Determine file extension
         const ext = avatar.key.split(".").pop();
