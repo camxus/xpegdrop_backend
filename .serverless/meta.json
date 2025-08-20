@@ -1,0 +1,153 @@
+{
+  "/Users/cam/Projects/pegdrop_backend/serverless.yaml": {
+    "versionFramework": "4.18.0",
+    "servicePath": "/Users/cam/Projects/pegdrop_backend/serverless.yaml",
+    "serviceConfigFileName": "serverless.yaml",
+    "service": {
+      "org": "xpegdrop",
+      "app": "xpegdrop",
+      "service": "rest-api",
+      "provider": {
+        "name": "aws",
+        "runtime": "nodejs20.x",
+        "stage": "prod",
+        "region": "eu-west-1",
+        "environment": {
+          "AWS_REGION_CODE": "eu-west-1",
+          "DROPBOX_CLIENT_ID": "00v32yk2v341que",
+          "DROPBOX_CLIENT_SECRET": "<REDACTED>",
+          "BACKEND_URL": "http://localhost:3001",
+          "FRONTEND_URL": "http://localhost:3000",
+          "JWT_SECRET": "<REDACTED>",
+          "COGNITO_CLIENT_ID": "akivk0eejshi03nnl8nop0c7n",
+          "COGNITO_SECRET": "<REDACTED>",
+          "COGNITO_USER_POOL_ID": "eu-west-1_w1TVjSotL",
+          "S3_APP_BUCKET": "xpegdrop-app-bucket",
+          "S3_TEMP_BUCKET": "xpegdrop-temp-bucket"
+        },
+        "iamRoleStatements": "${file(./.serverless/iamRoleStatements.yml)}",
+        "httpApi": {
+          "cors": {
+            "allowedOrigins": [
+              "http://localhost:3000",
+              "http://localhost:3000"
+            ],
+            "allowedHeaders": [
+              "Content-Type",
+              "Authorization",
+              "X-id-token"
+            ],
+            "allowedMethods": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "OPTIONS"
+            ],
+            "allowCredentials": "<REDACTED>"
+          },
+          "authorizers": {
+            "newJwtAuthorizer": {
+              "type": "request",
+              "functionName": "authorizer",
+              "identitySource": "$request.header.Authorization"
+            }
+          }
+        }
+      },
+      "resources": "${file(./.serverless/resources.yml)}",
+      "functions": {
+        "api": {
+          "handler": "src/server.handler",
+          "events": "${file(./.serverless/events.yml)}"
+        },
+        "authorizer": {
+          "handler": "src/middleware/serverlessAuth.authorizeHandler"
+        }
+      },
+      "plugins": [
+        "serverless-offline",
+        "serverless-dotenv-plugin"
+      ]
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs20.x",
+      "stage": "prod",
+      "region": "eu-west-1",
+      "environment": {
+        "AWS_REGION_CODE": "eu-west-1",
+        "DROPBOX_CLIENT_ID": "00v32yk2v341que",
+        "DROPBOX_CLIENT_SECRET": "<REDACTED>",
+        "BACKEND_URL": "http://localhost:3001",
+        "FRONTEND_URL": "http://localhost:3000",
+        "JWT_SECRET": "<REDACTED>",
+        "COGNITO_CLIENT_ID": "akivk0eejshi03nnl8nop0c7n",
+        "COGNITO_SECRET": "<REDACTED>",
+        "COGNITO_USER_POOL_ID": "eu-west-1_w1TVjSotL",
+        "S3_APP_BUCKET": "xpegdrop-app-bucket",
+        "S3_TEMP_BUCKET": "xpegdrop-temp-bucket"
+      },
+      "iamRoleStatements": "${file(./.serverless/iamRoleStatements.yml)}",
+      "httpApi": {
+        "cors": {
+          "allowedOrigins": [
+            "http://localhost:3000",
+            "http://localhost:3000"
+          ],
+          "allowedHeaders": [
+            "Content-Type",
+            "Authorization",
+            "X-id-token"
+          ],
+          "allowedMethods": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS"
+          ],
+          "allowCredentials": "<REDACTED>"
+        },
+        "authorizers": {
+          "newJwtAuthorizer": {
+            "type": "request",
+            "functionName": "authorizer",
+            "identitySource": "$request.header.Authorization"
+          }
+        }
+      }
+    },
+    "dashboard": {
+      "isEnabledForService": true,
+      "requiredAuthentication": false,
+      "orgFeaturesInUse": {
+        "providers": false,
+        "monitoring": false
+      },
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": "mKysX7qgdwX6TRFm8Q",
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "error": {
+      "message": "Cannot resolve '${file(./.serverless/iamRoleStatements.yml)}' variable at 'provider.iamRoleStatements'. No value is available for this variable, and no default value was provided. Please check your variable definitions or provide a default value.",
+      "stack": "Error: Cannot resolve '${file(./.serverless/iamRoleStatements.yml)}' variable at 'provider.iamRoleStatements'. No value is available for this variable, and no default value was provided. Please check your variable definitions or provide a default value.\n    at _ResolverManager.resolve (file:///Users/cam/.serverless/releases/4.18.0/package/dist/sf-core.js:809:31911)\n    at async #handlePlaceholderNode (file:///Users/cam/.serverless/releases/4.18.0/package/dist/sf-core.js:809:30118)\n    at async file:///Users/cam/.serverless/releases/4.18.0/package/dist/sf-core.js:809:27990\n    at async processNodeAndHandleCompletion (file:///Users/cam/.serverless/releases/4.18.0/package/dist/sf-core.js:809:16769)",
+      "code": "MISSING_VARIABLE_RESULT"
+    },
+    "serviceRawFile": "org: xpegdrop\napp: xpegdrop\nservice: rest-api\n\nprovider:\n  name: aws\n  runtime: nodejs20.x\n  stage: ${opt:stage, 'prod'}\n  region: eu-west-1\n  environment:\n    AWS_REGION_CODE: ${env:AWS_REGION_CODE, 'eu-west-1'}\n    DROPBOX_CLIENT_ID: ${env:DROPBOX_CLIENT_ID}\n    DROPBOX_CLIENT_SECRET: ${env:DROPBOX_CLIENT_SECRET}\n    BACKEND_URL: ${env:BACKEND_URL}\n    FRONTEND_URL: ${env:FRONTEND_URL}\n    JWT_SECRET: ${env:JWT_SECRET}\n    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}\n    COGNITO_SECRET: ${env:COGNITO_SECRET}\n    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}\n    S3_APP_BUCKET: ${env:S3_APP_BUCKET}\n    S3_TEMP_BUCKET: ${env:S3_TEMP_BUCKET}\n  iamRoleStatements: ${file(./.serverless/iamRoleStatements.yml)}\n\n  httpApi:\n    cors:\n      allowedOrigins:\n        - ${env:FRONTEND_URL}\n        - http://localhost:3000\n      allowedHeaders:\n        - Content-Type\n        - Authorization\n        - X-id-token\n      allowedMethods:\n        - GET\n        - POST\n        - PUT\n        - DELETE\n        - OPTIONS\n      allowCredentials: true\n    authorizers:\n      newJwtAuthorizer:\n        type: request\n        functionName: authorizer\n        identitySource: $request.header.Authorization\n\nresources: ${file(./.serverless/resources.yml)}\n\nfunctions:\n  api:\n    handler: src/server.handler\n    events: ${file(./.serverless/events.yml)}\n\n  authorizer:\n    handler: src/middleware/serverlessAuth.authorizeHandler\n\nplugins:\n  - serverless-offline\n  - serverless-dotenv-plugin\n",
+    "command": [
+      "offline"
+    ],
+    "options": {},
+    "orgId": "e14f5209-4d27-4236-8416-d4e201508773",
+    "orgName": "xpegdrop",
+    "userId": "FPqbHp453lH1ryFD8F",
+    "userName": "camxus",
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}
