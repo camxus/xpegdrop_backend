@@ -1,24 +1,24 @@
 import express from "express";
 import {
-  signup,
-  login,
-  refreshToken,
-  forgotPassword,
-  confirmPassword,
-  setNewPassword,
-  uploadAvatar,
-  getPresignURL,
-} from "../controllers/authController";
+  createRating,
+  getRatings,
+  updateRating,
+  deleteRating,
+} from "../controllers/ratingsController";
 import { authenticate } from "../middleware/auth";
 
 const router = express.Router();
 
-router.post("/signup", uploadAvatar, signup);
-router.post("/login", login);
-router.post("/refresh-token", authenticate, refreshToken);
-router.post("/forgot-password", forgotPassword);
-router.post("/confirm-password", confirmPassword);
-router.post("/set-new-password", setNewPassword);
-router.get("/presign-url", getPresignURL);
+// Create a new rating
+router.post("/", createRating);
+
+// Get all ratings for a project
+router.get("/:projectId", getRatings);
+
+// Update a rating by ID
+router.put("/:ratingId", authenticate, updateRating);
+
+// Delete a rating by ID
+router.delete("/:ratingId", authenticate, deleteRating);
 
 export default router;

@@ -27,3 +27,24 @@ Resources:
               - x-amz-request-id
               - x-amz-id-2
             MaxAge: 3000
+
+  RatingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${env:DYNAMODB_RATINGS_TABLE}
+      AttributeDefinitions:
+        - AttributeName: rating_id
+          AttributeType: S
+        - AttributeName: project_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: rating_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ProjectIndex
+          KeySchema:
+            - AttributeName: project_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
