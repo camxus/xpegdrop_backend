@@ -19,11 +19,20 @@ function getKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
   if (!header.kid) {
     return callback(new Error("No KID in token header"));
   }
+
   client.getSigningKey(header.kid, function (err, key) {
     if (err) {
+      console.error("Error fetching signing key:", err);
       return callback(err);
     }
+
     const signingKey = key?.getPublicKey();
+    if (!signingKey) {
+      const msg = `Could not get public key for kid: ${header.kid}`;
+      console.error(msg);
+      return callback(new Error(msg));
+    }
+
     callback(null, signingKey);
   });
 }
@@ -49,29 +58,33 @@ export const authorizeHandler = async (
           issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
         },
         (err, decodedToken) => {
-          if (err) return reject(err);
-
-          console.error(err)
-          // Verify client_id manually
-          const clientId = (decodedToken as any).client_id;
-          if (clientId !== audience.trim()) {
-            return reject(new Error(`Invalid client_id: expected ${audience}, got ${clientId}`));
+          if (err) {
+            console.error("JWT verification error:", err);
+            return reject(err);
           }
 
+          if (!decodedToken) {
+            return reject(new Error("Decoded token is undefined"));
+          }
+
+          const clientId = (decodedToken as any).client_id;
+          if (clientId !== audience.trim()) {
+            return reject(
+              new Error(`Invalid client_id: expected ${audience}, got ${clientId}`)
+            );
+          }
+
+          console.log("JWT verification success", decodedToken);
           resolve(decodedToken);
         }
       );
     });
 
-    const idToken = (decoded as any)["x-id-token"]
 
-    const decodedIdToken = jwt.decode(idToken)
-
-    console.log("Authorization success: ", event.methodArn, event, decodedIdToken);
+    console.log("Authorization success: ", decoded);
     return generatePolicy("user", "Allow", event.methodArn, {
       sub: (decoded as any).sub,
       username: (decoded as any).username,
-      email: (decoded as any).username,
       client_id: (decoded as any).client_id,
     });
   } catch (err) {
