@@ -15,16 +15,6 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-app.use((req, res, next) => {
-  console.log("Incoming request:", {
-    method: req.method,
-    path: req.path,
-    headers: req.headers,
-    body: req.body, // may be empty for preflight OPTIONS
-  });
-  next();
-});
-
 // Middleware
 app.use(
   cors({
@@ -32,7 +22,7 @@ app.use(
       process.env.FRONTEND_URL || "",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-id-token"],
     credentials: true,
   })
 );
