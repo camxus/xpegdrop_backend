@@ -63,8 +63,17 @@ export const authorizeHandler = async (
       );
     });
 
-    console.log("Authorization success: ", event.methodArn, event, decoded);
-    return generatePolicy("user", "Allow", event.methodArn, decoded as any);
+    const idToken = (decoded as any)["x-id-token"]
+
+    const decodedIdToken = jwt.decode(idToken)
+
+    console.log("Authorization success: ", event.methodArn, event, decodedIdToken);
+    return generatePolicy("user", "Allow", event.methodArn, {
+      sub: (decoded as any).sub,
+      username: (decoded as any).username,
+      email: (decoded as any).username,
+      client_id: (decoded as any).client_id,
+    });
   } catch (err) {
     console.error("Authorization error:", err);
     return generatePolicy("user", "Deny", event.methodArn);
