@@ -7,8 +7,8 @@ provider:
   runtime: nodejs20.x
   stage: ${opt:stage, 'prod'}
   region: eu-west-1
-  environment: ${file(./config/env.yml)}
-  iamRoleStatements: ${file(./config/iamRoleStatements.yml)}
+  environment: ${file(./.serverless/env.yml)}
+  iamRoleStatements: ${file(./.serverless/iamRoleStatements.yml)}
 
   httpApi:
     cors:
@@ -32,12 +32,12 @@ provider:
         functionName: authorizer
         identitySource: $request.header.Authorization
 
-resources: ${file(./config/resources.yml)}
+resources: ${file(./.serverless/resources.yml)}
 
 functions:
   api:
     handler: src/server.handler
-    events: ${file(./config/events.yml)}
+    events: ${file(./.serverless/events.yml)}
 
   authorizer:
     handler: src/middleware/serverlessAuth.authorizeHandler
