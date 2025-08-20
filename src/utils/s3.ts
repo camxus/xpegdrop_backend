@@ -62,7 +62,7 @@ export const saveItemImage = async (
   key: string,
   buffer: any
 ): Promise<{ bucket: string; key: string }> => {
-  const bucketName = process.env.S3_APP_BUCKET || "pegdrop-app";
+  const bucketName = process.env.S3_APP_BUCKET
 
   await client.send(
     new PutObjectCommand({

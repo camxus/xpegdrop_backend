@@ -48,6 +48,18 @@ provider:
         - cognito-idp:AdminConfirmSignUp
       Resource: arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL
 
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+      Resource: arn:aws:s3:::${env:S3_TEMP_BUCKET}/*  
+
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+      Resource: arn:aws:s3:::${env:S3_APP_BUCKET}/profile_images
+
   httpApi:
     cors:
       allowedOrigins:
