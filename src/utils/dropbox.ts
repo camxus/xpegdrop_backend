@@ -78,7 +78,6 @@ export class DropboxService {
       };
 
       // Upload in batches of UPLOAD_BATCH_SIZE
-      console.log(files)
       for (let i = 0; i < files.length; i += UPLOAD_BATCH_SIZE) {
         const batch = files.slice(i, i + UPLOAD_BATCH_SIZE);
         await Promise.all(batch.map((file) => uploadFile(file)));
@@ -124,7 +123,7 @@ export class DropboxService {
     folderPath: string
   ): Promise<{ name: string; preview_url: string; thumbnail_url: string }[]> {
     try {
-      const response = await this.dbx.filesListFolder({ path: folderPath });
+      const response = await this.dbx.filesListFolder({ path: `/xpegdrop/${folderPath}` });
 
       const imageFiles = response.result.entries.filter(
         (entry) =>

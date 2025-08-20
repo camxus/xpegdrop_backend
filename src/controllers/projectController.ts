@@ -111,7 +111,6 @@ export const createProject = asyncHandler(
         }
       }
 
-      console.log("upload folder", dropboxFiles, name)
       const dropboxSharedLink = await dropboxService.uploadFolder(
         dropboxFiles,
         name
