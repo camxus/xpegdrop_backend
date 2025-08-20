@@ -39,19 +39,26 @@ export const authorizeHandler = async (
   const jwtToken = token.slice(7);
 
   try {
-    console.log("Authorization started", process.env.FRONTEND_URL, jwt.decode(jwtToken))
+    console.log("Authorization started", audience.trim(), jwt.decode(jwtToken))
     const decoded = await new Promise((resolve, reject) => {
       jwt.verify(
         jwtToken,
         getKey,
         {
           algorithms: ["RS256"],
-          audience: audience.trim(),
           issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
         },
         (err, decodedToken) => {
-          if (err) reject(err);
-          else resolve(decodedToken);
+          if (err) return reject(err);
+
+          console.log(err)
+          // Verify client_id manually
+          const clientId = (decodedToken as any).client_id;
+          if (clientId !== audience.trim()) {
+            return reject(new Error(`Invalid client_id: expected ${audience}, got ${clientId}`));
+          }
+
+          resolve(decodedToken);
         }
       );
     });
