@@ -13,6 +13,8 @@ const envVars = Object.keys(process.env).filter(
 // Convert to .env format
 const lines = envVars.map((key) => `${key}=${process.env[key]}`);
 
+console.log(lines)
+
 // Output to .env
 const outputPath = path.join(__dirname, ".env");
 fs.writeFileSync(outputPath, lines.join("\n"), "utf8");
