@@ -1,4 +1,4 @@
-import { APIGatewayRequestAuthorizerEvent, APIGatewayAuthorizerResult, APIGatewayRequestAuthorizerEventV2 } from "aws-lambda";
+import { APIGatewayRequestAuthorizerEvent, APIGatewayAuthorizerResult } from "aws-lambda";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 
@@ -29,40 +29,38 @@ function getKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
 }
 
 export const authorizeHandler = async (
-  event: APIGatewayRequestAuthorizerEventV2
+  event: APIGatewayRequestAuthorizerEvent
 ): Promise<APIGatewayAuthorizerResult> => {
-  console.log("Authorization started", audience, process.env.COGNITO_CLIENT_ID);
   const token = event.headers?.authorization;
   if (!token || !token.startsWith("Bearer ")) {
-    return generatePolicy("user", "Deny", event.routeArn);
+    return generatePolicy("user", "Deny", event.methodArn);
   }
 
   const jwtToken = token.slice(7);
 
   try {
-    // const decoded = await new Promise((resolve, reject) => {
-    //   jwt.verify(
-    //     jwtToken,
-    //     getKey,
-    //     {
-    //       algorithms: ["RS256"],
-    //       audience: audience,
-    //       issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
-    //     },
-    //     (err, decodedToken) => {
-    //       if (err) reject(err);
-    //       else resolve(decodedToken);
-    //     }
-    //   );
-    // });
+    console.log("Authorization started", process.env.FRONTEND_URL)
+    const decoded = await new Promise((resolve, reject) => {
+      jwt.verify(
+        jwtToken,
+        getKey,
+        {
+          algorithms: ["RS256"],
+          audience: audience.trim(),
+          issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
+        },
+        (err, decodedToken) => {
+          if (err) reject(err);
+          else resolve(decodedToken);
+        }
+      );
+    });
 
-    console.log(JSON.stringify(generatePolicy("user", "Allow", event.routeArn)), event.routeArn);
-
-    console.log("Authorization success");
-    return generatePolicy("user", "Allow", event.routeArn);
+    console.error("Authorization success: ", event.methodArn, event, decoded);
+    return generatePolicy("user", "Allow", event.methodArn, decoded as any);
   } catch (err) {
     console.error("Authorization error:", err);
-    return generatePolicy("user", "Deny", event.routeArn);
+    return generatePolicy("user", "Deny", event.methodArn);
   }
 };
 
