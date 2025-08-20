@@ -58,7 +58,7 @@ provider:
       Action:
         - s3:GetObject
         - s3:PutObject
-      Resource: arn:aws:s3:::${env:S3_APP_BUCKET}/profile_images
+      Resource: arn:aws:s3:::${env:S3_APP_BUCKET}/profile_images/*
 
   httpApi:
     cors:
