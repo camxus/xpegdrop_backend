@@ -16,7 +16,7 @@ const router = express.Router();
 router.get('/share/:username/:projectName', getProjectByShareUrl);
 
 // Protected routes (require authentication)
-// router.use(authenticate);
+router.use(authenticate);
 router.post('/', uploadMiddleware, createProject);
 router.get('/', getProjects);
 router.get('/:projectId', getProject);
