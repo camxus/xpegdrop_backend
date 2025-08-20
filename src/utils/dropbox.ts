@@ -51,6 +51,7 @@ export class DropboxService {
 
       // Function to upload a single file with retry on 429
       const uploadFile = async (file: File) => {
+        console.log(file.name)
         const arrayBuffer = await file.arrayBuffer();
         const contents = new Uint8Array(arrayBuffer);
 
@@ -77,6 +78,7 @@ export class DropboxService {
       };
 
       // Upload in batches of UPLOAD_BATCH_SIZE
+      console.log(files)
       for (let i = 0; i < files.length; i += UPLOAD_BATCH_SIZE) {
         const batch = files.slice(i, i + UPLOAD_BATCH_SIZE);
         await Promise.all(batch.map((file) => uploadFile(file)));

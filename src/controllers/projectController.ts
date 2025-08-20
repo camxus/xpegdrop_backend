@@ -72,7 +72,7 @@ export const createProject = asyncHandler(
 
       // Convert multer files to File objects for Dropbox upload
       const getFiles = async (): Promise<File[]> => {
-        if (files) {
+        if (files.length) {
           // Already in memory
           return files.map((file) => {
             const blob = new Blob([file.buffer], { type: file.mimetype });
@@ -80,17 +80,16 @@ export const createProject = asyncHandler(
           });
         }
 
-        if (fileLocations) {
+        if (fileLocations.length) {
           // Fetch from S3 in parallel
-          const s3Files = await Promise.all(
+          return await Promise.all(
             fileLocations.map(async (location: S3Location) => {
               const file = await getItemFile(s3Client, location);
               await deleteItemImage(s3Client, location)
+              console.log(file)
               return file.file; // file is already a File object
             })
           );
-
-          return s3Files;
         }
 
         return []; // No files
@@ -112,6 +111,7 @@ export const createProject = asyncHandler(
         }
       }
 
+      console.log("upload folder", dropboxFiles, name)
       const dropboxSharedLink = await dropboxService.uploadFolder(
         dropboxFiles,
         name
@@ -382,6 +382,7 @@ export const getProjectByShareUrl = asyncHandler(
       }
 
       let user = unmarshall(userResponse.Item);
+
 
       if (
         !user.dropbox ||

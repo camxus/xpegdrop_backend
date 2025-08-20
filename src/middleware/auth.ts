@@ -54,8 +54,7 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
 
     const userDetails = unmarshall(userDetailsResponse.Item);
     req.user = userDetails;
-    
-    console.log("Authentication success")
+  
     next();
   } catch (error: any) {
     console.error('Authentication error:', error);

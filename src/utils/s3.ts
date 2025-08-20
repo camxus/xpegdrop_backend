@@ -62,7 +62,7 @@ export const saveItemImage = async (
   key: string,
   buffer: any
 ): Promise<{ bucket: string; key: string }> => {
-  const bucketName = process.env.S3_APP_BUCKET
+  const bucketName = process.env.S3_APP_BUCKET!
 
   await client.send(
     new PutObjectCommand({
@@ -158,7 +158,7 @@ export const getItemFile = async (
     const contentType = response.ContentType || "application/octet-stream";
 
     // Create a File object (from fetch-blob)
-    const file = new File([buffer], location.key, { type: contentType });
+    const file = new File([buffer], location.key.split("/").pop()!, { type: contentType });
 
     return {
       buffer,
