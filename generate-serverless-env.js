@@ -7,11 +7,7 @@ const envVars = Object.keys(process.env).filter((key) => process.env[key] !== un
 
 // Convert to YAML format
 const lines = envVars.map((key) => {
-  const value = process.env[key];
-  // Quote values that contain special YAML characters
-  const needsQuotes = /[:#&{}[\],*?|<>!%@`"'\\]/.test(value);
-  const safeValue = needsQuotes ? `"${value}"` : value;
-  return `${key}: ${safeValue}`;
+  return `${key}: \${env:${key}}`;
 });
 
 const yamlContent = lines.join('\n');
