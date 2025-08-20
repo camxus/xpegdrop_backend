@@ -1,4 +1,4 @@
-import { APIGatewayRequestAuthorizerEvent, APIGatewayAuthorizerResult } from "aws-lambda";
+import { APIGatewayRequestAuthorizerEvent, APIGatewayAuthorizerResult, APIGatewayRequestAuthorizerEventV2 } from "aws-lambda";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 
@@ -38,17 +38,17 @@ function getKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
 }
 
 export const authorizeHandler = async (
-  event: APIGatewayRequestAuthorizerEvent
+  event: APIGatewayRequestAuthorizerEventV2
 ): Promise<APIGatewayAuthorizerResult> => {
   const token = event.headers?.authorization;
   if (!token || !token.startsWith("Bearer ")) {
-    return generatePolicy("user", "Deny", event.methodArn);
+    return generatePolicy("user", "Deny", event.routeArn);
   }
 
   const jwtToken = token.slice(7);
 
   try {
-    console.log("Authorization started", event.methodArn, event)
+    console.log("Authorization started", event.routeArn, event)
     const decoded = await new Promise((resolve, reject) => {
       jwt.verify(
         jwtToken,
@@ -82,14 +82,14 @@ export const authorizeHandler = async (
 
 
     console.log("Authorization success: ", decoded);
-    return generatePolicy("user", "Allow", event.methodArn, {
+    return generatePolicy("user", "Allow", event.routeArn, {
       sub: (decoded as any).sub,
       username: (decoded as any).username,
       client_id: (decoded as any).client_id,
     });
   } catch (err) {
     console.error("Authorization error:", err);
-    return generatePolicy("user", "Deny", event.methodArn);
+    return generatePolicy("user", "Deny", event.routeArn);
   }
 };
 
