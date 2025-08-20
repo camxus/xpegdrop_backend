@@ -1,7 +1,11 @@
 - Effect: Allow
   Action:
-    - cognito-idp:AdminConfirmSignUp
-  Resource: arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    - dynamodb:UpdateItem
+    - dynamodb:Query
+    - dynamodb:Scan
+  Resource: arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Users
 
 - Effect: Allow
   Action:
@@ -10,16 +14,7 @@
     - dynamodb:UpdateItem
     - dynamodb:Query
     - dynamodb:Scan
-  Resource: arn:aws:dynamodb:eu-west-1:439125467255:table/Users
-
-- Effect: Allow
-  Action:
-    - dynamodb:GetItem
-    - dynamodb:PutItem
-    - dynamodb:UpdateItem
-    - dynamodb:Query
-    - dynamodb:Scan
-  Resource: arn:aws:dynamodb:eu-west-1:439125467255:table/Projects
+  Resource: arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Projects
 
 - Effect: Allow
   Action:
@@ -29,14 +24,14 @@
     - dynamodb:DeleteItem
     - dynamodb:Query
     - dynamodb:Scan
-  Resource: arn:aws:dynamodb:eu-west-1:439125467255:table/Ratings
+  Resource: arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Ratings
 
 - Effect: Allow
   Action:
     - cognito-idp:AdminConfirmSignUp
     - cognito-idp:GetUser
     - cognito-idp:AdminGetUser
-  Resource: arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL
+  Resource: arn:aws:cognito-idp:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:userpool/${env:COGNITO_USER_POOL_ID}
 
 - Effect: Allow
   Action:

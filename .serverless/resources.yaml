@@ -31,7 +31,7 @@ Resources:
   RatingsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: ${env:DYNAMODB_RATINGS_TABLE}
+      TableName: Ratings
       AttributeDefinitions:
         - AttributeName: rating_id
           AttributeType: S
