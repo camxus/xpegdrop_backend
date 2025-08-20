@@ -84,7 +84,10 @@ export const createProject = asyncHandler(
           // Fetch from S3 in parallel
           const s3Files = await Promise.all(
             fileLocations.map(async (location: S3Location) => {
+              console.log("getting file")
+              
               const file = await getItemFile(s3Client, location);
+              console.log(file)
               await deleteItemImage(s3Client, location)
               return file.file; // file is already a File object
             })

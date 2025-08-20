@@ -333,19 +333,15 @@ export const setNewPassword = asyncHandler(
 );
 
 export const getPresignURL = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  console.log("STARTED")
   const { bucket = '', key, content_type } = req.query;
-  console.log("RECIEVED", req.query)
   
   const command = new PutObjectCommand({
     Bucket: (bucket || process.env.S3_TEMP_BUCKET) as string,
     Key: key as string,
     ContentType: content_type as string
   });
-  console.log("step", command)
   
   const signedUrl = await getSignedUrl(s3Client as any, command as any, { expiresIn: 300 }); // 5 minutes
-  console.log("signedUrl", signedUrl)
 
   res.status(200).json({
     upload_url: signedUrl,
