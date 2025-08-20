@@ -66,6 +66,7 @@ export const createProject = asyncHandler(
       const username = req.user.username;
 
       // Upload folder to Dropbox
+      console.log("user:", req.user)
       const dropboxService = new DropboxService(
         req.user.dropbox?.access_token!
       );
@@ -85,7 +86,7 @@ export const createProject = asyncHandler(
           const s3Files = await Promise.all(
             fileLocations.map(async (location: S3Location) => {
               console.log("getting file")
-              
+
               const file = await getItemFile(s3Client, location);
               console.log(file)
               await deleteItemImage(s3Client, location)
