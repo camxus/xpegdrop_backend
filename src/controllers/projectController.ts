@@ -116,7 +116,7 @@ export const createProject = asyncHandler(
       );
 
       // Generate share URL
-      const shareUrl = `${process.env.FRONTEND_URL}/${username}/${name
+      const shareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${username}/${name
         .toLowerCase()
         .replace(/\s+/g, "-")}`;
 
@@ -412,8 +412,8 @@ export const getProjectByShareUrl = asyncHandler(
               new URLSearchParams({
                 grant_type: "refresh_token",
                 refresh_token: user.dropbox.refresh_token,
-                client_id: process.env.DROPBOX_CLIENT_ID!,
-                client_secret: process.env.DROPBOX_CLIENT_SECRET!,
+                client_id: process.env.EXPRESS_DROPBOX_CLIENT_ID!,
+                client_secret: process.env.EXPRESS_DROPBOX_CLIENT_SECRET!,
               }),
               {
                 headers: {

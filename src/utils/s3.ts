@@ -62,7 +62,7 @@ export const saveItemImage = async (
   key: string,
   buffer: any
 ): Promise<{ bucket: string; key: string }> => {
-  const bucketName = process.env.S3_APP_BUCKET!
+  const bucketName = process.env.EXPRESS_S3_APP_BUCKET!
 
   await client.send(
     new PutObjectCommand({
@@ -107,7 +107,7 @@ export const deleteItemImage = async (
   try {
     await client.send(
       new DeleteObjectCommand({
-        Bucket: s3location.bucket || process.env.S3_TEMP_BUCKET,
+        Bucket: s3location.bucket || process.env.EXPRESS_S3_TEMP_BUCKET,
         Key: s3location.key,
       })
     );
@@ -146,7 +146,7 @@ export const getItemFile = async (
 
   try {
     const command = new GetObjectCommand({
-      Bucket: location.bucket || process.env.S3_TEMP_BUCKET,
+      Bucket: location.bucket || process.env.EXPRESS_S3_TEMP_BUCKET,
       Key: location.key,
     });
 

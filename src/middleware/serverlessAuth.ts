@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 
 const region = process.env.AWS_REGION_CODE || "eu-west-1";
-const userPoolId = process.env.COGNITO_USER_POOL_ID || "";
-const audience = process.env.COGNITO_CLIENT_ID || "";
+const userPoolId = process.env.EXPRESS_COGNITO_USER_POOL_ID || "";
+const audience = process.env.EXPRESS_COGNITO_CLIENT_ID || "";
 
 const jwksUri = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
 

@@ -170,8 +170,8 @@ export class DropboxService {
       qs.stringify({
         refresh_token: user.dropbox?.refresh_token,
         grant_type: "refresh_token",
-        client_id: process.env.DROPBOX_CLIENT_ID!,
-        client_secret: process.env.DROPBOX_CLIENT_SECRET!,
+        client_id: process.env.EXPRESS_DROPBOX_CLIENT_ID!,
+        client_secret: process.env.EXPRESS_DROPBOX_CLIENT_SECRET!,
       }),
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );

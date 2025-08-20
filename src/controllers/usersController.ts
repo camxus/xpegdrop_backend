@@ -21,8 +21,8 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 
-const TEMP_BUCKET = process.env.S3_TEMP_BUCKET!;
-const S3_APP_BUCKET = process.env.S3_APP_BUCKET!;
+const TEMP_BUCKET = process.env.EXPRESS_S3_TEMP_BUCKET!;
+const EXPRESS_S3_APP_BUCKET = process.env.EXPRESS_S3_APP_BUCKET!;
 
 
 export const getUser = asyncHandler(
@@ -152,7 +152,7 @@ export const updateUser = asyncHandler(
         const ext = avatar.key.split(".").pop();
 
 
-        const destination = await copyItemImage(s3Client, { bucket: TEMP_BUCKET, key: avatar.key }, { bucket: S3_APP_BUCKET, key: key(ext!) })
+        const destination = await copyItemImage(s3Client, { bucket: TEMP_BUCKET, key: avatar.key }, { bucket: EXPRESS_S3_APP_BUCKET, key: key(ext!) })
 
         // Delete temp file
         await s3Client.send(

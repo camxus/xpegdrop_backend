@@ -14,16 +14,16 @@ dotenv.config();
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE })
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users"
 
-const DROPBOX_CLIENT_ID = process.env.DROPBOX_CLIENT_ID!
-const DROPBOX_CLIENT_SECRET = process.env.DROPBOX_CLIENT_SECRET!
-const DROPBOX_REDIRECT_URI =`${process.env.BACKEND_URL!}/api/dropbox/callback` // e.g. https://your-backend.com/api/dropbox/callback
+const EXPRESS_DROPBOX_CLIENT_ID = process.env.EXPRESS_DROPBOX_CLIENT_ID!
+const EXPRESS_DROPBOX_CLIENT_SECRET = process.env.EXPRESS_DROPBOX_CLIENT_SECRET!
+const DROPBOX_REDIRECT_URI =`${process.env.EXPRESS_PUBLIC_BACKEND_URL!}/api/dropbox/callback` // e.g. https://your-backend.com/api/dropbox/callback
 
 // Step 1: Generate Dropbox Auth URL
 export const getDropboxAuthUrl = asyncHandler(async (req: Request, res: Response) => {
   const state = uuidv4() // use to protect against CSRF
   const url = new URL("https://www.dropbox.com/oauth2/authorize")
 
-  url.searchParams.set("client_id", DROPBOX_CLIENT_ID)
+  url.searchParams.set("client_id", EXPRESS_DROPBOX_CLIENT_ID)
   url.searchParams.set("response_type", "code")
   url.searchParams.set("redirect_uri", DROPBOX_REDIRECT_URI)
   url.searchParams.set("state", state)
@@ -36,13 +36,13 @@ export const getDropboxAuthUrl = asyncHandler(async (req: Request, res: Response
 export const handleDropboxCallback = asyncHandler(async (req: Request, res: Response) => {
   const code = req.query.code as string;
 
-  const redirectUri = `${process.env.BACKEND_URL}/api/dropbox/callback`;
+  const redirectUri = `${process.env.EXPRESS_PUBLIC_BACKEND_URL}/api/dropbox/callback`;
   
   const tokenRes = await axios.post("https://api.dropbox.com/oauth2/token", new URLSearchParams({
     code,
     grant_type: "authorization_code",
-    client_id: process.env.DROPBOX_CLIENT_ID!,
-    client_secret: process.env.DROPBOX_CLIENT_SECRET!,
+    client_id: process.env.EXPRESS_DROPBOX_CLIENT_ID!,
+    client_secret: process.env.EXPRESS_DROPBOX_CLIENT_SECRET!,
     redirect_uri: redirectUri,
   }), {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -51,10 +51,10 @@ export const handleDropboxCallback = asyncHandler(async (req: Request, res: Resp
   const { access_token, refresh_token, account_id, uid } = tokenRes.data;
 
   // Optional: Save these in a temporary session store or JWT
-  const stateToken = jwt.sign({ access_token, refresh_token, account_id }, process.env.JWT_SECRET!, { expiresIn: "10m" });
+  const stateToken = jwt.sign({ access_token, refresh_token, account_id }, process.env.EXPRESS_JWT_SECRET!, { expiresIn: "10m" });
 
   // Redirect to /signup with a token param
-  res.redirect(`${process.env.FRONTEND_URL}/signup?dropbox_token=${stateToken}`);
+  res.redirect(`${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/signup?dropbox_token=${stateToken}`);
 });
 
 // Step 2: Dropbox OAuth callback
@@ -71,8 +71,8 @@ export const handleDropboxCallbackWithUpdateUser = asyncHandler(async (req: Requ
       params: {
         code,
         grant_type: "authorization_code",
-        client_id: DROPBOX_CLIENT_ID,
-        client_secret: DROPBOX_CLIENT_SECRET,
+        client_id: EXPRESS_DROPBOX_CLIENT_ID,
+        client_secret: EXPRESS_DROPBOX_CLIENT_SECRET,
         redirect_uri: DROPBOX_REDIRECT_URI,
       },
       headers: {
@@ -115,7 +115,7 @@ export const handleDropboxCallbackWithUpdateUser = asyncHandler(async (req: Requ
       })
     )
 
-    res.redirect(`${process.env.FRONTEND_URL}/onboarding/dropbox-success`)
+    res.redirect(`${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/onboarding/dropbox-success`)
   } catch (error: any) {
     console.error("Dropbox token exchange failed:", error)
     res.status(500).json({ error: "Dropbox authentication failed" })

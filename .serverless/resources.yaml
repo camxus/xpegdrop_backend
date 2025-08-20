@@ -2,7 +2,7 @@ Resources:
   UploadsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: ${env:S3_TEMP_BUCKET}
+      BucketName: ${env:EXPRESS_S3_TEMP_BUCKET}
       LifecycleConfiguration:
         Rules:
           - Id: ExpireAfter1Day
@@ -11,7 +11,7 @@ Resources:
       CorsConfiguration:
         CorsRules:
           - AllowedOrigins:
-              - ${env:FRONTEND_URL}
+              - ${env:EXPRESS_PUBLIC_FRONTEND_URL}
               - http://localhost:3000
             AllowedHeaders:
               - Authorization

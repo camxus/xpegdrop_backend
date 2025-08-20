@@ -33,11 +33,11 @@
     - s3:GetObject
     - s3:PutObject
     - s3:DeleteObject
-  Resource: arn:aws:s3:::${env:S3_TEMP_BUCKET}/*  
+  Resource: arn:aws:s3:::${env:EXPRESS_S3_TEMP_BUCKET}/*  
 
 - Effect: Allow
   Action:
     - s3:GetObject
     - s3:PutObject
     - s3:PutObjectAcl
-  Resource: arn:aws:s3:::${env:S3_APP_BUCKET}/profile_images/*
+  Resource: arn:aws:s3:::${env:EXPRESS_S3_APP_BUCKET}/profile_images/*

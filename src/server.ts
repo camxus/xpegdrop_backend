@@ -19,7 +19,7 @@ const port = process.env.PORT || 3001;
 app.use(
   cors({
     origin: [
-      process.env.FRONTEND_URL || "",
+      process.env.EXPRESS_PUBLIC_FRONTEND_URL || "",
     ],
     credentials: true,
   })

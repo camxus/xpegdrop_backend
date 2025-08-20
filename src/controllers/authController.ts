@@ -63,10 +63,10 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
   try {
     // Cognito signup
     const command = new SignUpCommand({
-      ClientId: process.env.COGNITO_CLIENT_ID,
+      ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID,
       SecretHash: crypto
-        .createHmac("SHA256", process.env.COGNITO_SECRET!)
-        .update(username + process.env.COGNITO_CLIENT_ID)
+        .createHmac("SHA256", process.env.EXPRESS_COGNITO_SECRET!)
+        .update(username + process.env.EXPRESS_COGNITO_CLIENT_ID)
         .digest("base64"),
       Username: username,
       Password: password,
@@ -82,7 +82,7 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
     // Auto-confirm (development only)
     await cognito.send(
       new AdminConfirmSignUpCommand({
-        UserPoolId: process.env.COGNITO_USER_POOL_ID!,
+        UserPoolId: process.env.EXPRESS_COGNITO_USER_POOL_ID!,
         Username: username,
       })
     );
@@ -96,12 +96,12 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       // Determine file extension
       const ext = avatar.key.split(".").pop();
 
-      const destination = await copyItemImage(s3Client, { bucket: avatar.bucket, key: avatar.key }, { bucket: process.env.S3_APP_BUCKET!, key: key(ext!) })
+      const destination = await copyItemImage(s3Client, { bucket: avatar.bucket, key: avatar.key }, { bucket: process.env.EXPRESS_S3_APP_BUCKET!, key: key(ext!) })
 
       // Delete temp file
       await s3Client.send(
         new DeleteObjectCommand({
-          Bucket: process.env.S3_TEMP_BUCKET,
+          Bucket: process.env.EXPRESS_S3_TEMP_BUCKET,
           Key: avatar.key,
         })
       );
@@ -157,13 +157,13 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   try {
     const command = new InitiateAuthCommand({
       AuthFlow: "USER_PASSWORD_AUTH" as AuthFlowType,
-      ClientId: process.env.COGNITO_CLIENT_ID,
+      ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID,
       AuthParameters: {
         USERNAME: username,
         PASSWORD: password,
         SECRET_HASH: crypto
-          .createHmac("SHA256", process.env.COGNITO_SECRET!)
-          .update(username + process.env.COGNITO_CLIENT_ID)
+          .createHmac("SHA256", process.env.EXPRESS_COGNITO_SECRET!)
+          .update(username + process.env.EXPRESS_COGNITO_CLIENT_ID)
           .digest("base64"),
       },
     });
@@ -240,7 +240,7 @@ export const refreshToken = asyncHandler(
     try {
       const command = new InitiateAuthCommand({
         AuthFlow: "REFRESH_TOKEN_AUTH",
-        ClientId: process.env.COGNITO_CLIENT_ID,
+        ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID,
         AuthParameters: {
           REFRESH_TOKEN: refreshToken,
         },
@@ -272,7 +272,7 @@ export const forgotPassword = asyncHandler(
     try {
       await cognito.send(
         new ForgotPasswordCommand({
-          ClientId: process.env.COGNITO_CLIENT_ID!,
+          ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID!,
           Username: email,
         })
       );
@@ -294,7 +294,7 @@ export const confirmPassword = asyncHandler(
     try {
       await cognito.send(
         new ConfirmForgotPasswordCommand({
-          ClientId: process.env.COGNITO_CLIENT_ID!,
+          ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID!,
           Username: email,
           ConfirmationCode: code,
           Password: newPassword,
@@ -317,7 +317,7 @@ export const setNewPassword = asyncHandler(
 
     try {
       const command = new AdminSetUserPasswordCommand({
-        UserPoolId: process.env.COGNITO_USER_POOL_ID!,
+        UserPoolId: process.env.EXPRESS_COGNITO_USER_POOL_ID!,
         Username: email,
         Password: newPassword,
         Permanent: true,
@@ -336,7 +336,7 @@ export const getPresignURL = asyncHandler(async (req: AuthenticatedRequest, res:
   const { bucket = '', key, content_type } = req.query;
   
   const command = new PutObjectCommand({
-    Bucket: (bucket || process.env.S3_TEMP_BUCKET) as string,
+    Bucket: (bucket || process.env.EXPRESS_S3_TEMP_BUCKET) as string,
     Key: key as string,
     ContentType: content_type as string
   });
