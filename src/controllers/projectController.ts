@@ -40,6 +40,7 @@ export const uploadMiddleware = upload.array("files", 50); // Allow up to 50 fil
 
 export const createProject = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
+    console.log("started create", req)
     const { error, value } = createProjectSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
