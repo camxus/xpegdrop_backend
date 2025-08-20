@@ -144,6 +144,9 @@ export const getItemFile = async (
     throw new Error("Invalid S3 location");
   }
 
+
+  console.log(process.env.S3_TEMP_BUCKET)
+  
   try {
     const command = new GetObjectCommand({
       Bucket: location.bucket || process.env.S3_TEMP_BUCKET,
