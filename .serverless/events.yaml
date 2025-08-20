@@ -1,0 +1,85 @@
+# Auth routes (public)
+- httpApi:
+    path: /api/auth/signup
+    method: POST
+- httpApi:
+    path: /api/auth/login
+    method: POST
+- httpApi:
+    path: /api/auth/refresh-token
+    method: POST
+- httpApi:
+    path: /api/auth/forgot-password
+    method: POST
+- httpApi:
+    path: /api/auth/confirm-password
+    method: POST
+- httpApi:
+    path: /api/auth/set-new-password
+    method: POST
+- httpApi:
+    path: /api/auth/presign-url
+    method: GET
+
+# Dropbox routes
+- httpApi:
+    path: /api/dropbox/auth-url
+    method: GET
+- httpApi:
+    path: /api/dropbox/callback
+    method: GET
+
+# Projects routes
+- httpApi:
+    path: /api/projects/share/{username}/{projectName}
+    method: GET
+- httpApi:
+    path: /api/projects
+    method: POST
+    authorizer: newJwtAuthorizer
+- httpApi:
+    path: /api/projects
+    method: GET
+    authorizer: newJwtAuthorizer
+- httpApi:
+    path: /api/projects/{projectId}
+    method: GET
+    authorizer: newJwtAuthorizer
+- httpApi:
+    path: /api/projects/{projectId}
+    method: PUT
+    authorizer: newJwtAuthorizer
+- httpApi:
+    path: /api/projects/{projectId}
+    method: DELETE
+    authorizer: newJwtAuthorizer
+
+# Users routes
+- httpApi:
+    path: /api/users/username/{username}
+    method: GET
+- httpApi:
+    path: /api/users
+    method: GET
+    authorizer: newJwtAuthorizer
+- httpApi:
+    path: /api/users/{userId}
+    method: GET
+    authorizer: newJwtAuthorizer
+- httpApi:
+    path: /api/users
+    method: PUT
+    authorizer: newJwtAuthorizer
+- httpApi:
+    path: /api/users
+    method: DELETE
+    authorizer: newJwtAuthorizer
+- httpApi:
+    path: /api/users/dropbox-token
+    method: PUT
+    authorizer: newJwtAuthorizer
+
+# Health check
+- httpApi:
+    path: /health
+    method: GET

@@ -7,62 +7,8 @@ provider:
   runtime: nodejs20.x
   stage: ${opt:stage, 'prod'}
   region: eu-west-1
-  environment:
-    AWS_REGION_CODE: ${env:AWS_REGION_CODE, 'eu-west-1'}
-    DROPBOX_CLIENT_ID: ${env:DROPBOX_CLIENT_ID}
-    DROPBOX_CLIENT_SECRET: ${env:DROPBOX_CLIENT_SECRET}
-    BACKEND_URL: ${env:BACKEND_URL}
-    FRONTEND_URL: ${env:FRONTEND_URL}
-    JWT_SECRET: ${env:JWT_SECRET}
-    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}
-    COGNITO_SECRET: ${env:COGNITO_SECRET}
-    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
-    S3_APP_BUCKET: ${env:S3_APP_BUCKET}
-    S3_TEMP_BUCKET: ${env:S3_TEMP_BUCKET}
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - cognito-idp:AdminConfirmSignUp
-      Resource: arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL
-
-    - Effect: Allow
-      Action:
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-        - dynamodb:Query
-        - dynamodb:Scan
-      Resource: arn:aws:dynamodb:eu-west-1:439125467255:table/Users
-
-    - Effect: Allow
-      Action:
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-        - dynamodb:Query
-        - dynamodb:Scan
-      Resource: arn:aws:dynamodb:eu-west-1:439125467255:table/Projects
-
-    - Effect: Allow
-      Action:
-        - cognito-idp:AdminConfirmSignUp
-        - cognito-idp:GetUser
-        - cognito-idp:AdminGetUser
-      Resource: arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL
-
-    - Effect: Allow
-      Action:
-        - s3:GetObject
-        - s3:PutObject
-        - s3:DeleteObject
-      Resource: arn:aws:s3:::${env:S3_TEMP_BUCKET}/*  
-
-    - Effect: Allow
-      Action:
-        - s3:GetObject
-        - s3:PutObject
-        - s3:PutObjectAcl
-      Resource: arn:aws:s3:::${env:S3_APP_BUCKET}/profile_images/*
+  environment: ${file(./config/env.yml)}
+  iamRoleStatements: ${file(./config/iamRoleStatements.yml)}
 
   httpApi:
     cors:
@@ -86,129 +32,13 @@ provider:
         functionName: authorizer
         identitySource: $request.header.Authorization
 
-resources:
-  Resources:
-    UploadsBucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: ${env:S3_TEMP_BUCKET}
-        LifecycleConfiguration:
-          Rules:
-            - Id: ExpireAfter1Day
-              Status: Enabled
-              ExpirationInDays: 1
-        CorsConfiguration:
-          CorsRules:
-            - AllowedOrigins:
-                - ${env:FRONTEND_URL}
-                - http://localhost:3000
-              AllowedHeaders:
-                - Authorization
-                - Content-Type
-              AllowedMethods:
-                - GET
-                - PUT
-                - POST
-                - DELETE
-                - HEAD
-              ExposedHeaders:
-                - ETag
-                - x-amz-request-id
-                - x-amz-id-2
-              MaxAge: 3000
+resources: ${file(./config/resources.yml)}
 
 functions:
-  # Main API handler
   api:
     handler: src/server.handler
-    events:
-      # Auth routes (public)
-      - httpApi:
-          path: /api/auth/signup
-          method: POST
-      - httpApi:
-          path: /api/auth/login
-          method: POST
-      - httpApi:
-          path: /api/auth/refresh-token
-          method: POST
-      - httpApi:
-          path: /api/auth/forgot-password
-          method: POST
-      - httpApi:
-          path: /api/auth/confirm-password
-          method: POST
-      - httpApi:
-          path: /api/auth/set-new-password
-          method: POST
-      - httpApi:
-          path: /api/auth/presign-url
-          method: GET
+    events: ${file(./config/events.yml)}
 
-      # Dropbox routes (public)
-      - httpApi:
-          path: /api/dropbox/auth-url
-          method: GET
-      - httpApi:
-          path: /api/dropbox/callback
-          method: GET
-
-      # Projects routes
-      - httpApi:
-          path: /api/projects/share/{username}/{projectName}
-          method: GET
-      - httpApi:
-          path: /api/projects
-          method: POST
-          authorizer: newJwtAuthorizer
-      - httpApi:
-          path: /api/projects
-          method: GET
-          authorizer: newJwtAuthorizer
-      - httpApi:
-          path: /api/projects/{projectId}
-          method: GET
-          authorizer: newJwtAuthorizer
-      - httpApi:
-          path: /api/projects/{projectId}
-          method: PUT
-          authorizer: newJwtAuthorizer
-      - httpApi:
-          path: /api/projects/{projectId}
-          method: DELETE
-          authorizer: newJwtAuthorizer
-
-      # Users routes
-      - httpApi:
-          path: /api/users/username/{username}
-          method: GET
-      - httpApi:
-          path: /api/users
-          method: GET
-          authorizer: newJwtAuthorizer
-      - httpApi:
-          path: /api/users/{userId}
-          method: GET
-          authorizer: newJwtAuthorizer
-      - httpApi:
-          path: /api/users
-          method: PUT
-          authorizer: newJwtAuthorizer
-      - httpApi:
-          path: /api/users
-          method: DELETE
-          authorizer: newJwtAuthorizer
-      - httpApi:
-          path: /api/users/dropbox-token
-          method: PUT
-          authorizer: newJwtAuthorizer
-
-      # Health check
-      - httpApi:
-          path: /health
-          method: GET
-
-  # Authorizer function
   authorizer:
     handler: src/middleware/serverlessAuth.authorizeHandler
 

@@ -28,7 +28,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
 
-      - name: Deploy to Serverless
+      - name: Generate Serverless Env
         env:
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
           COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
@@ -42,4 +42,7 @@ jobs:
           COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
           S3_APP_BUCKET: ${{ secrets.S3_APP_BUCKET }}
           S3_TEMP_BUCKET: ${{ secrets.S3_TEMP_BUCKET }}
+        run: yarn gen:serverless:env
+
+      - name: Deploy to Serverless
         run: yarn deploy --stage prod
