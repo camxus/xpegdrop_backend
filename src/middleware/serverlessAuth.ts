@@ -51,7 +51,7 @@ export const authorizeHandler = async (
         (err, decodedToken) => {
           if (err) return reject(err);
 
-          console.log(err)
+          console.error(err)
           // Verify client_id manually
           const clientId = (decodedToken as any).client_id;
           if (clientId !== audience.trim()) {
