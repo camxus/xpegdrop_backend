@@ -140,13 +140,13 @@ export const getItemFile = async (
   client: S3Client,
   location: { bucket: string; key: string }
 ) => {
-  if (!location.bucket || !location.key) {
+  if (!location.key) {
     throw new Error("Invalid S3 location");
   }
 
   try {
     const command = new GetObjectCommand({
-      Bucket: location.bucket,
+      Bucket: location.bucket || process.env.S3_TEMP_BUCKET,
       Key: location.key,
     });
 
