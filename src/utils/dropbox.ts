@@ -51,7 +51,6 @@ export class DropboxService {
 
       // Function to upload a single file with retry on 429
       const uploadFile = async (file: File) => {
-        console.log(file.name)
         const arrayBuffer = await file.arrayBuffer();
         const contents = new Uint8Array(arrayBuffer);
 
