@@ -28,6 +28,7 @@ app.use(
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+console.log("start req")
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
@@ -50,6 +51,7 @@ if (process.env.NODE_ENV !== "production") {
 
 export const handler = serverless(app, {
   request: async (req: Request, event: APIGatewayProxyEvent) => {
+    console.log("event: ",  event)
     let body: any = event.body;
 
     if (body) {

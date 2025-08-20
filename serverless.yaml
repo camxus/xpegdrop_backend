@@ -47,6 +47,7 @@ provider:
       Action:
         - cognito-idp:AdminConfirmSignUp
         - cognito-idp:GetUser
+        - cognito-idp:AdminGetUser
       Resource: arn:aws:cognito-idp:eu-west-1:439125467255:userpool/eu-west-1_w1TVjSotL
 
     - Effect: Allow
