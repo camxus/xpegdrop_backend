@@ -7,18 +7,7 @@ provider:
   runtime: nodejs20.x
   stage: ${opt:stage, 'prod'}
   region: eu-west-1
-  environment:
-    AWS_REGION_CODE: ${env:AWS_REGION_CODE, 'eu-west-1'}
-    DROPBOX_CLIENT_ID: ${env:DROPBOX_CLIENT_ID}
-    DROPBOX_CLIENT_SECRET: ${env:DROPBOX_CLIENT_SECRET}
-    BACKEND_URL: ${env:BACKEND_URL}
-    FRONTEND_URL: ${env:FRONTEND_URL}
-    JWT_SECRET: ${env:JWT_SECRET}
-    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}
-    COGNITO_SECRET: ${env:COGNITO_SECRET}
-    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
-    S3_APP_BUCKET: ${env:S3_APP_BUCKET}
-    S3_TEMP_BUCKET: ${env:S3_TEMP_BUCKET}
+  environment: ${file(./.serverless/env.yaml)}
   iamRoleStatements: ${file(./.serverless/iamRoleStatements.yaml)}
 
   httpApi:
