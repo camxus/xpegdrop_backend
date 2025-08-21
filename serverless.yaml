@@ -6,7 +6,7 @@ provider:
   name: aws
   runtime: nodejs20.x
   stage: ${opt:stage, 'prod'}
-  region: eu-west-1
+  region: ${env:AWS_REGION_CODE, 'eu-west-1'}
   environment: ${file(./.serverless/env.yaml)}
   iamRoleStatements: ${file(./.serverless/iamRoleStatements.yaml)}
 
@@ -27,7 +27,7 @@ provider:
         - OPTIONS
       allowCredentials: true
     authorizers:
-      newJwtAuthorizer:
+      jwtAuthorizer:
         type: request
         functionName: authorizer
         identitySource: $request.header.Authorization

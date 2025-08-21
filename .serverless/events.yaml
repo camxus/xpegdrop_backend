@@ -36,23 +36,23 @@
 - httpApi:
     path: /api/projects
     method: POST
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 - httpApi:
     path: /api/projects
     method: GET
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 - httpApi:
     path: /api/projects/{projectId}
     method: GET
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 - httpApi:
     path: /api/projects/{projectId}
     method: PUT
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 - httpApi:
     path: /api/projects/{projectId}
     method: DELETE
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 
 # Users routes
 - httpApi:
@@ -61,23 +61,23 @@
 - httpApi:
     path: /api/users
     method: GET
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 - httpApi:
     path: /api/users/{userId}
     method: GET
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 - httpApi:
     path: /api/users
     method: PUT
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 - httpApi:
     path: /api/users
     method: DELETE
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 - httpApi:
     path: /api/users/dropbox-token
     method: PUT
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 
 # Ratings routes
 - httpApi:
@@ -92,7 +92,7 @@
 - httpApi:
     path: /api/ratings/{ratingId}
     method: DELETE
-    authorizer: newJwtAuthorizer
+    authorizer: jwtAuthorizer
 
 
 # Health check

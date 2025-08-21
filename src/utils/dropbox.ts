@@ -35,7 +35,7 @@ export class DropboxService {
         return false; // Folder does not exist
       }
       console.error("Error checking Dropbox folder existence:", err);
-      throw new Error("Failed to check Dropbox folder existence");
+      throw { ...new Error("Failed to check Dropbox folder existence"), status: err.status };
     }
   }
 
@@ -95,9 +95,9 @@ export class DropboxService {
         });
 
       return sharedLinkResponse.result.url;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Dropbox upload error:", error);
-      throw new Error("Failed to upload folder to Dropbox");
+      throw { ...new Error("Failed to upload folder to Dropbox"), status: error.status };
     }
   }
 

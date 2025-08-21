@@ -96,7 +96,8 @@ export const createProject = asyncHandler(
 
       const dropboxFiles = await getFiles()
       try {
-        if (await dropboxService.folderExists(name)) {
+        const folderExists = await dropboxService.folderExists(name)
+        if (folderExists) {
           return res.status(400).json({
             error: `A Dropbox folder named "${name}" already exists. Please choose another name.`,
           });
