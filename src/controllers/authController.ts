@@ -48,7 +48,7 @@ const cognito = new CognitoIdentityProviderClient({
   region: process.env.AWS_REGION_CODE,
 });
 
-export const uploadAvatar: RequestHandler = upload.single("avatar");
+export const uploadAvatar: RequestHandler = upload.single("avatar_file");
 
 export const signup = asyncHandler(async (req: Request, res: Response) => {
   const { error, value } = signUpSchema.validate(req.body);
