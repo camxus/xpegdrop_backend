@@ -259,6 +259,11 @@ export const updateProject = asyncHandler(
         exprAttrValues[":is_public"] = value.is_public;
       }
 
+      if (value.can_download !== undefined) {
+        updateExpr.push("can_download = :can_download");
+        exprAttrValues[":can_download"] = value.can_download;
+      }
+
       if (value.approved_emails) {
         updateExpr.push("approved_emails = :approved_emails");
         exprAttrValues[":approved_emails"] = value.approved_emails;
