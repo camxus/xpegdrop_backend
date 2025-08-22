@@ -2,7 +2,7 @@ signup:
   handler: workers/signup/create.handler
   events:
     - sqs:
-        arn: arn:aws:sqs:eu-west-1:${env:AWS_ACCOUNT_ID}:signup-creation-queue
+        arn: !GetAtt SignupQueue.Arn
         batchSize: 5
         maximumRetryAttempts: 2
 
@@ -10,7 +10,7 @@ cleanup:
   handler: workers/signup/cleanup.handler
   events:
     - sqs:
-        arn: arn:aws:sqs:eu-west-1:${env:AWS_ACCOUNT_ID}:signup-cleanup-queue
+        arn: !GetAtt CleanupQueue.Arn
         batchSize: 5
         maximumRetryAttempts: 2
 
@@ -18,4 +18,7 @@ createProject:
   handler: workers/project/create.handler
   events:
     - sqs:
-        arn: arn:aws:sqs:eu-west-1:${env:AWS_ACCOUNT_ID}:create-project-queue
+        arn:
+          Fn::GetAtt:
+            - CreateProjectQueue
+            - Arn
