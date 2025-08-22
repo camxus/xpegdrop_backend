@@ -43,7 +43,7 @@ export const handler: SQSHandler = async (event) => {
 
     // If message is S3 reference, fetch full payload from S3
     if (data.key && data.bucket) {
-      data = await readS3Json(data.bucket, data.s3Key);
+      data = await readS3Json(data.bucket, data.key);
     }
 
     const { password, email, username, first_name, last_name, bio, dropbox, avatar } = data;
