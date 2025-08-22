@@ -2,6 +2,7 @@ import { Request, RequestHandler, Response } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validationErrorHandler } from "../middleware/errorMiddleware";
 import {
+  DeleteItemCommand,
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
@@ -26,6 +27,7 @@ import {
   AdminSetUserPasswordCommand,
   ForgotPasswordCommand,
   ConfirmForgotPasswordCommand,
+  AdminDeleteUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { v4 as uuidv4 } from "uuid";
 import { copyItemImage, getSignedImage, saveItemImage } from "../utils/s3";
@@ -34,6 +36,7 @@ import multer from "multer";
 import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AuthenticatedRequest } from "../middleware/auth";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 
 const upload = multer({
   storage: multer.memoryStorage(), // stores file in memory for direct upload to S3
@@ -54,19 +57,30 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
   const { error, value } = signUpSchema.validate(req.body);
   if (error) throw validationErrorHandler(error);
 
-  const { password, email, username, first_name, last_name, bio, } =
+  const { password, email, username, first_name, last_name, bio } =
     value as SignUpInput;
 
-  let dropbox = typeof value.dropbox === "string" ? JSON.parse(value.dropbox as string || "{}") : value.dropbox
-  let avatar = typeof value.avatar === "string" ? JSON.parse(value.avatar as string || "{}") : value.avatar
+  let dropbox =
+    typeof value.dropbox === "string"
+      ? JSON.parse((value.dropbox as string) || "{}")
+      : value.dropbox;
+
+  let avatar =
+    typeof value.avatar === "string"
+      ? JSON.parse((value.avatar as string) || "{}")
+      : value.avatar;
+
+  let createdUserSub: string | null = null;
+  let uploadedAvatarKey: string | null = null;
+  let userData: any = null;
 
   try {
     // Cognito signup
     const command = new SignUpCommand({
-      ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID,
+      ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID!,
       SecretHash: crypto
         .createHmac("SHA256", process.env.EXPRESS_COGNITO_SECRET!)
-        .update(username + process.env.EXPRESS_COGNITO_CLIENT_ID)
+        .update(username + process.env.EXPRESS_COGNITO_CLIENT_ID!)
         .digest("base64"),
       Username: username,
       Password: password,
@@ -87,43 +101,47 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       })
     );
 
-    const userSub = response.UserSub!;
-    const key = (ext: string) => `profile_images/${userSub}.${ext}`;
+    createdUserSub = response.UserSub!;
+    const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
+    const key = (ext: string) => `profile_images/${createdUserSub}.${ext}`;
 
+    // Case 1: Avatar came from temp bucket
     if (avatar) {
-      const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
-
-      // Determine file extension
-      const ext = avatar.key.split(".").pop();
-
-      const destination = await copyItemImage(s3Client, { bucket: avatar.bucket, key: avatar.key }, { bucket: process.env.EXPRESS_S3_APP_BUCKET!, key: key(ext!) })
+      const ext = avatar.key.split(".").pop()!;
+      const destination = await copyItemImage(
+        s3Client,
+        { bucket: avatar.bucket, key: avatar.key },
+        {
+          bucket: process.env.EXPRESS_S3_APP_BUCKET!,
+          key: key(ext),
+        }
+      );
 
       // Delete temp file
       await s3Client.send(
         new DeleteObjectCommand({
-          Bucket: process.env.EXPRESS_S3_TEMP_BUCKET,
+          Bucket: process.env.EXPRESS_S3_TEMP_BUCKET!,
           Key: avatar.key,
         })
       );
 
-      avatar = destination
+      avatar = destination;
+      uploadedAvatarKey = destination.key;
     }
 
-
+    // Case 2: Avatar uploaded in request
     if (req.file) {
       const mimeType = req.file.mimetype; // e.g., image/png
       const ext = mimeExtension(mimeType); // e.g., 'png'
-
-      if (!ext) {
-        throw new Error("Unsupported avatar file type.");
-      }
-
+      if (!ext) throw new Error("Unsupported avatar file type.");
 
       avatar = await saveItemImage(s3Client, key(ext), req.file.buffer);
+      uploadedAvatarKey = avatar.key;
     }
 
-    const userData = {
-      user_id: userSub,
+    // Build DynamoDB user object
+    userData = {
+      user_id: createdUserSub,
       username,
       email,
       first_name,
@@ -141,9 +159,51 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       })
     );
 
-    res.status(201).json({ user: { ...userData, avatar: await getSignedImage(s3Client, { s3location: userData.avatar }) } });
+    res.status(201).json({
+      user: {
+        ...userData,
+        avatar: await getSignedImage(s3Client, { s3location: userData.avatar }),
+      },
+    });
   } catch (error: any) {
     console.error("Signup error:", error);
+
+    // Rollback cleanup
+    try {
+      if (userData) {
+        // Remove DynamoDB entry
+        await client.send(
+          new DeleteItemCommand({
+            TableName: USERS_TABLE,
+            Key: marshall({ user_id: userData.user_id }),
+          })
+        );
+      }
+
+      if (createdUserSub) {
+        // Delete Cognito user
+        await cognito.send(
+          new AdminDeleteUserCommand({
+            UserPoolId: process.env.EXPRESS_COGNITO_USER_POOL_ID!,
+            Username: username,
+          })
+        );
+      }
+
+      if (uploadedAvatarKey) {
+        // Delete avatar from S3
+        const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.EXPRESS_S3_APP_BUCKET!,
+            Key: uploadedAvatarKey,
+          })
+        );
+      }
+    } catch (cleanupErr) {
+      console.error("Cleanup failed:", cleanupErr);
+    }
+
     res.status(400).json({ error: error.message });
   }
 });
@@ -334,17 +394,48 @@ export const setNewPassword = asyncHandler(
 
 export const getPresignURL = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { bucket = '', key, content_type } = req.query;
-  
+
   const command = new PutObjectCommand({
     Bucket: (bucket || process.env.EXPRESS_S3_TEMP_BUCKET) as string,
     Key: key as string,
     ContentType: content_type as string
   });
-  
+
   const signedUrl = await getSignedUrl(s3Client as any, command as any, { expiresIn: 300 }); // 5 minutes
 
   res.status(200).json({
     upload_url: signedUrl,
     key,
+  });
+});
+
+export const getPresignPOST = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { key, content_type } = req.query;
+
+  // ✅ Force users into their own folder (no arbitrary keys)
+  const userId = req.user?.user_id; // adjust if you store differently
+
+  // ✅ Max file size: 50 MB
+  const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
+  const presignedPost = await createPresignedPost(s3Client as any, {
+    Bucket: process.env.EXPRESS_S3_TEMP_BUCKET as string,
+    Key: key as string,
+    Conditions: [
+      ["content-length-range", 0, MAX_FILE_SIZE],              // enforce file size
+      ["eq", "$Content-Type", content_type as string],         // enforce MIME type
+      ["starts-with", "$key", `${userId}/`],      // enforce key prefix
+    ],
+    Fields: {
+      "Content-Type": content_type as string,
+    },
+    Expires: 300, // URL valid for 5 minutes
+  });
+
+  res.status(200).json({
+    upload_url: presignedPost.url,
+    fields: presignedPost.fields,
+    key,
+    max_size: MAX_FILE_SIZE,
   });
 });

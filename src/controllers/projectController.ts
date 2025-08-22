@@ -95,26 +95,25 @@ export const createProject = asyncHandler(
       };
 
       const dropboxFiles = await getFiles()
+      let dropboxUploadResponse = { share_link: "", folder_path: "" }
       try {
-        const folderExists = await dropboxService.folderExists(name)
-        if (folderExists) {
-          return res.status(400).json({
-            error: `A Dropbox folder named "${name}" already exists. Please choose another name.`,
-          });
-        }
+        dropboxUploadResponse = await dropboxService.upload(
+          dropboxFiles,
+          name
+        );
       } catch (err: any) {
         if (err?.status === 401 && req.user.dropbox.refresh_token) {
           await dropboxService.refreshDropboxToken(req.user);
-          await dropboxService.folderExists(name);
+          dropboxUploadResponse = await dropboxService.upload(
+            dropboxFiles,
+            name
+          );
         } else {
           throw err;
         }
       }
 
-      const dropboxSharedLink = await dropboxService.uploadFolder(
-        dropboxFiles,
-        name
-      );
+      const { folder_path: dropboxFolderPath, share_link: dropboxSharedLink } = dropboxUploadResponse
 
       // Generate share URL
       const shareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${username}/${name
@@ -130,7 +129,7 @@ export const createProject = asyncHandler(
         share_url: shareUrl,
         is_public: true,
         approved_emails: [],
-        dropbox_folder_path: `/${name}`,
+        dropbox_folder_path: dropboxFolderPath,
         dropbox_shared_link: dropboxSharedLink,
         created_at: new Date().toISOString(),
       };

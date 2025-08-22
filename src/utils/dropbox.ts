@@ -39,15 +39,17 @@ export class DropboxService {
     }
   }
 
-  async uploadFolder(files: File[], folderName: string): Promise<string> {
+  async upload(files: File[], folderName: string): Promise<{ folder_path: string, share_link: string }> {
     try {
       const folderPath = `/xpegdrop/${folderName}`;
 
       // Create folder
-      await this.dbx.filesCreateFolderV2({
-        path: folderPath,
-        autorename: true,
-      });
+      if (!await this.folderExists(folderPath)) {
+        await this.dbx.filesCreateFolderV2({
+          path: folderPath,
+          autorename: true,
+        });
+      }
 
       // Function to upload a single file with retry on 429
       const uploadFile = async (file: File) => {
@@ -94,7 +96,7 @@ export class DropboxService {
           },
         });
 
-      return sharedLinkResponse.result.url;
+      return { folder_path: folderPath, share_link: sharedLinkResponse.result.url };
     } catch (error: any) {
       console.error("Dropbox upload error:", error);
       throw { ...new Error("Failed to upload folder to Dropbox"), status: error.status };
