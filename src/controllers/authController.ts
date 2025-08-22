@@ -84,7 +84,8 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
     };
   }
 
-  const signupPayload = {
+  // Full payload (can be large)
+  const fullPayload = {
     password,
     email,
     username,
@@ -96,11 +97,33 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
     avatarFile,
   };
 
+  // Generate unique key for payload in S3
+  const key = `signup_payloads/${username}-${Date.now()}-${crypto
+    .randomBytes(4)
+    .toString("hex")}.json`;
+
+  // Store full payload in S3
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: process.env.EXPRESS_S3_TEMP_BUCKET!,
+      Key: key,
+      Body: JSON.stringify(fullPayload),
+    })
+  );
+
+  // Lightweight message to SQS (reference only)
+  const signupMessage = {
+    key,
+    bucket: process.env.EXPRESS_S3_TEMP_BUCKET!,
+    username,
+    email,
+  };
+
   try {
     await sqs.send(
       new SendMessageCommand({
-        QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${SIGNUP_CREATION_QUEUE}`!, // points to SignupQueue
-        MessageBody: JSON.stringify(signupPayload),
+        QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${SIGNUP_CREATION_QUEUE}`,
+        MessageBody: JSON.stringify(signupMessage),
       })
     );
 

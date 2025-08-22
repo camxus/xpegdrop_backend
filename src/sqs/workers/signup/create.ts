@@ -5,10 +5,9 @@ import {
   AdminConfirmSignUpCommand,
   CognitoIdentityProviderClient,
 } from "@aws-sdk/client-cognito-identity-provider";
-import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { copyItemImage } from "../../../utils/s3";
 
@@ -17,12 +16,9 @@ const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 const sqsClient = new SQSClient({ region: process.env.AWS_REGION_CODE });
-const SIGNUP_CLEANUP_QUEUE = "signup-cleanup-queue"
+const SIGNUP_CLEANUP_QUEUE = "signup-cleanup-queue";
 
-const cognito = new CognitoIdentityProviderClient({
-  region: process.env.AWS_REGION_CODE,
-});
-
+const cognito = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION_CODE });
 
 const enqueueCleanup = async (payload: any) => {
   await sqsClient.send(
@@ -33,9 +29,23 @@ const enqueueCleanup = async (payload: any) => {
   );
 };
 
+// helper to read S3 object as string
+const readS3Json = async (bucket: string, key: string) => {
+  const obj = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  const body = await obj.Body?.transformToString();
+  if (!body) throw new Error("S3 object empty");
+  return JSON.parse(body);
+};
+
 export const handler: SQSHandler = async (event) => {
   for (const record of event.Records) {
-    const data = JSON.parse(record.body);
+    let data: any = JSON.parse(record.body);
+
+    // If message is S3 reference, fetch full payload from S3
+    if (data.key && data.bucket) {
+      data = await readS3Json(data.bucket, data.s3Key);
+    }
+
     const { password, email, username, first_name, last_name, bio, dropbox, avatar } = data;
 
     let createdUserSub: string | null = null;
@@ -108,7 +118,6 @@ export const handler: SQSHandler = async (event) => {
     } catch (err) {
       console.error("Signup worker failed, enqueueing cleanup:", err);
 
-      // Send cleanup job to SQS
       await enqueueCleanup({
         userSub: createdUserSub,
         username,
@@ -116,7 +125,6 @@ export const handler: SQSHandler = async (event) => {
         dynamoUserId: userData?.user_id,
       });
 
-      // Optionally re-throw to let SQS retry signup if needed
       throw err;
     }
   }
