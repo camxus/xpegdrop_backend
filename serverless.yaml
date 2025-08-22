@@ -39,6 +39,9 @@ functions:
     handler: src/server.handler
     events: ${file(./.serverless/events.yaml)}
 
+  sqs:
+    workers: ${file(./.serverless/workers.yaml)}
+
   authorizer:
     handler: src/middleware/serverlessAuth.authorizeHandler
 

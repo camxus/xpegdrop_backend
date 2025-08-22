@@ -1,0 +1,15 @@
+signup:
+  handler: workers/signup.handler
+  events:
+    - sqs:
+        arn: !GetAtt SignupQueue.Arn
+        batchSize: 5
+        maximumRetryAttempts: 2
+
+cleanup:
+  handler: workers/cleanup.handler
+  events:
+    - sqs:
+        arn: !GetAtt CleanupQueue.Arn
+        batchSize: 5
+        maximumRetryAttempts: 2

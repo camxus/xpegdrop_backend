@@ -37,6 +37,7 @@ import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 
 const upload = multer({
   storage: multer.memoryStorage(), // stores file in memory for direct upload to S3
@@ -50,6 +51,8 @@ const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 const cognito = new CognitoIdentityProviderClient({
   region: process.env.AWS_REGION_CODE,
 });
+
+const sqs = new SQSClient({ region: process.env.AWS_REGION_CODE });
 
 export const uploadAvatar: RequestHandler = upload.single("avatar_file");
 
@@ -70,141 +73,41 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       ? JSON.parse((value.avatar as string) || "{}")
       : value.avatar;
 
-  let createdUserSub: string | null = null;
-  let uploadedAvatarKey: string | null = null;
-  let userData: any = null;
+  // If avatar uploaded as multipart file, encode buffer (since SQS messages are text only)
+  let avatarFile: { buffer: string; mimetype: string } | null = null;
+  if (req.file) {
+    avatarFile = {
+      buffer: req.file.buffer.toString("base64"),
+      mimetype: req.file.mimetype,
+    };
+  }
+
+  const signupPayload = {
+    password,
+    email,
+    username,
+    first_name,
+    last_name,
+    bio: bio || null,
+    dropbox,
+    avatar,
+    avatarFile,
+  };
 
   try {
-    // Cognito signup
-    const command = new SignUpCommand({
-      ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID!,
-      SecretHash: crypto
-        .createHmac("SHA256", process.env.EXPRESS_COGNITO_SECRET!)
-        .update(username + process.env.EXPRESS_COGNITO_CLIENT_ID!)
-        .digest("base64"),
-      Username: username,
-      Password: password,
-      UserAttributes: [
-        { Name: "email", Value: email },
-        { Name: "given_name", Value: first_name },
-        { Name: "family_name", Value: last_name },
-      ],
-    });
-
-    const response = await cognito.send(command);
-
-    // Auto-confirm (development only)
-    await cognito.send(
-      new AdminConfirmSignUpCommand({
-        UserPoolId: process.env.EXPRESS_COGNITO_USER_POOL_ID!,
-        Username: username,
+    await sqs.send(
+      new SendMessageCommand({
+        QueueUrl: process.env.SIGNUP_QUEUE_URL!, // points to SignupQueue
+        MessageBody: JSON.stringify(signupPayload),
       })
     );
 
-    createdUserSub = response.UserSub!;
-    const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
-    const key = (ext: string) => `profile_images/${createdUserSub}.${ext}`;
-
-    // Case 1: Avatar came from temp bucket
-    if (avatar) {
-      const ext = avatar.key.split(".").pop()!;
-      const destination = await copyItemImage(
-        s3Client,
-        { bucket: avatar.bucket, key: avatar.key },
-        {
-          bucket: process.env.EXPRESS_S3_APP_BUCKET!,
-          key: key(ext),
-        }
-      );
-
-      // Delete temp file
-      await s3Client.send(
-        new DeleteObjectCommand({
-          Bucket: process.env.EXPRESS_S3_TEMP_BUCKET!,
-          Key: avatar.key,
-        })
-      );
-
-      avatar = destination;
-      uploadedAvatarKey = destination.key;
-    }
-
-    // Case 2: Avatar uploaded in request
-    if (req.file) {
-      const mimeType = req.file.mimetype; // e.g., image/png
-      const ext = mimeExtension(mimeType); // e.g., 'png'
-      if (!ext) throw new Error("Unsupported avatar file type.");
-
-      avatar = await saveItemImage(s3Client, key(ext), req.file.buffer);
-      uploadedAvatarKey = avatar.key;
-    }
-
-    // Build DynamoDB user object
-    userData = {
-      user_id: createdUserSub,
-      username,
-      email,
-      first_name,
-      last_name,
-      bio: bio || null,
-      avatar,
-      dropbox,
-      created_at: new Date().toISOString(),
-    };
-
-    await client.send(
-      new PutItemCommand({
-        TableName: USERS_TABLE,
-        Item: marshall(userData),
-      })
-    );
-
-    res.status(201).json({
-      user: {
-        ...userData,
-        avatar: await getSignedImage(s3Client, { s3location: userData.avatar }),
-      },
+    res.status(202).json({
+      message: "Signup request received and is being processed.",
     });
-  } catch (error: any) {
-    console.error("Signup error:", error);
-
-    // Rollback cleanup
-    try {
-      if (userData) {
-        // Remove DynamoDB entry
-        await client.send(
-          new DeleteItemCommand({
-            TableName: USERS_TABLE,
-            Key: marshall({ user_id: userData.user_id }),
-          })
-        );
-      }
-
-      if (createdUserSub) {
-        // Delete Cognito user
-        await cognito.send(
-          new AdminDeleteUserCommand({
-            UserPoolId: process.env.EXPRESS_COGNITO_USER_POOL_ID!,
-            Username: username,
-          })
-        );
-      }
-
-      if (uploadedAvatarKey) {
-        // Delete avatar from S3
-        const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
-        await s3Client.send(
-          new DeleteObjectCommand({
-            Bucket: process.env.EXPRESS_S3_APP_BUCKET!,
-            Key: uploadedAvatarKey,
-          })
-        );
-      }
-    } catch (cleanupErr) {
-      console.error("Cleanup failed:", cleanupErr);
-    }
-
-    res.status(400).json({ error: error.message });
+  } catch (err: any) {
+    console.error("Failed to enqueue signup request:", err);
+    res.status(500).json({ error: "Failed to process signup request" });
   }
 });
 

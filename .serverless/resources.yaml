@@ -48,3 +48,33 @@ Resources:
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
+
+  # Signup Creation Queue + DLQ
+  SignupQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: signup-creation-queue
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SignupDLQ.Arn
+        maxReceiveCount: 3
+
+  SignupDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: signup-creation-dlq
+
+  # Cleanup Queue + DLQ
+  CleanupQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: signup-cleanup-queue
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt CleanupDLQ.Arn
+        maxReceiveCount: 3
+
+  CleanupDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: signup-cleanup-dlq
