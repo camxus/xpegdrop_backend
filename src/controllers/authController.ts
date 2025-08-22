@@ -38,6 +38,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import jwt from "jsonwebtoken"
 
 const upload = multer({
   storage: multer.memoryStorage(), // stores file in memory for direct upload to S3
@@ -200,12 +201,30 @@ export const refreshToken = asyncHandler(
       });
     }
 
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: "Missing Authorization header" });
+    }
+
+    const token = authHeader.split(" ")[1]; // "Bearer <token>"
+    const decoded: any = jwt.decode(token);
+
+    if (!decoded) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const username = decoded["username"] || decoded["cognito:username"];
+
     try {
       const command = new InitiateAuthCommand({
         AuthFlow: "REFRESH_TOKEN_AUTH",
         ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID,
         AuthParameters: {
           REFRESH_TOKEN: refreshToken,
+          SECRET_HASH: crypto
+            .createHmac("SHA256", process.env.EXPRESS_COGNITO_SECRET!)
+            .update(username + process.env.EXPRESS_COGNITO_CLIENT_ID)
+            .digest("base64"),
         },
       });
 

@@ -85,7 +85,7 @@ export const createProject = asyncHandler(
           return await Promise.all(
             fileLocations.map(async (location: S3Location) => {
               const file = await getItemFile(s3Client, location);
-              // await deleteItemImage(s3Client, location)
+              await deleteItemImage(s3Client, location)
               return file.file; // file is already a File object
             })
           );
