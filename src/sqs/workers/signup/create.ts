@@ -17,6 +17,7 @@ const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 const sqsClient = new SQSClient({ region: process.env.AWS_REGION_CODE });
+const SIGNUP_CLEANUP_QUEUE = "signup-cleanup-queue"
 
 const cognito = new CognitoIdentityProviderClient({
   region: process.env.AWS_REGION_CODE,
@@ -26,7 +27,7 @@ const cognito = new CognitoIdentityProviderClient({
 const enqueueCleanup = async (payload: any) => {
   await sqsClient.send(
     new SendMessageCommand({
-      QueueUrl: process.env.EXPRESS_SIGNUP_CLEANUP_QUEUE_URL!,
+      QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${SIGNUP_CLEANUP_QUEUE}`,
       MessageBody: JSON.stringify(payload),
     })
   );

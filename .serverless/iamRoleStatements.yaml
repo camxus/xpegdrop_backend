@@ -46,3 +46,11 @@
     - s3:PutObject
     - s3:PutObjectAcl
   Resource: arn:aws:s3:::${env:EXPRESS_S3_APP_BUCKET}/profile_images/*
+
+- Effect: Allow
+  Action:
+    - sqs:SendMessage
+  Resource:
+    - arn:aws:sqs:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:signup-creation-queue
+    - arn:aws:sqs:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:signup-cleanup-queue
+    - arn:aws:sqs:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:create-project-queue

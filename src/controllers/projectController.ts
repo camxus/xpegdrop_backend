@@ -27,6 +27,7 @@ import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
+const CREATE_PROJECT_QUEUE = "create-project-queue"
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION_CODE });
 
@@ -88,7 +89,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
 
   await sqs.send(
     new SendMessageCommand({
-      QueueUrl: process.env.EXPRESS_CREATE_PROJECT_QUEUE_URL!,
+      QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
       MessageBody: JSON.stringify(payload),
     })
   );

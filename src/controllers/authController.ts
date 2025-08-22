@@ -53,6 +53,7 @@ const cognito = new CognitoIdentityProviderClient({
   region: process.env.AWS_REGION_CODE,
 });
 
+const SIGNUP_CREATION_QUEUE = "signup-creation-queue";
 const sqs = new SQSClient({ region: process.env.AWS_REGION_CODE });
 
 export const uploadAvatar: RequestHandler = upload.single("avatar_file");
@@ -98,7 +99,7 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
   try {
     await sqs.send(
       new SendMessageCommand({
-        QueueUrl: process.env.SIGNUP_QUEUE_URL!, // points to SignupQueue
+        QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${SIGNUP_CREATION_QUEUE}`!, // points to SignupQueue
         MessageBody: JSON.stringify(signupPayload),
       })
     );

@@ -1,5 +1,5 @@
 signup:
-  handler: workers/create.handler
+  handler: workers/signup/create.handler
   events:
     - sqs:
         arn: !GetAtt SignupQueue.Arn
@@ -7,15 +7,15 @@ signup:
         maximumRetryAttempts: 2
 
 cleanup:
-  handler: workers/cleanup.handler
+  handler: workers/signup/cleanup.handler
   events:
     - sqs:
         arn: !GetAtt CleanupQueue.Arn
         batchSize: 5
         maximumRetryAttempts: 2
 
-project:
-  handler: workers/createProject.handler
+createProject:
+  handler: workers/project/create.handler
   events:
     - sqs:
         arn:
