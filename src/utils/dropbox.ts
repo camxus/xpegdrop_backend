@@ -25,10 +25,8 @@ export class DropboxService {
   }
 
   async folderExists(folderName: string): Promise<boolean> {
-    const folderPath = `/xpegdrop/${folderName}`;
-
     try {
-      await this.dbx.filesGetMetadata({ path: folderPath });
+      await this.dbx.filesGetMetadata({ path: folderName });
       return true; // Folder exists
     } catch (err: any) {
       if (err?.error?.error_summary?.includes("path/not_found")) {
@@ -56,6 +54,7 @@ export class DropboxService {
         const arrayBuffer = await file.arrayBuffer();
         const contents = new Uint8Array(arrayBuffer);
 
+        console.log(folderPath)
         let uploaded = false;
         while (!uploaded) {
           try {
