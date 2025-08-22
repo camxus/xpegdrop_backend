@@ -3,7 +3,7 @@ api:
     events: ${file(./.serverless/events.yaml)}
 
 signup:
-  handler: workers/signup/create.handler
+  handler: src/sqs/workers/signup/create.handler
   events:
     - sqs:
         arn: !GetAtt SignupQueue.Arn
@@ -11,7 +11,7 @@ signup:
         maximumRetryAttempts: 2
 
 cleanup:
-  handler: workers/signup/cleanup.handler
+  handler: src/sqs/workers/signup/cleanup.handler
   events:
     - sqs:
         arn: !GetAtt CleanupQueue.Arn
@@ -19,7 +19,7 @@ cleanup:
         maximumRetryAttempts: 2
 
 createProject:
-  handler: workers/project/create.handler
+  handler: src/sqs/workers/project/create.handler
   events:
     - sqs:
         arn:
