@@ -1,5 +1,5 @@
 signup:
-  handler: workers/signup.handler
+  handler: workers/create.handler
   events:
     - sqs:
         arn: !GetAtt SignupQueue.Arn
@@ -13,3 +13,12 @@ cleanup:
         arn: !GetAtt CleanupQueue.Arn
         batchSize: 5
         maximumRetryAttempts: 2
+
+project:
+  handler: workers/createProject.handler
+  events:
+    - sqs:
+        arn:
+          Fn::GetAtt:
+            - CreateProjectQueue
+            - Arn

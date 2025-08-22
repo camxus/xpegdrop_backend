@@ -22,11 +22,13 @@ import { Request, RequestHandler, Response } from "express";
 import multer from "multer";
 import { deleteItemImage, getItemFile } from "../utils/s3";
 import { S3Client } from "@aws-sdk/client-s3";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
-const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
+
+const sqs = new SQSClient({ region: process.env.AWS_REGION_CODE });
 
 // Configure multer for file uploads
 const upload = multer({
@@ -38,119 +40,64 @@ const upload = multer({
 
 export const uploadMiddleware: RequestHandler = upload.array("files", 50); // Allow up to 50 files
 
-export const createProject = asyncHandler(
-  async (req: AuthenticatedRequest, res: Response) => {
-    const { error, value } = createProjectSchema.validate(req.body);
-    if (error) throw validationErrorHandler(error);
+export const createProject = asyncHandler(async (req: any, res: Response) => {
+  const { error, value } = createProjectSchema.validate(req.body);
+  if (error) throw validationErrorHandler(error);
 
-    const { name, description } = value as CreateProjectInput;
+  const { name, description } = value;
+  let fileLocations =
+    typeof value.file_locations === "string"
+      ? JSON.parse(value.file_locations as string || "[]")
+      : value.file_locations;
 
-    let fileLocations = typeof value.file_locations === "string" ? JSON.parse(value.file_locations as string || "[]") : value.file_locations
+  const files = req.files as Express.Multer.File[];
 
-    const files = req.files as Express.Multer.File[];
-
-    if (!files || !files.length && !fileLocations || !fileLocations.length) {
-      return res.status(400).json({ error: "No files provided" });
-    }
-
-    if (!req.user?.dropbox?.access_token) {
-      return res.status(400).json({
-        error:
-          "Dropbox access token not found. Please connect your Dropbox account.",
-      });
-    }
-
-    try {
-      const projectId = uuidv4();
-      const userId = req.user.user_id;
-      const username = req.user.username;
-
-      // Upload folder to Dropbox
-      const dropboxService = new DropboxService(
-        req.user.dropbox?.access_token!
-      );
-
-      // Convert multer files to File objects for Dropbox upload
-      const getFiles = async (): Promise<File[]> => {
-        if (files.length) {
-          // Already in memory
-          return files.map((file) => {
-            const blob = new Blob([file.buffer], { type: file.mimetype });
-            return new File([blob], file.originalname, { type: file.mimetype });
-          });
-        }
-
-        if (fileLocations.length) {
-          // Fetch from S3 in parallel
-          return await Promise.all(
-            fileLocations.map(async (location: S3Location) => {
-              const file = await getItemFile(s3Client, location);
-              await deleteItemImage(s3Client, location)
-              return file.file; // file is already a File object
-            })
-          );
-        }
-
-        return []; // No files
-      };
-
-      const dropboxFiles = await getFiles()
-      let dropboxUploadResponse = { share_link: "", folder_path: "" }
-      try {
-        dropboxUploadResponse = await dropboxService.upload(
-          dropboxFiles,
-          name
-        );
-
-      } catch (err: any) {
-        if (err?.status === 401 && req.user.dropbox.refresh_token) {
-          await dropboxService.refreshDropboxToken(req.user);
-          dropboxUploadResponse = await dropboxService.upload(
-            dropboxFiles,
-            name
-          );
-        } else {
-          throw err;
-        }
-      }
-
-      const { folder_path: dropboxFolderPath, share_link: dropboxSharedLink } = dropboxUploadResponse
-
-      // Generate share URL
-      const shareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${username}/${name
-        .toLowerCase()
-        .replace(/\s+/g, "-")}`;
-
-      // Save project to DynamoDB
-      const projectData: Project = {
-        project_id: projectId,
-        user_id: userId,
-        name,
-        description: description || null,
-        share_url: shareUrl,
-        is_public: true,
-        approved_emails: [],
-        dropbox_folder_path: dropboxFolderPath,
-        dropbox_shared_link: dropboxSharedLink,
-        created_at: new Date().toISOString(),
-      };
-
-      await client.send(
-        new PutItemCommand({
-          TableName: PROJECTS_TABLE,
-          Item: marshall(projectData),
-        })
-      );
-
-      res.status(201).json(projectData);
-    } catch (error: any) {
-      console.error("Create project error:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Failed to create project" });
-    }
+  if ((!files || !files.length) && (!fileLocations || !fileLocations.length)) {
+    return res.status(400).json({ error: "No files provided" });
   }
-);
+
+  if (!req.user?.dropbox?.access_token) {
+    return res.status(400).json({
+      error: "Dropbox access token not found. Please connect your Dropbox account.",
+    });
+  }
+
+  // Prepare job payload
+  const projectId = uuidv4();
+
+  const payload = {
+    project_id: projectId,
+    user: {
+      user_id: req.user.user_id,
+      username: req.user.username,
+      dropbox: req.user.dropbox,
+    },
+    project: {
+      name,
+      description,
+    },
+    files: files?.length
+      ? files.map((f) => ({
+        originalname: f.originalname,
+        mimetype: f.mimetype,
+        buffer: f.buffer.toString("base64"), // serialize buffer
+      }))
+      : [],
+    file_locations: fileLocations || [],
+  };
+
+  await sqs.send(
+    new SendMessageCommand({
+      QueueUrl: process.env.EXPRESS_CREATE_PROJECT_QUEUE_URL!,
+      MessageBody: JSON.stringify(payload),
+    })
+  );
+
+  res.status(202).json({
+    message: "Project creation in progress",
+    project_id: projectId,
+  });
+});
 
 export const getProjects = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {

@@ -78,3 +78,8 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: signup-cleanup-dlq
+
+  CreateProjectQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: create-project-queue
