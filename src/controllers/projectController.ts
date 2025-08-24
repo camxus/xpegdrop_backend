@@ -98,7 +98,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     name: name,
     description: description || null,
     share_url: shareUrl,
-    is_public: true,
+    is_public: false,
     can_download: false,
     approved_emails: [],
     dropbox_folder_path: "",
