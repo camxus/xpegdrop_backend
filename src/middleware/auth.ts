@@ -15,6 +15,40 @@ export interface AuthenticatedRequest extends Request {
   user?: User;
 }
 
+export const getUserFromToken = async (token: string) => {
+  // Verify token with Cognito
+  const userResponse = await cognito.send(
+    new GetUserCommand({
+      AccessToken: token,
+    })
+  );
+
+  const userAttributes = userResponse.UserAttributes?.reduce((acc, attr) => {
+    if (attr.Name && attr.Value) {
+      acc[attr.Name] = attr.Value;
+    }
+    return acc;
+  }, {} as Record<string, string>) || {};
+
+  const sub = userAttributes['sub'];
+
+  // Get user details from DynamoDB
+  const userDetailsResponse = await client.send(
+    new GetItemCommand({
+      TableName: USERS_TABLE,
+      Key: marshall({ user_id: sub }),
+    })
+  );
+
+  if (!userDetailsResponse.Item) {
+    const error: any = new Error('User not found')
+    error.status = 401
+    throw error
+  }
+
+  return unmarshall(userDetailsResponse.Item) as User;
+}
+
 export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
@@ -25,41 +59,14 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
 
     const token = authHeader.substring(7);
 
-    // Verify token with Cognito
-    const userResponse = await cognito.send(
-      new GetUserCommand({
-        AccessToken: token,
-      })
-    );
+    const userDetails = await getUserFromToken(token)
 
-    const userAttributes = userResponse.UserAttributes?.reduce((acc, attr) => {
-      if (attr.Name && attr.Value) {
-        acc[attr.Name] = attr.Value;
-      }
-      return acc;
-    }, {} as Record<string, string>) || {};
-
-    const sub = userAttributes['sub'];
-
-    // Get user details from DynamoDB
-    const userDetailsResponse = await client.send(
-      new GetItemCommand({
-        TableName: USERS_TABLE,
-        Key: marshall({ user_id: sub }),
-      })
-    );
-
-    if (!userDetailsResponse.Item) {
-      return res.status(401).json({ error: 'User not found' });
-    }
-
-    const userDetails = unmarshall(userDetailsResponse.Item) as User;
     req.user = userDetails;
 
     next();
     return req.user
   } catch (error: any) {
     console.error('Authentication error:', error);
-    return res.status(401).json({ error: 'Invalid token' });
+    return res.status(error.status || 401).json({ error: error.message || 'Invalid token' });
   }
 };

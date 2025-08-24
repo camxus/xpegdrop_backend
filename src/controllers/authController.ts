@@ -157,6 +157,7 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       new PutItemCommand({
         TableName: USERS_TABLE,
         Item: marshall(userData),
+        ConditionExpression: "attribute_not_exists(username)",
       })
     );
 

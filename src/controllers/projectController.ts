@@ -17,7 +17,7 @@ import axios from "axios";
 import { CreateProjectInput, UpdateProjectInput, Project, S3Location } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { DropboxService } from "../utils/dropbox";
-import { AuthenticatedRequest } from "../middleware/auth";
+import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
 import { Request, RequestHandler, Response } from "express";
 import multer from "multer";
 import { deleteItemImage, getItemFile } from "../utils/s3";
@@ -303,8 +303,13 @@ export const deleteProject = asyncHandler(
 );
 
 export const getProjectByShareUrl = asyncHandler(
-  async (req: Request, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
+      const authHeader = req.headers.authorization;
+
+      if (authHeader)
+        await getUserFromToken(authHeader.substring(7)).then((user) => req.user = user)
+
       const { username, projectName } = req.params;
       const emailParam = (req.query.email as string | undefined)?.toLowerCase();
 
@@ -329,7 +334,7 @@ export const getProjectByShareUrl = asyncHandler(
       );
 
       // Handle private project email validation
-      if (!isPublic) {
+      if (!isPublic && req.user?.username !== username) {
         if (!emailParam) {
           return res.status(400).json({ error: "EMAIL_REQUIRED" });
         }
