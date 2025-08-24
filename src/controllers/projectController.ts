@@ -87,6 +87,32 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     file_locations: fileLocations || [],
   };
 
+  // Build share URL
+  const shareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${req.user.username}/${name
+    .toLowerCase()
+    .replace(/\s+/g, "-")}`;
+
+  const projectData = {
+    project_id: projectId,
+    user_id: req.user.user_id,
+    name: name,
+    description: description || null,
+    share_url: shareUrl,
+    is_public: true,
+    approved_emails: [],
+    dropbox_folder_path: "",
+    dropbox_shared_link: "",
+    created_at: new Date().toISOString(),
+    status: "initiated"
+  };
+
+  await client.send(
+    new PutItemCommand({
+      TableName: PROJECTS_TABLE,
+      Item: marshall(projectData),
+    })
+  );
+
   await sqs.send(
     new SendMessageCommand({
       QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
@@ -94,10 +120,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     })
   );
 
-  res.status(202).json({
-    message: "Project creation in progress",
-    project_id: projectId,
-  });
+  res.status(202).json(projectData);
 });
 
 export const getProjects = asyncHandler(

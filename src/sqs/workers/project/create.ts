@@ -1,7 +1,6 @@
 import { SQSHandler } from "aws-lambda";
-import { v4 as uuidv4 } from "uuid";
 
-import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { DropboxService } from "../../../utils/dropbox";
 import { getItemFile } from "../../../utils/s3";
@@ -16,7 +15,7 @@ export const handler: SQSHandler = async (event) => {
     const data = JSON.parse(record.body);
 
     const { project_id, user, project, files, file_locations } = data;
-    const { user_id, username, dropbox } = user;
+    const { dropbox } = user;
 
     try {
       const dropboxService = new DropboxService(dropbox.access_token);
@@ -65,31 +64,32 @@ export const handler: SQSHandler = async (event) => {
 
       const { folder_path, share_link } = dropboxUploadResponse;
 
-      // Build share URL
-      const shareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${username}/${project.name
-        .toLowerCase()
-        .replace(/\s+/g, "-")}`;
-
       // Save to Dynamo
       const projectData = {
-        project_id,
-        user_id,
-        name: project.name,
-        description: project.description || null,
-        share_url: shareUrl,
-        is_public: true,
-        approved_emails: [],
         dropbox_folder_path: folder_path,
         dropbox_shared_link: share_link,
-        created_at: new Date().toISOString(),
+        status: "created",
       };
 
-      await client.send(
-        new PutItemCommand({
-          TableName: PROJECTS_TABLE,
-          Item: marshall(projectData),
-        })
-      );
+      const params = new UpdateItemCommand({
+        TableName: PROJECTS_TABLE,
+        Key: marshall({ project_id }),
+        UpdateExpression:
+          "SET dropbox_folder_path = :folder, dropbox_shared_link = :link, #st = :status",
+        ExpressionAttributeNames: {
+          "#st": "status", // because "status" is a reserved word in DynamoDB
+        },
+        ExpressionAttributeValues: marshall({
+          ":folder": projectData.dropbox_folder_path,
+          ":link": projectData.dropbox_shared_link,
+          ":status": projectData.status,
+        }),
+        ReturnValues: "ALL_NEW", // returns the updated item
+      });
+
+      await client.send(params);
+
+
 
       console.log(`✅ Project ${project_id} created successfully.`);
     } catch (err) {
