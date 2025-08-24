@@ -6,6 +6,7 @@ import {
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
+  QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -153,11 +154,24 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       created_at: new Date().toISOString(),
     };
 
+    const existing = await client.send(
+      new QueryCommand({
+        TableName: USERS_TABLE,
+        IndexName: "username-index", // GSI on `username`
+        KeyConditionExpression: "username = :u",
+        ExpressionAttributeValues: marshall({ ":u": username }),
+      })
+    );
+
+    if (existing.Count && existing.Count > 0) {
+      throw new Error("Username already exists");
+    }
+
+    // Insert user
     await client.send(
       new PutItemCommand({
         TableName: USERS_TABLE,
         Item: marshall(userData),
-        ConditionExpression: "attribute_not_exists(username)",
       })
     );
 
