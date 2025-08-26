@@ -54,7 +54,6 @@ export class DropboxService {
         const arrayBuffer = await file.arrayBuffer();
         const contents = new Uint8Array(arrayBuffer);
 
-        console.log(folderPath)
         let uploaded = false;
         while (!uploaded) {
           try {
@@ -123,7 +122,7 @@ export class DropboxService {
     folderPath: string
   ): Promise<{ name: string; preview_url: string; thumbnail_url: string }[]> {
     try {
-      const response = await this.dbx.filesListFolder({ path: `/xpegdrop/${folderPath}` });
+      const response = await this.dbx.filesListFolder({ path: folderPath });
 
       const imageFiles = response.result.entries.filter(
         (entry) =>

@@ -1,6 +1,6 @@
 api:
-    handler: src/server.handler
-    events: ${file(./.serverless/events.yaml)}
+  handler: src/server.handler
+  events: ${file(./.serverless/events.yaml)}
 
 signup:
   handler: src/sqs/workers/signup/create.handler

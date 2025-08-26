@@ -42,86 +42,95 @@ const upload = multer({
 export const uploadMiddleware: RequestHandler = upload.array("files", 50); // Allow up to 50 files
 
 export const createProject = asyncHandler(async (req: any, res: Response) => {
-  const { error, value } = createProjectSchema.validate(req.body);
-  if (error) throw validationErrorHandler(error);
+  try {
 
-  const { name, description } = value;
-  let fileLocations =
-    typeof value.file_locations === "string"
-      ? JSON.parse(value.file_locations as string || "[]")
-      : value.file_locations;
 
-  const files = req.files as Express.Multer.File[];
+    const { error, value } = createProjectSchema.validate(req.body);
+    if (error) throw validationErrorHandler(error);
 
-  if ((!files || !files.length) && (!fileLocations || !fileLocations.length)) {
-    return res.status(400).json({ error: "No files provided" });
-  }
+    const { name, description } = value;
+    let fileLocations =
+      typeof value.file_locations === "string"
+        ? JSON.parse(value.file_locations as string || "[]")
+        : value.file_locations;
 
-  if (!req.user?.dropbox?.access_token) {
-    return res.status(400).json({
-      error: "Dropbox access token not found. Please connect your Dropbox account.",
-    });
-  }
+    const files = req.files as Express.Multer.File[];
 
-  // Prepare job payload
-  const projectId = uuidv4();
+    if ((!files || !files.length) && (!fileLocations || !fileLocations.length)) {
+      return res.status(400).json({ error: "No files provided" });
+    }
 
-  const payload = {
-    project_id: projectId,
-    user: {
+    if (!req.user?.dropbox?.access_token) {
+      return res.status(400).json({
+        error: "Dropbox access token not found. Please connect your Dropbox account.",
+      });
+    }
+
+    // Prepare job payload
+    const projectId = uuidv4();
+
+    const payload = {
+      project_id: projectId,
+      user: {
+        user_id: req.user.user_id,
+        username: req.user.username,
+        dropbox: req.user.dropbox,
+      },
+      project: {
+        name,
+        description,
+      },
+      files: files?.length
+        ? files.map((f) => ({
+          originalname: f.originalname,
+          mimetype: f.mimetype,
+          buffer: f.buffer.toString("base64"), // serialize buffer
+        }))
+        : [],
+      file_locations: fileLocations || [],
+    };
+
+    // Build share URL
+    const shareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${req.user.username}/${name
+      .toLowerCase()
+      .replace(/\s+/g, "-")}`;
+
+    const projectData = {
+      project_id: projectId,
       user_id: req.user.user_id,
-      username: req.user.username,
-      dropbox: req.user.dropbox,
-    },
-    project: {
-      name,
-      description,
-    },
-    files: files?.length
-      ? files.map((f) => ({
-        originalname: f.originalname,
-        mimetype: f.mimetype,
-        buffer: f.buffer.toString("base64"), // serialize buffer
-      }))
-      : [],
-    file_locations: fileLocations || [],
-  };
+      name: name,
+      description: description || null,
+      share_url: shareUrl,
+      is_public: false,
+      can_download: false,
+      approved_emails: [],
+      dropbox_folder_path: "",
+      dropbox_shared_link: "",
+      created_at: new Date().toISOString(),
+      status: "initiated"
+    };
 
-  // Build share URL
-  const shareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${req.user.username}/${name
-    .toLowerCase()
-    .replace(/\s+/g, "-")}`;
+    await client.send(
+      new PutItemCommand({
+        TableName: PROJECTS_TABLE,
+        Item: marshall(projectData),
+      })
+    );
 
-  const projectData = {
-    project_id: projectId,
-    user_id: req.user.user_id,
-    name: name,
-    description: description || null,
-    share_url: shareUrl,
-    is_public: false,
-    can_download: false,
-    approved_emails: [],
-    dropbox_folder_path: "",
-    dropbox_shared_link: "",
-    created_at: new Date().toISOString(),
-    status: "initiated"
-  };
+    await sqs.send(
+      new SendMessageCommand({
+        QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
+        MessageBody: JSON.stringify(payload),
+      })
+    );
 
-  await client.send(
-    new PutItemCommand({
-      TableName: PROJECTS_TABLE,
-      Item: marshall(projectData),
-    })
-  );
-
-  await sqs.send(
-    new SendMessageCommand({
-      QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
-      MessageBody: JSON.stringify(payload),
-    })
-  );
-
-  res.status(202).json(projectData);
+    res.status(202).json(projectData);
+  } catch (error: any) {
+    console.error("Create project error:", error);
+    res
+      .status(500)
+      .json({ error: error.message || "Failed to fetch projects" });
+  }
 });
 
 export const getProjects = asyncHandler(
