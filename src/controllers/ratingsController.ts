@@ -9,7 +9,7 @@ import {
   ScanCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4, v4 } from "uuid";
 import { Request, Response } from "express";
 import { authenticate, AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
 import { User } from "../types";
@@ -43,7 +43,7 @@ export const createRating = asyncHandler(
       rating_id: uuidv4(),
       project_id,
       image_name,
-      user_id: req.user?.user_id || "anonymous", // mark as anonymous if no user
+      user_id: req.user?.user_id || `anonymous-${uuidv4()}`, // mark as anonymous if no user
       value,
     };
 
@@ -121,8 +121,7 @@ export const updateRating = asyncHandler(
 
       const rating = unmarshall(getRes.Item) as unknown as Rating
 
-      if (rating.user_id !== "anonymous") {
-
+      if (!rating.user_id.includes("anonymous")) {
         if (req.user?.user_id !== rating.user_id) {
           return res.status(400).json({ error: "user_id mismatch" });
         }
