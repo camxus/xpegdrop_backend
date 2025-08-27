@@ -353,11 +353,15 @@ export const getProjectByShareUrl = asyncHandler(
         }
       }
 
-      const publicProject = {
+      const publicProject: Partial<Project> = {
+        project_id: project.project_id,
+        user_id: project.user_id,
         name: project.name,
         description: project.description,
+        share_url: project.share_url,
         dropbox_shared_link: project.dropbox_shared_link,
         created_at: project.created_at,
+        updated_at: project.updated_at,
       };
 
       const userResponse = await client.send(

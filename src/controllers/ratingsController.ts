@@ -11,7 +11,7 @@ import {
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import { Request, Response } from "express";
-import { authenticate, AuthenticatedRequest } from "../middleware/auth";
+import { authenticate, AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
 import { User } from "../types";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
@@ -21,23 +21,28 @@ export class Rating {
   rating_id?: string = undefined;
   project_id: string = "";
   user_id: string = "";
-  image_id: string = "";
+  image_name: string = "";
   value: number = 0;
 }
 
 // CREATE Rating
 export const createRating = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { project_id, image_id, value } = req.body;
+    const { project_id, image_name, value } = req.body;
 
-    if (!project_id || !image_id || value === undefined) {
-      return res.status(400).json({ error: "project_id, image_id and value are required" });
+    if (!project_id || !image_name || value === undefined) {
+      return res.status(400).json({ error: "project_id, image_name and value are required" });
     }
+
+    const authHeader = req.headers.authorization;
+
+    if (authHeader)
+      await getUserFromToken(authHeader.substring(7)).then((user) => req.user = user)
 
     const rating: Rating = {
       rating_id: uuidv4(),
       project_id,
-      image_id,
+      image_name,
       user_id: req.user?.user_id || "anonymous", // mark as anonymous if no user
       value,
     };
@@ -89,9 +94,13 @@ export const getRatings = asyncHandler(
 
 // UPDATE Rating
 export const updateRating = asyncHandler(
-  async (req: Request, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     const { ratingId } = req.params;
     const { value } = req.body;
+    const authHeader = req.headers.authorization;
+
+    if (authHeader)
+      await getUserFromToken(authHeader.substring(7)).then((user) => req.user = user)
 
     if (!ratingId || value === undefined) {
       return res.status(400).json({ error: "ratingId and value are required" });
@@ -110,12 +119,11 @@ export const updateRating = asyncHandler(
         return res.status(404).json({ error: "Rating not found" });
       }
 
-      const rating = getRes.Item as unknown as Rating
+      const rating = unmarshall(getRes.Item) as unknown as Rating
 
       if (rating.user_id !== "anonymous") {
-        const user = (await authenticate(req, res, () => { })) as User
-        const userId = user.user_id; // or AuthenticatedRequest type
-        if (userId !== rating.user_id) {
+
+        if (req.user?.user_id !== rating.user_id) {
           return res.status(400).json({ error: "user_id mismatch" });
         }
       }

@@ -137,18 +137,23 @@ export class DropboxService {
             path: file.path_lower!,
           });
 
-          // Thumbnail
           const thumbnailRes = await this.dbx.filesGetThumbnailV2({
             resource: { ".tag": "path", path: file.path_lower! },
             format: { ".tag": "jpeg" }, // or "png"
             size: { ".tag": "w2048h1536" }, // available sizes: w32h32, w64h64, w128h128, etc.
           });
 
+          // Convert binary to Base64
           const thumbnailBase64 = Buffer.from(
             (thumbnailRes.result as any).fileBinary,
             "binary"
           ).toString("base64");
-          const thumbnail_url = `data:image/jpeg;base64,${thumbnailBase64}`;
+
+          // Encode image name and id in Base64
+          const meta = Buffer.from(`${file.name}`).toString("base64");
+
+          // Embed metadata inside the data URL
+          const thumbnail_url = `data:image/jpeg;name=${meta};base64,${thumbnailBase64}`;
 
           return {
             name: file.name,
