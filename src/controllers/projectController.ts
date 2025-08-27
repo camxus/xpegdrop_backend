@@ -95,12 +95,25 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       .toLowerCase()
       .replace(/\s+/g, "-"))}`;
 
+
+    const existingProjectsResponse = await client.send(
+      new ScanCommand({
+        TableName: PROJECTS_TABLE,
+        FilterExpression: "equals(share_url, :shareUrlPart)",
+        ExpressionAttributeValues: marshall({
+          ":shareUrlPart": shareUrl,
+        }),
+      })
+    );
+
+    const existingProjects = existingProjectsResponse.Items
+
     const projectData = {
       project_id: projectId,
       user_id: req.user.user_id,
       name: name,
       description: description || null,
-      share_url: shareUrl,
+      share_url: existingProjects?.length ? `${shareUrl}-${existingProjects?.length}` : shareUrl,
       is_public: false,
       can_download: false,
       approved_emails: [],
@@ -238,6 +251,20 @@ export const updateProject = asyncHandler(
           .replace(/\s+/g, "-"))}`;
         updateExpr.push("share_url = :share_url");
         exprAttrValues[":share_url"] = newShareUrl;
+
+        const existingProjectsResponse = await client.send(
+          new ScanCommand({
+            TableName: PROJECTS_TABLE,
+            FilterExpression: "equals(share_url, :shareUrlPart)",
+            ExpressionAttributeValues: marshall({
+              ":shareUrlPart": newShareUrl,
+            }),
+          })
+        );
+
+        const existingProjects = existingProjectsResponse.Items
+
+        newShareUrl = existingProjects?.length ? `${newShareUrl}-${existingProjects?.length}` : newShareUrl
 
         // Move Dropbox folder if it exists
         if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
