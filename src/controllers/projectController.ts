@@ -233,9 +233,9 @@ export const updateProject = asyncHandler(
         exprAttrValues[":name"] = value.name;
 
         // Rebuild share_url
-        newShareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${req.user?.username}/${value.name
+        newShareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${req.user?.username}/${encodeURI(value.name
           .toLowerCase()
-          .replace(/\s+/g, "-")}`;
+          .replace(/\s+/g, "-"))}`;
         updateExpr.push("share_url = :share_url");
         exprAttrValues[":share_url"] = newShareUrl;
 
@@ -378,9 +378,9 @@ export const getProjectByShareUrl = asyncHandler(
       const response = await client.send(
         new ScanCommand({
           TableName: PROJECTS_TABLE,
-          FilterExpression: "contains(share_url, :shareUrlPart)",
+          FilterExpression: "equals(share_url, :shareUrlPart)",
           ExpressionAttributeValues: marshall({
-            ":shareUrlPart": `/${username}/${decodeURI(projectName)}`,
+            ":shareUrlPart": `/${username}/${(projectName)}`,
           }),
         })
       );
