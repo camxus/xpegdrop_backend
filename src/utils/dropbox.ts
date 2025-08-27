@@ -37,6 +37,19 @@ export class DropboxService {
     }
   }
 
+  async moveFolder(fromPath: string, toPath: string): Promise<void> {
+    try {
+      await this.dbx.filesMoveV2({
+        from_path: fromPath,
+        to_path: toPath,
+        autorename: true,
+      });
+    } catch (err: any) {
+      console.error("Error moving Dropbox folder:", err);
+      throw { ...new Error("Failed to move Dropbox folder"), status: err.status };
+    }
+  }
+
   async upload(files: File[], folderName: string): Promise<{ folder_path: string, share_link: string }> {
     try {
       const folderPath = `/xpegdrop/${folderName}`;
@@ -139,20 +152,16 @@ export class DropboxService {
 
           const thumbnailRes = await this.dbx.filesGetThumbnailV2({
             resource: { ".tag": "path", path: file.path_lower! },
-            format: { ".tag": "jpeg" }, // or "png"
-            size: { ".tag": "w2048h1536" }, // available sizes: w32h32, w64h64, w128h128, etc.
+            format: { ".tag": "jpeg" },
+            size: { ".tag": "w2048h1536" },
           });
 
-          // Convert binary to Base64
           const thumbnailBase64 = Buffer.from(
             (thumbnailRes.result as any).fileBinary,
             "binary"
           ).toString("base64");
 
-          // Encode image name and id in Base64
           const meta = Buffer.from(`${file.name}`).toString("base64");
-
-          // Embed metadata inside the data URL
           const thumbnail_url = `data:image/jpeg;name=${meta};base64,${thumbnailBase64}`;
 
           return {
@@ -186,7 +195,6 @@ export class DropboxService {
       fetch: fetch,
     });
 
-    // TODO: persist new accessToken back to DynamoDB for future calls
     await client.send(
       new UpdateItemCommand({
         TableName: USERS_TABLE,

@@ -224,10 +224,40 @@ export const updateProject = asyncHandler(
       const exprAttrValues: Record<string, any> = {};
       const exprAttrNames: Record<string, string> = {};
 
-      if (value.name) {
+      let newShareUrl: string | undefined;
+      let newDropboxPath: string | undefined;
+
+      // ✅ Handle project name change
+      if (value.name && value.name !== project.name) {
         updateExpr.push("#n = :name");
         exprAttrNames["#n"] = "name";
         exprAttrValues[":name"] = value.name;
+
+        // Rebuild share_url
+        newShareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${req.user?.username}/${value.name
+          .toLowerCase()
+          .replace(/\s+/g, "-")}`;
+        updateExpr.push("share_url = :share_url");
+        exprAttrValues[":share_url"] = newShareUrl;
+
+        // Move Dropbox folder if it exists
+        if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
+          const dropboxService = new DropboxService(req.user.dropbox.access_token);
+
+          const currentPath = project.dropbox_folder_path;
+          const parentFolder = currentPath.split("/").slice(0, -1).join("/") || "";
+          newDropboxPath = `${parentFolder}/${value.name}`;
+
+          try {
+            await dropboxService.moveFolder(currentPath, newDropboxPath);
+
+            updateExpr.push("dropbox_folder_path = :dropbox_folder_path");
+            exprAttrValues[":dropbox_folder_path"] = newDropboxPath;
+          } catch (err) {
+            console.error("Dropbox folder move failed", err);
+            return res.status(500).json({ error: "Failed to move Dropbox folder" });
+          }
+        }
       }
 
       if (value.description !== undefined) {
@@ -250,6 +280,10 @@ export const updateProject = asyncHandler(
         exprAttrValues[":approved_emails"] = value.approved_emails;
       }
 
+      // Add updated_at timestamp
+      updateExpr.push("updated_at = :updated_at");
+      exprAttrValues[":updated_at"] = new Date().toISOString();
+
       await client.send(
         new UpdateItemCommand({
           TableName: PROJECTS_TABLE,
@@ -262,7 +296,11 @@ export const updateProject = asyncHandler(
         })
       );
 
-      res.status(200).json({ message: "Project updated successfully" });
+      res.status(200).json({
+        message: "Project updated successfully",
+        ...(newShareUrl ? { share_url: newShareUrl } : {}),
+        ...(newDropboxPath ? { dropbox_folder_path: newDropboxPath } : {}),
+      });
     } catch (error: any) {
       console.error("Update project error:", error);
       res
@@ -271,6 +309,7 @@ export const updateProject = asyncHandler(
     }
   }
 );
+
 
 export const deleteProject = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
@@ -360,6 +399,7 @@ export const getProjectByShareUrl = asyncHandler(
         description: project.description,
         share_url: project.share_url,
         dropbox_shared_link: project.dropbox_shared_link,
+        can_download: project.can_download,
         created_at: project.created_at,
         updated_at: project.updated_at,
       };
