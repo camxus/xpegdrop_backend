@@ -14,7 +14,7 @@ import {
   updateProjectSchema,
 } from "../utils/validation/projectValidation";
 import axios from "axios";
-import { CreateProjectInput, UpdateProjectInput, Project, S3Location } from "../types";
+import { CreateProjectInput, UpdateProjectInput, Project, S3Location, User } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { DropboxService } from "../utils/dropbox";
 import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
@@ -227,7 +227,6 @@ export const updateProject = asyncHandler(
       let newShareUrl: string | undefined;
       let newDropboxPath: string | undefined;
 
-      // ✅ Handle project name change
       if (value.name && value.name !== project.name) {
         updateExpr.push("#n = :name");
         exprAttrNames["#n"] = "name";
@@ -248,14 +247,30 @@ export const updateProject = asyncHandler(
           const parentFolder = currentPath.split("/").slice(0, -1).join("/") || "";
           newDropboxPath = `${parentFolder}/${value.name}`;
 
-          try {
-            await dropboxService.moveFolder(currentPath, newDropboxPath);
-
+          const tryMoveFolder = async (targetPath: string) => {
+            await dropboxService.moveFolder(currentPath, targetPath);
             updateExpr.push("dropbox_folder_path = :dropbox_folder_path");
-            exprAttrValues[":dropbox_folder_path"] = newDropboxPath;
-          } catch (err) {
-            console.error("Dropbox folder move failed", err);
-            return res.status(500).json({ error: "Failed to move Dropbox folder" });
+            exprAttrValues[":dropbox_folder_path"] = targetPath;
+          };
+
+          try {
+            await tryMoveFolder(newDropboxPath);
+          } catch (err: any) {
+            const isUnauthorized = err.status === 401;
+
+            // If token expired and refresh token available
+            if (isUnauthorized && req.user.dropbox.refresh_token) {
+              try {
+                await dropboxService.refreshDropboxToken(req.user);
+                await tryMoveFolder(newDropboxPath);
+              } catch (refreshError) {
+                console.error("Dropbox token refresh failed", refreshError);
+                return res.status(500).json({ error: "Failed to refresh Dropbox token" });
+              }
+            } else {
+              console.error("Dropbox folder move failed", err);
+              return res.status(500).json({ error: "Failed to move Dropbox folder" });
+            }
           }
         }
       }
@@ -309,7 +324,6 @@ export const updateProject = asyncHandler(
     }
   }
 );
-
 
 export const deleteProject = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
@@ -427,60 +441,26 @@ export const getProjectByShareUrl = asyncHandler(
 
       let dropboxAccessToken = user.dropbox.access_token;
 
-      const tryListFiles = async (accessToken: string) => {
-        const dropboxService = new DropboxService(accessToken);
-        return await dropboxService.listFiles(
-          project.dropbox_folder_path || ""
-        );
-      };
+      const dropboxService = new DropboxService(dropboxAccessToken);
 
       let dropboxFiles;
       try {
-        dropboxFiles = await tryListFiles(dropboxAccessToken);
+        dropboxFiles = await dropboxService.listFiles(
+          project.dropbox_folder_path || ""
+        );
       } catch (err: any) {
         const isUnauthorized = err.status === 401;
 
         // If token expired and refresh token available
         if (isUnauthorized && user.dropbox.refresh_token) {
           try {
-            const refreshRes = await axios.post(
-              "https://api.dropbox.com/oauth2/token",
-              new URLSearchParams({
-                grant_type: "refresh_token",
-                refresh_token: user.dropbox.refresh_token,
-                client_id: process.env.EXPRESS_DROPBOX_CLIENT_ID!,
-                client_secret: process.env.EXPRESS_DROPBOX_CLIENT_SECRET!,
-              }),
-              {
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-              }
+            await dropboxService.refreshDropboxToken(user as User);
+            dropboxFiles = await dropboxService.listFiles(
+              project.dropbox_folder_path || ""
             );
-
-            const newAccessToken = refreshRes.data.access_token;
-            dropboxAccessToken = newAccessToken;
-
-            // Update in DB
-            user.dropbox.access_token = newAccessToken;
-            await client.send(
-              new UpdateItemCommand({
-                TableName: USERS_TABLE,
-                Key: marshall({ user_id: user.user_id }),
-                UpdateExpression: "SET dropbox.access_token = :token",
-                ExpressionAttributeValues: marshall({
-                  ":token": newAccessToken,
-                }),
-              })
-            );
-
-            // Retry Dropbox request
-            dropboxFiles = await tryListFiles(newAccessToken);
           } catch (refreshError) {
             console.error("Dropbox token refresh failed", refreshError);
-            return res
-              .status(401)
-              .json({ error: "Dropbox session expired. Please reconnect." });
+            throw refreshError
           }
         } else {
           console.error("Dropbox access failed", err);
