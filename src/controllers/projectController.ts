@@ -91,9 +91,9 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     };
 
     // Build share URL
-    const shareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${req.user.username}/${name
+    const shareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${req.user.username}/${encodeURI(name
       .toLowerCase()
-      .replace(/\s+/g, "-")}`;
+      .replace(/\s+/g, "-"))}`;
 
     const projectData = {
       project_id: projectId,
@@ -380,7 +380,7 @@ export const getProjectByShareUrl = asyncHandler(
           TableName: PROJECTS_TABLE,
           FilterExpression: "contains(share_url, :shareUrlPart)",
           ExpressionAttributeValues: marshall({
-            ":shareUrlPart": `/${username}/${projectName}`,
+            ":shareUrlPart": `/${username}/${decodeURI(projectName)}`,
           }),
         })
       );
