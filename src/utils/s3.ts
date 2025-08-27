@@ -6,29 +6,23 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { S3Location } from "../types";
 
-type ImageWithLocation = {
-  s3location: {
-    bucket: string;
-    key: string;
-  };
-  [key: string]: any;
-};
 
-export const getSignedImage = async (client: any, image: ImageWithLocation) => {
-  if (!image?.s3location?.bucket || !image?.s3location?.key) {
-    console.warn("Skipping image with invalid s3location:", image);
+export const getSignedImage = async (client: any, s3Location: S3Location) => {
+  if (!s3Location?.bucket || !s3Location?.key) {
+    console.warn("Skipping image with invalid s3location:", s3Location.key);
     return undefined;
   }
   try {
     const command: any = new GetObjectCommand({
-      Bucket: image.s3location.bucket,
-      Key: image.s3location.key,
+      Bucket: s3Location.bucket,
+      Key: s3Location.key,
     });
     const url = await getSignedUrl(client, command, { expiresIn: 3600 });
     return url;
   } catch (error) {
-    console.error("Error getting signed URL for image:", image, error);
+    console.error("Error getting signed URL for image:", s3Location.key, error);
     throw error;
   }
 };

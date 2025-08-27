@@ -8,6 +8,7 @@ import { PutItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb"
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
+import { AuthenticatedRequest } from "../middleware/auth"
 
 dotenv.config();
 
@@ -16,7 +17,7 @@ const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users"
 
 const EXPRESS_DROPBOX_CLIENT_ID = process.env.EXPRESS_DROPBOX_CLIENT_ID!
 const EXPRESS_DROPBOX_CLIENT_SECRET = process.env.EXPRESS_DROPBOX_CLIENT_SECRET!
-const DROPBOX_REDIRECT_URI =`${process.env.EXPRESS_PUBLIC_BACKEND_URL!}/api/dropbox/callback` // e.g. https://your-backend.com/api/dropbox/callback
+const DROPBOX_REDIRECT_URI = `${process.env.EXPRESS_PUBLIC_BACKEND_URL!}/api/dropbox/callback` // e.g. https://your-backend.com/api/dropbox/callback
 
 // Step 1: Generate Dropbox Auth URL
 export const getDropboxAuthUrl = asyncHandler(async (req: Request, res: Response) => {
@@ -37,7 +38,7 @@ export const handleDropboxCallback = asyncHandler(async (req: Request, res: Resp
   const code = req.query.code as string;
 
   const redirectUri = `${process.env.EXPRESS_PUBLIC_BACKEND_URL}/api/dropbox/callback`;
-  
+
   const tokenRes = await axios.post("https://api.dropbox.com/oauth2/token", new URLSearchParams({
     code,
     grant_type: "authorization_code",
@@ -58,7 +59,7 @@ export const handleDropboxCallback = asyncHandler(async (req: Request, res: Resp
 });
 
 // Step 2: Dropbox OAuth callback
-export const handleDropboxCallbackWithUpdateUser = asyncHandler(async (req: Request, res: Response) => {
+export const handleDropboxCallbackWithUpdateUser = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { code } = req.query
 
   if (!code) {
@@ -82,18 +83,12 @@ export const handleDropboxCallbackWithUpdateUser = asyncHandler(async (req: Requ
 
     const {
       access_token,
-      account_id,
       refresh_token,
-      expires_in,
-      token_type,
-      scope,
-      uid,
     } = tokenRes.data
 
     // You’ll need a strategy for identifying or linking this to a user
     // For now, assume you get a `user_id` from query or session
-    const { user_id } = req.query
-    if (!user_id) {
+    if (!req.user?.user_id) {
       return res.status(400).json({ error: "Missing user_id to link Dropbox" })
     }
 
@@ -101,11 +96,8 @@ export const handleDropboxCallbackWithUpdateUser = asyncHandler(async (req: Requ
     await client.send(
       new UpdateItemCommand({
         TableName: USERS_TABLE,
-        Key: marshall({ user_id }),
+        Key: marshall({ user_id: req.user?.user_id }),
         UpdateExpression: "SET dropbox = :dropbox",
-        ExpressionAttributeNames: {
-          // Remove expression attribute names since we're not using reserved words
-        },
         ExpressionAttributeValues: marshall({
           ":dropbox": {
             access_token,
@@ -115,7 +107,7 @@ export const handleDropboxCallbackWithUpdateUser = asyncHandler(async (req: Requ
       })
     )
 
-    res.redirect(`${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/onboarding/dropbox-success`)
+    res.redirect(`${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/`)
   } catch (error: any) {
     console.error("Dropbox token exchange failed:", error)
     res.status(500).json({ error: "Dropbox authentication failed" })

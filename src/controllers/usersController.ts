@@ -12,8 +12,8 @@ import {
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { updateUserSchema } from "../utils/validation/userValidation";
-import { UpdateUserInput, User } from "../types";
-import { AuthenticatedRequest } from "../middleware/auth";
+import { S3Location, UpdateUserInput, User } from "../types";
+import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
 import { copyItemImage, getSignedImage, saveItemImage } from "../utils/s3";
 import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
 
@@ -45,20 +45,16 @@ export const getUser = asyncHandler(
         return res.status(404).json({ error: "User not found" });
       }
 
-      const user = unmarshall(response.Item);
+      const user = unmarshall(response.Item) as User;
 
       // Get signed URL for avatar if it exists
-      if (user.avatar && user.avatar.key) {
-        user.avatar = await getSignedImage(s3Client, user.avatar.key);
+      if (user.avatar && (user.avatar as S3Location).key) {
+        user.avatar = await getSignedImage(s3Client, (user.avatar as S3Location));
       }
 
-      // Remove sensitive information
-      if (user.dropbox) {
-        delete user.dropbox.access_token;
-        delete user.dropbox.refresh_token;
-      }
+      const { email, dropbox, ...cleanUser } = user;
 
-      res.status(200).json({ user });
+      res.status(200).json({ user: req.user?.user_id === user.user_id ? user : cleanUser });
     } catch (error: any) {
       console.error("Get user error:", error);
       res.status(500).json({ error: error.message || "Failed to fetch user" });
@@ -152,7 +148,7 @@ export const updateUser = asyncHandler(
         const ext = avatar.key.split(".").pop();
 
 
-        const destination = await copyItemImage(s3Client, { bucket: TEMP_BUCKET, key: avatar.key }, { bucket: EXPRESS_S3_APP_BUCKET, key: key(ext!) })
+        const destination = await copyItemImage(s3Client, { bucket: avatar.bucket, key: avatar.key }, { bucket: EXPRESS_S3_APP_BUCKET, key: key(ext!) })
 
         // Delete temp file
         await s3Client.send(
@@ -274,13 +270,18 @@ export const deleteUser = asyncHandler(
 );
 
 export const getUserByUsername = asyncHandler(
-  async (req: Request, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { username } = req.params;
 
       if (!username) {
         return res.status(400).json({ error: "Username is required" });
       }
+
+      const authHeader = req.headers.authorization;
+
+      if (authHeader)
+        await getUserFromToken(authHeader.substring(7)).then((user) => req.user = user)
 
       const response = await client.send(
         new ScanCommand({
@@ -299,18 +300,13 @@ export const getUserByUsername = asyncHandler(
       const user = unmarshall(response.Items[0]);
 
       // Get signed URL for avatar if it exists
-      if (user.avatar && user.avatar.key) {
-        user.avatar = await getSignedImage(s3Client, user.avatar.key);
+      if (user.avatar && (user.avatar as S3Location).key) {
+        user.avatar = await getSignedImage(s3Client, (user.avatar as S3Location));
       }
 
-      // Remove sensitive information for public access
-      if (user.dropbox) {
-        delete user.dropbox.access_token;
-        delete user.dropbox.refresh_token;
-      }
-      delete user.email;
+      const { email, dropbox, ...cleanUser } = user;
 
-      res.status(200).json({ user });
+      res.status(200).json({ user: req.user?.user_id ? user : cleanUser });
     } catch (error: any) {
       console.error("Get user by username error:", error);
       res.status(500).json({ error: error.message || "Failed to fetch user" });
@@ -327,11 +323,7 @@ export const updateDropboxToken = asyncHandler(
     try {
       const { dropbox } = value;
       const userId = req.user?.user_id;
-
-      if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-
+      
       if (!dropbox?.access_token) {
         return res
           .status(400)

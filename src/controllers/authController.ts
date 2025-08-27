@@ -178,7 +178,7 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
     res.status(201).json({
       user: {
         ...userData,
-        avatar: userData.avatar && await getSignedImage(s3Client, { s3location: userData.avatar }),
+        avatar: userData.avatar && await getSignedImage(s3Client, userData.avatar),
       },
     });
   } catch (error: any) {
