@@ -86,7 +86,7 @@ export const getCurrentUser = asyncHandler(
 
       // Get signed URL for avatar if it exists
       if (user.avatar && user.avatar.key) {
-        user.avatar = await getSignedImage(s3Client, user.avatar.key);
+        user.avatar = await getSignedImage(s3Client, user.avatar);
       }
 
       res.status(200).json({ user });
@@ -215,7 +215,7 @@ export const updateUser = asyncHandler(
       if (updatedUser.avatar && updatedUser.avatar.key) {
         updatedUser.avatar = await getSignedImage(
           s3Client,
-          updatedUser.avatar.key
+          updatedUser.avatar
         );
       }
 

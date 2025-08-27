@@ -283,7 +283,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       if (userDetails.avatar) {
         userDetails.avatar = await getSignedImage(
           s3Client,
-          userDetails.avatar.key
+          userDetails.avatar
         );
       }
     }
