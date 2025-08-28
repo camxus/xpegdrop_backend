@@ -5,7 +5,9 @@
     - dynamodb:UpdateItem
     - dynamodb:Query
     - dynamodb:Scan
-  Resource: arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Users
+  Resource:
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Users
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Users/index/*
 
 - Effect: Allow
   Action:
@@ -14,7 +16,9 @@
     - dynamodb:UpdateItem
     - dynamodb:Query
     - dynamodb:Scan
-  Resource: arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Projects
+  Resource:
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Projects
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Projects/index/*
 
 - Effect: Allow
   Action:
@@ -24,7 +28,9 @@
     - dynamodb:DeleteItem
     - dynamodb:Query
     - dynamodb:Scan
-  Resource: arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Ratings
+  Resource:
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Ratings
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Ratings/index/*
 
 - Effect: Allow
   Action:
@@ -38,7 +44,7 @@
     - s3:GetObject
     - s3:PutObject
     - s3:DeleteObject
-  Resource: arn:aws:s3:::${env:EXPRESS_S3_TEMP_BUCKET}/*  
+  Resource: arn:aws:s3:::${env:EXPRESS_S3_TEMP_BUCKET}/*
 
 - Effect: Allow
   Action:

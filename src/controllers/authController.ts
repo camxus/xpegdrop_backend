@@ -361,13 +361,17 @@ export const forgotPassword = asyncHandler(
     const { error, value } = forgotPasswordSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
-    const { email } = value;
+    const { username } = value;
 
     try {
       await cognito.send(
         new ForgotPasswordCommand({
           ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID!,
-          Username: email,
+          Username: username,
+          SecretHash: crypto
+            .createHmac("SHA256", process.env.EXPRESS_COGNITO_SECRET!)
+            .update(username + process.env.EXPRESS_COGNITO_CLIENT_ID)
+            .digest("base64"),
         })
       );
 
@@ -383,15 +387,19 @@ export const confirmPassword = asyncHandler(
     const { error, value } = confirmPasswordSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
-    const { email, code, newPassword } = value;
+    const { username, code, newPassword } = value;
 
     try {
       await cognito.send(
         new ConfirmForgotPasswordCommand({
           ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID!,
-          Username: email,
+          Username: username,
           ConfirmationCode: code,
           Password: newPassword,
+          SecretHash: crypto
+            .createHmac("SHA256", process.env.EXPRESS_COGNITO_SECRET!)
+            .update(username + process.env.EXPRESS_COGNITO_CLIENT_ID)
+            .digest("base64"),
         })
       );
 

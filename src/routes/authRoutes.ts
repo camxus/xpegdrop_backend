@@ -19,7 +19,7 @@ router.post("/login", login);
 router.post("/refresh-token", refreshToken);
 router.post("/forgot-password", forgotPassword);
 router.post("/confirm-password", confirmPassword);
-router.post("/set-new-password", setNewPassword);
+// router.post("/set-new-password", setNewPassword);
 router.get("/presign-url", getPresignURL);
 router.get("/presign-post", getPresignPOST);
 
