@@ -163,10 +163,7 @@ export const getProjects = asyncHandler(
 
       const projects = response.Items?.map((item) => unmarshall(item)) || [];
 
-      res.status(200).json({
-        projects,
-        total: projects.length,
-      });
+      res.status(200).json(projects);
     } catch (error: any) {
       console.error("Get projects error:", error);
       res
