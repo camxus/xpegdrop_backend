@@ -407,7 +407,7 @@ export const getProjectByShareUrl = asyncHandler(
           TableName: PROJECTS_TABLE,
           FilterExpression: "share_url = :shareUrlPart",
           ExpressionAttributeValues: marshall({
-            ":shareUrlPart": `/${username}/${(projectName)}`,
+            ":shareUrlPart": `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${username}/${(projectName)}`,
           }),
         })
       );
