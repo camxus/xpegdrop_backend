@@ -99,7 +99,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     const existingProjectsResponse = await client.send(
       new ScanCommand({
         TableName: PROJECTS_TABLE,
-        FilterExpression: "equals(share_url, :shareUrlPart)",
+        FilterExpression: "share_url = :shareUrlPart",
         ExpressionAttributeValues: marshall({
           ":shareUrlPart": shareUrl,
         }),
@@ -255,7 +255,7 @@ export const updateProject = asyncHandler(
         const existingProjectsResponse = await client.send(
           new ScanCommand({
             TableName: PROJECTS_TABLE,
-            FilterExpression: "equals(share_url, :shareUrlPart)",
+            FilterExpression: "share_url = :shareUrlPart",
             ExpressionAttributeValues: marshall({
               ":shareUrlPart": newShareUrl,
             }),
@@ -405,7 +405,7 @@ export const getProjectByShareUrl = asyncHandler(
       const response = await client.send(
         new ScanCommand({
           TableName: PROJECTS_TABLE,
-          FilterExpression: "equals(share_url, :shareUrlPart)",
+          FilterExpression: "share_url = :shareUrlPart",
           ExpressionAttributeValues: marshall({
             ":shareUrlPart": `/${username}/${(projectName)}`,
           }),
