@@ -18,7 +18,6 @@ provider:
       allowedHeaders:
         - Content-Type
         - Authorization
-        - X-id-token
       allowedMethods:
         - GET
         - POST
