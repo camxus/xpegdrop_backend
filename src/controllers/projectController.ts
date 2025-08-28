@@ -377,6 +377,17 @@ export const deleteProject = asyncHandler(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
+      if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
+        const dropboxService = new DropboxService(req.user.dropbox.access_token);
+        try {
+          await dropboxService.deleteFolder(project.dropbox_folder_path);
+        } catch (err) {
+          await dropboxService.refreshDropboxToken(req.user)
+          await dropboxService.deleteFolder(project.dropbox_folder_path);
+          console.warn("Failed to delete Dropbox folder:", err);
+        }
+      }
+
       await client.send(
         new DeleteItemCommand({
           TableName: PROJECTS_TABLE,

@@ -206,4 +206,18 @@ export class DropboxService {
 
     return res.data.access_token as string;
   }
+
+  async deleteFolder(folderPath: string): Promise<void> {
+    try {
+      await this.dbx.filesDeleteV2({ path: folderPath });
+    } catch (err: any) {
+      console.error("Error deleting Dropbox folder:", err);
+
+      if (err?.error?.error_summary?.includes("path/not_found")) {
+        return;
+      }
+
+      throw { ...new Error("Failed to delete Dropbox folder"), status: err.status };
+    }
+  }
 }
