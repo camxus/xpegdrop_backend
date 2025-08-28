@@ -7,6 +7,7 @@ import {
   UpdateItemCommand,
   DeleteItemCommand,
   ScanCommand,
+  QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
@@ -97,9 +98,10 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
 
 
     const existingProjectsResponse = await client.send(
-      new ScanCommand({
+      new QueryCommand({
         TableName: PROJECTS_TABLE,
-        FilterExpression: "share_url = :shareUrlPart",
+        IndexName: "ShareUrlIndex", // 👈 use the GSI
+        KeyConditionExpression: "share_url = :shareUrlPart",
         ExpressionAttributeValues: marshall({
           ":shareUrlPart": shareUrl,
         }),
@@ -253,9 +255,10 @@ export const updateProject = asyncHandler(
         exprAttrValues[":share_url"] = newShareUrl;
 
         const existingProjectsResponse = await client.send(
-          new ScanCommand({
+          new QueryCommand({
             TableName: PROJECTS_TABLE,
-            FilterExpression: "share_url = :shareUrlPart",
+            IndexName: "ShareUrlIndex", // 👈 use the GSI
+            KeyConditionExpression: "share_url = :shareUrlPart",
             ExpressionAttributeValues: marshall({
               ":shareUrlPart": newShareUrl,
             }),
@@ -403,9 +406,10 @@ export const getProjectByShareUrl = asyncHandler(
       const emailParam = (req.query.email as string | undefined)?.toLowerCase();
 
       const response = await client.send(
-        new ScanCommand({
+        new QueryCommand({
           TableName: PROJECTS_TABLE,
-          FilterExpression: "share_url = :shareUrlPart",
+          IndexName: "ShareUrlIndex", // 👈 use the GSI
+          KeyConditionExpression: "share_url = :shareUrlPart",
           ExpressionAttributeValues: marshall({
             ":shareUrlPart": `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${username}/${(projectName)}`,
           }),

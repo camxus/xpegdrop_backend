@@ -157,7 +157,7 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
     const existing = await client.send(
       new QueryCommand({
         TableName: USERS_TABLE,
-        IndexName: "username-index", // GSI on `username`
+        IndexName: "UsernameIndex", // GSI on `username`
         KeyConditionExpression: "username = :u",
         ExpressionAttributeValues: marshall({ ":u": username }),
       })

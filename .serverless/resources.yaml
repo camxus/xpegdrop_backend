@@ -28,6 +28,56 @@ Resources:
               - x-amz-id-2
             MaxAge: 3000
 
+ProjectsTable:
+  Type: AWS::DynamoDB::Table
+  Properties:
+    TableName: Projects
+    AttributeDefinitions:
+      - AttributeName: project_id
+        AttributeType: S
+      - AttributeName: user_id
+        AttributeType: S
+      - AttributeName: share_url
+        AttributeType: S
+    KeySchema:
+      - AttributeName: project_id
+        KeyType: HASH
+    GlobalSecondaryIndexes:
+      - IndexName: ProjectIndex # by user_id
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+      - IndexName: ShareUrlIndex # by share_url
+        KeySchema:
+          - AttributeName: share_url
+            KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+    BillingMode: PAY_PER_REQUEST
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Users
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: username
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UsernameIndex
+          KeySchema:
+            - AttributeName: username
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
   RatingsTable:
     Type: AWS::DynamoDB::Table
     Properties:
