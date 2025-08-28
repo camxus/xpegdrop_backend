@@ -149,7 +149,7 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       first_name,
       last_name,
       bio: bio || null,
-      avatar,
+      avatar: avatar || null,
       dropbox,
       created_at: new Date().toISOString(),
     };
@@ -171,7 +171,9 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
     await client.send(
       new PutItemCommand({
         TableName: USERS_TABLE,
-        Item: marshall(userData),
+        Item: marshall(userData, {
+          removeUndefinedValues: true,
+        }),
       })
     );
 
