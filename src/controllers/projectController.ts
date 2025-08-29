@@ -92,7 +92,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     };
 
     // Build share URL
-    const shareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${req.user.username}/${encodeURI(name
+    const shareUrl = `/${req.user.username}/${encodeURI(name
       .toLowerCase()
       .replace(/\s+/g, "-"))}`;
 
@@ -139,7 +139,9 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       })
     );
 
-    res.status(202).json(projectData);
+    res.status(202).json({
+      ...projectData, share_url: process.env.EXPRESS_PUBLIC_FRONTEND_URL + projectData.share_url
+    });
   } catch (error: any) {
     console.error("Create project error:", error);
     res
@@ -245,9 +247,10 @@ export const updateProject = asyncHandler(
         exprAttrValues[":name"] = value.name;
 
         // Rebuild share_url
-        newShareUrl = `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${req.user?.username}/${encodeURI(value.name
+        newShareUrl = `/${req.user?.username}/${encodeURI(value.name
           .toLowerCase()
-          .replace(/\s+/g, "-"))}`;
+          .replace(/\s+/g, "-"))
+          }`;
         updateExpr.push("share_url = :share_url");
         exprAttrValues[":share_url"] = newShareUrl;
 
@@ -340,7 +343,7 @@ export const updateProject = asyncHandler(
 
       res.status(200).json({
         message: "Project updated successfully",
-        ...(newShareUrl ? { share_url: newShareUrl } : {}),
+        ...(newShareUrl ? { share_url: process.env.EXPRESS_PUBLIC_FRONTEND_URL + newShareUrl } : {}),
         ...(newDropboxPath ? { dropbox_folder_path: newDropboxPath } : {}),
       });
     } catch (error: any) {
@@ -419,7 +422,7 @@ export const getProjectByShareUrl = asyncHandler(
           IndexName: "ShareUrlIndex", // 👈 use the GSI
           KeyConditionExpression: "share_url = :shareUrlPart",
           ExpressionAttributeValues: marshall({
-            ":shareUrlPart": `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/${username}/${(projectName)}`,
+            ":shareUrlPart": `/${username}/${(projectName)}`,
           }),
         })
       );
