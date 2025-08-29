@@ -36,25 +36,42 @@ export const getDropboxAuthUrl = asyncHandler(async (req: Request, res: Response
 
 export const handleDropboxCallback = asyncHandler(async (req: Request, res: Response) => {
   const code = req.query.code as string;
-
   const redirectUri = `${process.env.EXPRESS_PUBLIC_BACKEND_URL}/api/dropbox/callback`;
 
-  const tokenRes = await axios.post("https://api.dropbox.com/oauth2/token", new URLSearchParams({
-    code,
-    grant_type: "authorization_code",
-    client_id: process.env.EXPRESS_DROPBOX_CLIENT_ID!,
-    client_secret: process.env.EXPRESS_DROPBOX_CLIENT_SECRET!,
-    redirect_uri: redirectUri,
-  }), {
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-  });
+  // Exchange code for access token
+  const tokenRes = await axios.post(
+    "https://api.dropbox.com/oauth2/token",
+    new URLSearchParams({
+      code,
+      grant_type: "authorization_code",
+      client_id: process.env.EXPRESS_DROPBOX_CLIENT_ID!,
+      client_secret: process.env.EXPRESS_DROPBOX_CLIENT_SECRET!,
+      redirect_uri: redirectUri,
+    }),
+    { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+  );
 
-  const { access_token, refresh_token, account_id, uid } = tokenRes.data;
+  const { access_token, refresh_token, account_id } = tokenRes.data;
 
-  // Optional: Save these in a temporary session store or JWT
-  const stateToken = jwt.sign({ access_token, refresh_token, account_id }, process.env.EXPRESS_JWT_SECRET!, { expiresIn: "10m" });
+  // Use DropboxService to get user info
+  const dropboxService = new DropboxService(access_token);
+  const userInfo = await dropboxService.getUserInfo();
 
-  // Redirect to /signup with a token param
+  // Create JWT with user info
+  const stateToken = jwt.sign(
+    {
+      access_token,
+      refresh_token,
+      account_id,
+      email: userInfo.email,
+      first_name: userInfo.first_name,
+      last_name: userInfo.last_name,
+    },
+    process.env.EXPRESS_JWT_SECRET!,
+    { expiresIn: "10m" }
+  );
+
+  // Redirect to frontend with token
   res.redirect(`${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/signup?dropbox_token=${stateToken}`);
 });
 

@@ -248,4 +248,20 @@ export class DropboxService {
       throw { ...new Error("Failed to fetch Dropbox storage info"), status: err.status };
     }
   }
+
+  async getUserInfo(): Promise<{ email: string; first_name: string; last_name: string; account_id: string }> {
+    try {
+      const res = await this.dbx.usersGetCurrentAccount();
+
+      const { email, name, account_id } = res.result;
+      const first_name = name.given_name;
+      const last_name = name.surname;
+
+      return { email, first_name, last_name, account_id };
+    } catch (err: any) {
+      console.error("Error fetching Dropbox user info:", err);
+      throw { ...new Error("Failed to fetch Dropbox user info"), status: err.status };
+    }
+  }
+
 }
