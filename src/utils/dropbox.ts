@@ -1,6 +1,6 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Dropbox } from "../../sdk/dropbox";
-import type { sharing, files } from "../../sdk/dropbox";
+import type { sharing, files, users } from "../../sdk/dropbox";
 import axios from "axios";
 import qs from "qs";
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
@@ -218,6 +218,34 @@ export class DropboxService {
       }
 
       throw { ...new Error("Failed to delete Dropbox folder"), status: err.status };
+    }
+  }
+
+  async getStorageSpaceUsage(): Promise<{ used: number; allocated: number; used_percent: number }> {
+    try {
+      const res = await this.dbx.usersGetSpaceUsage();
+
+      const used = res.result.used;
+      let allocated = 0;
+
+      const allocation = res.result.allocation as users.SpaceAllocation;
+
+      if (allocation[".tag"] === "individual") {
+        const individual = allocation as users.SpaceAllocationIndividual;
+        allocated = individual.allocated;
+      } else if (allocation[".tag"] === "team") {
+        const team = allocation as users.SpaceAllocationTeam;
+        allocated = team.allocated;
+      }
+
+      return {
+        used,
+        allocated,
+        used_percent: allocated > 0 ? (used / allocated) * 100 : 0,
+      };
+    } catch (err: any) {
+      console.error("Error getting Dropbox storage:", err);
+      throw { ...new Error("Failed to fetch Dropbox storage info"), status: err.status };
     }
   }
 }

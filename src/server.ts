@@ -21,6 +21,7 @@ app.use(
   cors({
     origin: [
       process.env.EXPRESS_PUBLIC_FRONTEND_URL || "",
+      "http://localhost:3000"
     ],
     credentials: true,
   })

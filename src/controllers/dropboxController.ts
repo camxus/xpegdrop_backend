@@ -3,8 +3,8 @@ import { asyncHandler } from "../middleware/asyncHandler"
 import axios from "axios"
 import { v4 as uuidv4 } from "uuid"
 import { DropboxService } from "../utils/dropbox"
-import { marshall } from "@aws-sdk/util-dynamodb"
-import { PutItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb"
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb"
+import { GetItemCommand, PutItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb"
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
@@ -113,3 +113,50 @@ export const handleDropboxCallbackWithUpdateUser = asyncHandler(async (req: Auth
     res.status(500).json({ error: "Dropbox authentication failed" })
   }
 })
+
+export const getDropboxStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user?.user_id) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  // Fetch user from DynamoDB
+  const userRes = await client.send(
+    new GetItemCommand({
+      TableName: USERS_TABLE,
+      Key: marshall({ user_id: req.user.user_id }),
+      ProjectionExpression: "dropbox",
+    })
+  );
+
+  if (!userRes.Item) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const user = unmarshall(userRes.Item);
+  if (!user.dropbox?.access_token) {
+    return res.status(400).json({ error: "Dropbox not linked" });
+  }
+
+  // Create Dropbox client
+  const dropbox = new DropboxService(user.dropbox.access_token);
+
+  try {
+    // Get space usage
+    const accountInfo = await dropbox.getStorageSpaceUsage();
+    /*
+      Example response:
+      {
+        used: 12345678,
+        allocation: { ".tag": "individual", allocated: 2147483648 }
+      }
+    */
+    res.json({storage: {
+      used: accountInfo.used,
+      allocated: accountInfo.allocated,
+      used_percent: accountInfo.used_percent,
+    }});
+  } catch (err: any) {
+    console.error("Failed to fetch Dropbox stats:", err);
+    res.status(500).json({ error: "Failed to fetch Dropbox stats" });
+  }
+});
