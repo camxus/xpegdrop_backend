@@ -52,7 +52,7 @@ export class DropboxService {
 
   async upload(files: File[], folderName: string): Promise<{ folder_path: string, share_link: string }> {
     try {
-      const folderPath = `/xpegdrop/${folderName}`;
+      const folderPath = `/fframess/${folderName}`;
 
       // Create folder
       if (!await this.folderExists(folderPath)) {

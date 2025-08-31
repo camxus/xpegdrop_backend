@@ -57,4 +57,4 @@ See `.env.example` for required configuration.
 - dropbox_folder_path (string, optional)
 - dropbox_shared_link (string, optional)
 - created_at (string)
-- updated_at (string, optional)# xpegdrop_backend
+- updated_at (string, optional)
