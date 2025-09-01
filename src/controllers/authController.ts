@@ -29,6 +29,7 @@ import {
   ForgotPasswordCommand,
   ConfirmForgotPasswordCommand,
   AdminDeleteUserCommand,
+  AdminUpdateUserAttributesCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { v4 as uuidv4 } from "uuid";
 import { copyItemImage, getSignedImage, saveItemImage } from "../utils/s3";
@@ -102,6 +103,20 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
         Username: username,
       })
     );
+
+    await cognito.send(
+      new AdminUpdateUserAttributesCommand({
+        UserPoolId: process.env.EXPRESS_COGNITO_USER_POOL_ID!,
+        Username: username,
+        UserAttributes: [
+          {
+            Name: "email_verified",
+            Value: "true",
+          },
+        ],
+      })
+    );
+
 
     createdUserSub = response.UserSub!;
     const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
