@@ -133,11 +133,7 @@ export const handleDropboxCallbackWithUpdateUser = asyncHandler(async (req: Auth
 
 export const getDropboxStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.user?.user_id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    if (!req.user.dropbox?.access_token) {
+    if (!req.user?.dropbox?.access_token) {
       return res.status(400).json({ error: "Dropbox not linked" });
     }
 

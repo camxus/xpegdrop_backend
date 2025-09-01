@@ -113,7 +113,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     const projectData = {
       project_id: projectId,
       user_id: req.user.user_id,
-      name: name,
+      name: existingProjects?.length ? `${name}-${existingProjects?.length}` : name,
       description: description || null,
       share_url: existingProjects?.length ? `${shareUrl}-${existingProjects?.length}` : shareUrl,
       is_public: false,
@@ -210,7 +210,7 @@ export const getProject = asyncHandler(
 
 export const updateProject = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { error, value } = updateProjectSchema.validate(req.body);
+    const { error, value: { name: initName, ...value } } = updateProjectSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
     const { projectId } = req.params;
@@ -238,36 +238,41 @@ export const updateProject = asyncHandler(
       const exprAttrValues: Record<string, any> = {};
       const exprAttrNames: Record<string, string> = {};
 
+      let name = initName
       let newShareUrl: string | undefined;
       let newDropboxPath: string | undefined;
 
-      if (value.name && value.name !== project.name) {
+      const existingProjectsResponse = await client.send(
+        new QueryCommand({
+          TableName: PROJECTS_TABLE,
+          IndexName: "ShareUrlIndex", // 👈 use the GSI
+          KeyConditionExpression: "share_url = :shareUrlPart",
+          ExpressionAttributeValues: marshall({
+            ":shareUrlPart": newShareUrl,
+          }),
+        })
+      );
+
+      const existingProjects = existingProjectsResponse.Items
+
+      name = existingProjects?.length ? `${name}-${existingProjects?.length}` : name
+      newShareUrl = existingProjects?.length ? `${newShareUrl}-${existingProjects?.length}` : newShareUrl
+
+
+      if (name && name !== project.name) {
         updateExpr.push("#n = :name");
         exprAttrNames["#n"] = "name";
-        exprAttrValues[":name"] = value.name;
+        exprAttrValues[":name"] = name;
 
         // Rebuild share_url
-        newShareUrl = `/${req.user?.username}/${encodeURI(value.name
+        newShareUrl = `/${req.user?.username}/${encodeURI(name
           .toLowerCase()
           .replace(/\s+/g, "-"))
           }`;
         updateExpr.push("share_url = :share_url");
         exprAttrValues[":share_url"] = newShareUrl;
 
-        const existingProjectsResponse = await client.send(
-          new QueryCommand({
-            TableName: PROJECTS_TABLE,
-            IndexName: "ShareUrlIndex", // 👈 use the GSI
-            KeyConditionExpression: "share_url = :shareUrlPart",
-            ExpressionAttributeValues: marshall({
-              ":shareUrlPart": newShareUrl,
-            }),
-          })
-        );
 
-        const existingProjects = existingProjectsResponse.Items
-
-        newShareUrl = existingProjects?.length ? `${newShareUrl}-${existingProjects?.length}` : newShareUrl
 
         // Move Dropbox folder if it exists
         if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
@@ -275,7 +280,7 @@ export const updateProject = asyncHandler(
 
           const currentPath = project.dropbox_folder_path;
           const parentFolder = currentPath.split("/").slice(0, -1).join("/") || "";
-          newDropboxPath = `${parentFolder}/${value.name}`;
+          newDropboxPath = `${parentFolder}/${name}`;
 
           const tryMoveFolder = async (targetPath: string) => {
             await dropboxService.moveFolder(currentPath, targetPath);
@@ -481,6 +486,12 @@ export const getProjectByShareUrl = asyncHandler(
         return res.status(400).json({ error: "User Dropbox tokens missing." });
       }
 
+      if (
+        !project.dropbox_folder_path
+      ) {
+        return res.status(409).json({ error: "Dropbox folder path missing." });
+      }
+
       let dropboxAccessToken = user.dropbox.access_token;
 
       const dropboxService = new DropboxService(dropboxAccessToken);
@@ -488,7 +499,7 @@ export const getProjectByShareUrl = asyncHandler(
       let dropboxFiles;
       try {
         dropboxFiles = await dropboxService.listFiles(
-          project.dropbox_folder_path || ""
+          project.dropbox_folder_path
         );
       } catch (err: any) {
         const isUnauthorized = err.status === 401;
