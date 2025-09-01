@@ -8,10 +8,7 @@ export const updateUserSchema = Joi.object({
     bucket: Joi.string().required(),
     key: Joi.string().required(),
   }).optional(),
-  dropbox: Joi.object({
-    access_token: Joi.string().optional(),
-    refresh_token: Joi.string().optional(),
-  }).optional(),
+  dropbox: Joi.string().optional()
 });
 
 export const updateDropboxTokenSchema = Joi.object({

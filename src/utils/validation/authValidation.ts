@@ -17,7 +17,7 @@ export const signInSchema = Joi.object({
 });
 
 export const forgotPasswordSchema = Joi.object({
-  username: Joi.string().required(),
+  email: Joi.string().required(),
 });
 
 export const confirmPasswordSchema = Joi.object({

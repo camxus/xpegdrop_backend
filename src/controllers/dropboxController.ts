@@ -72,7 +72,7 @@ export const handleDropboxCallback = asyncHandler(async (req: Request, res: Resp
   );
 
   // Redirect to frontend with token
-  res.redirect(`${process.env.EXPRESS_PUBLIC_FRONTEND_URL}/signup?dropbox_token=${stateToken}`);
+  res.redirect(`${process.env.EXPRESS_PUBLIC_FRONTEND_URL}?dropbox_token=${stateToken}`);
 });
 
 // Step 2: Dropbox OAuth callback
@@ -132,48 +132,55 @@ export const handleDropboxCallbackWithUpdateUser = asyncHandler(async (req: Auth
 })
 
 export const getDropboxStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  if (!req.user?.user_id) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  // Fetch user from DynamoDB
-  const userRes = await client.send(
-    new GetItemCommand({
-      TableName: USERS_TABLE,
-      Key: marshall({ user_id: req.user.user_id }),
-      ProjectionExpression: "dropbox",
-    })
-  );
-
-  if (!userRes.Item) {
-    return res.status(404).json({ error: "User not found" });
-  }
-
-  const user = unmarshall(userRes.Item);
-  if (!user.dropbox?.access_token) {
-    return res.status(400).json({ error: "Dropbox not linked" });
-  }
-
-  // Create Dropbox client
-  const dropbox = new DropboxService(user.dropbox.access_token);
-
   try {
-    // Get space usage
-    const accountInfo = await dropbox.getStorageSpaceUsage();
-    /*
-      Example response:
-      {
-        used: 12345678,
-        allocation: { ".tag": "individual", allocated: 2147483648 }
+    if (!req.user?.user_id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (!req.user.dropbox?.access_token) {
+      return res.status(400).json({ error: "Dropbox not linked" });
+    }
+
+    const dropbox = new DropboxService(req.user.dropbox.access_token);
+
+    let response;
+
+    try {
+      const accountInfo = await dropbox.getStorageSpaceUsage();
+
+      response = {
+        storage: {
+          used: accountInfo.used,
+          allocated: accountInfo.allocated,
+          used_percent: accountInfo.used_percent,
+        },
+      };
+    } catch (err: any) {
+      if (err.status === 401 && req.user.dropbox.refresh_token) {
+        try {
+          await dropbox.refreshDropboxToken(req.user);
+          const accountInfo = await dropbox.getStorageSpaceUsage();
+
+          response = {
+            storage: {
+              used: accountInfo.used,
+              allocated: accountInfo.allocated,
+              used_percent: accountInfo.used_percent,
+            },
+          };
+        } catch (refreshError) {
+          console.error("Dropbox token refresh failed", refreshError);
+          return res.status(500).json({ error: "Failed to refresh Dropbox token" });
+        }
+      } else {
+        console.error("Dropbox API error:", err);
+        return res.status(500).json({ error: "Failed to fetch Dropbox stats" });
       }
-    */
-    res.json({storage: {
-      used: accountInfo.used,
-      allocated: accountInfo.allocated,
-      used_percent: accountInfo.used_percent,
-    }});
-  } catch (err: any) {
-    console.error("Failed to fetch Dropbox stats:", err);
-    res.status(500).json({ error: "Failed to fetch Dropbox stats" });
+    }
+
+    return res.json(response);
+  } catch (error: any) {
+    console.error("Dropbox token exchange failed:", error);
+    return res.status(500).json({ error: "Dropbox authentication failed" });
   }
 });

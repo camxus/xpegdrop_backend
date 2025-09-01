@@ -363,16 +363,16 @@ export const forgotPassword = asyncHandler(
     const { error, value } = forgotPasswordSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
-    const { username } = value;
+    const { email } = value;
 
     try {
       await cognito.send(
         new ForgotPasswordCommand({
           ClientId: process.env.EXPRESS_COGNITO_CLIENT_ID!,
-          Username: username,
+          Username: email,
           SecretHash: crypto
             .createHmac("SHA256", process.env.EXPRESS_COGNITO_SECRET!)
-            .update(username + process.env.EXPRESS_COGNITO_CLIENT_ID)
+            .update(email + process.env.EXPRESS_COGNITO_CLIENT_ID)
             .digest("base64"),
         })
       );

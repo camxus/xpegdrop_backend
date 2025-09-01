@@ -102,10 +102,19 @@ export const updateUser = asyncHandler(
     const { error, value } = updateUserSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
-    const { first_name, last_name, bio, dropbox } =
+    const { first_name, last_name, bio } =
       value as UpdateUserInput;
 
-    let avatar = value.avatar
+    let dropbox =
+      typeof value.dropbox === "string"
+        ? JSON.parse((value.dropbox as string) || "{}")
+        : value.dropbox;
+
+    let avatar =
+      typeof value.avatar === "string"
+        ? JSON.parse((value.avatar as string) || "{}")
+        : value.avatar;
+
     const userId = req.user?.user_id;
 
     if (!userId) {
@@ -124,18 +133,6 @@ export const updateUser = asyncHandler(
       if (!existingUserResponse.Item) {
         return res.status(404).json({ error: "User not found" });
       }
-
-      const existingUser = unmarshall(existingUserResponse.Item);
-
-      // Prepare update data
-      const updateData: any = {
-        updated_at: new Date().toISOString(),
-      };
-
-      if (first_name !== undefined) updateData.first_name = first_name;
-      if (last_name !== undefined) updateData.last_name = last_name;
-      if (bio !== undefined) updateData.bio = bio;
-      if (dropbox !== undefined) updateData.dropbox = dropbox;
 
       // Handle avatar upload if provided
       const key = (ext: string) => `profile_images/${userId}.${ext}`;
@@ -173,6 +170,20 @@ export const updateUser = asyncHandler(
 
         avatar = await saveItemImage(s3Client, key(ext), req.file.buffer);
       }
+
+      // Prepare update data
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (first_name !== undefined) updateData.first_name = first_name;
+      if (last_name !== undefined) updateData.last_name = last_name;
+      if (bio !== undefined) updateData.bio = bio;
+      if (dropbox !== undefined) updateData.dropbox = dropbox;
+      if (avatar !== undefined) updateData.avatar = avatar;
+
+      console.log(updateData.dropbox, dropbox)
+
 
       // Build update expression
       const updateExpressionParts: string[] = [];
@@ -323,7 +334,7 @@ export const updateDropboxToken = asyncHandler(
     try {
       const { dropbox } = value;
       const userId = req.user?.user_id;
-      
+
       if (!dropbox?.access_token) {
         return res
           .status(400)
