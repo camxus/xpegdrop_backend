@@ -37,6 +37,7 @@
     - cognito-idp:AdminConfirmSignUp
     - cognito-idp:GetUser
     - cognito-idp:AdminGetUser
+    - cognito-idp:AdminDeleteUser
     - cognito-idp:AdminUpdateUserAttributes
   Resource: arn:aws:cognito-idp:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:userpool/${env:EXPRESS_COGNITO_USER_POOL_ID}
 
