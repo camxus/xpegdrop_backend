@@ -248,7 +248,7 @@ export const updateProject = asyncHandler(
           IndexName: "ShareUrlIndex", // 👈 use the GSI
           KeyConditionExpression: "share_url = :shareUrlPart",
           ExpressionAttributeValues: marshall({
-            ":shareUrlPart": newShareUrl,
+            ":shareUrlPart": project.share_url,
           }),
         })
       );
@@ -275,7 +275,7 @@ export const updateProject = asyncHandler(
 
 
         // Move Dropbox folder if it exists
-        if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
+        if (project.dropbox_folder_path && req.user?.dropbox?.access_token && name) {
           const dropboxService = new DropboxService(req.user.dropbox.access_token);
 
           const currentPath = project.dropbox_folder_path;
@@ -325,7 +325,7 @@ export const updateProject = asyncHandler(
         exprAttrValues[":can_download"] = value.can_download;
       }
 
-      if (value.approved_emails) {
+      if (value.approved_emails?.length) {
         updateExpr.push("approved_emails = :approved_emails");
         exprAttrValues[":approved_emails"] = value.approved_emails;
       }
@@ -342,7 +342,7 @@ export const updateProject = asyncHandler(
           ExpressionAttributeNames: Object.keys(exprAttrNames).length
             ? exprAttrNames
             : undefined,
-          ExpressionAttributeValues: marshall(exprAttrValues),
+          ExpressionAttributeValues: marshall(exprAttrValues, { removeUndefinedValues: true }),
         })
       );
 
