@@ -62,37 +62,10 @@ export class DropboxService {
         });
       }
 
-      // Function to upload a single file with retry on 429
-      const uploadFile = async (file: File) => {
-        const arrayBuffer = await file.arrayBuffer();
-        const contents = new Uint8Array(arrayBuffer);
-
-        let uploaded = false;
-        while (!uploaded) {
-          try {
-            await this.dbx.filesUpload({
-              path: `${folderPath}/${file.name}`,
-              contents,
-              mode: "add" as unknown as files.WriteMode,
-              autorename: false,
-            });
-            uploaded = true;
-          } catch (err: any) {
-            if (err.status === 429 && err?.error?.error?.retry_after) {
-              const waitMs = (err.error.error.retry_after + 1) * 1000;
-              console.warn(`Rate limit hit, retrying after ${waitMs} ms`);
-              await new Promise((r) => setTimeout(r, waitMs));
-            } else {
-              throw err;
-            }
-          }
-        }
-      };
-
       // Upload in batches of UPLOAD_BATCH_SIZE
       for (let i = 0; i < files.length; i += UPLOAD_BATCH_SIZE) {
         const batch = files.slice(i, i + UPLOAD_BATCH_SIZE);
-        await Promise.all(batch.map((file) => uploadFile(file)));
+        await Promise.all(batch.map(async (file) => this.uploadFile(folderPath, file.name, new Uint8Array(await file.arrayBuffer()))));
         // Optional small delay between batches to be extra safe
         await new Promise((r) => setTimeout(r, 500));
       }
@@ -263,5 +236,61 @@ export class DropboxService {
       throw { ...new Error("Failed to fetch Dropbox user info"), status: err.status };
     }
   }
+  async uploadFile(
+    folderPath: string,
+    fileName: string,
+    buffer: Buffer | Uint8Array,
+  ): Promise<{ path: string; id: string }> {
+    try {
+      const path = `${folderPath}/${fileName}`;
+      let uploaded = false;
+      let result: files.FileMetadata | null = null;
 
+      while (!uploaded) {
+        try {
+          const res = await this.dbx.filesUpload({
+            path,
+            contents: buffer,
+            mode: "add" as unknown as files.WriteMode,
+            autorename: false,
+            mute: false,
+          });
+          result = res.result;
+          uploaded = true;
+        } catch (err: any) {
+          if (err.status === 429 && err?.error?.error?.retry_after) {
+            const waitMs = (err.error.error.retry_after + 1) * 1000;
+            console.warn(`Rate limit hit, retrying after ${waitMs} ms`);
+            await new Promise((r) => setTimeout(r, waitMs));
+          } else {
+            console.error("Dropbox uploadFile error:", err);
+            throw { ...new Error("Failed to upload file to Dropbox"), status: err.status };
+          }
+        }
+      }
+
+      return {
+        path,
+        id: result!.id,
+      };
+    } catch (err: any) {
+      console.error("Dropbox uploadFile outer error:", err);
+      throw err;
+    }
+  }
+  
+  async deleteFile(folderPath: string, fileName: string): Promise<void> {
+    const path = `${folderPath}/${fileName}`;
+    try {
+      await this.dbx.filesDeleteV2({ path });
+    } catch (err: any) {
+      // If file not found, consider it already deleted
+      if (err?.error?.error_summary?.includes("path/not_found")) {
+        console.warn(`File not found in Dropbox, skipping delete: ${path}`);
+        return;
+      }
+      console.error("Dropbox deleteFile error:", err);
+      throw { ...new Error("Failed to delete file from Dropbox"), status: err.status };
+    }
+  }
 }

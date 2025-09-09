@@ -29,6 +29,7 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 const CREATE_PROJECT_QUEUE = "create-project-queue"
+const ADD_FILES_QUEUE = "add-files-queue"
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION_CODE });
 
@@ -44,8 +45,6 @@ export const uploadMiddleware: RequestHandler = upload.array("files", 50); // Al
 
 export const createProject = asyncHandler(async (req: any, res: Response) => {
   try {
-
-
     const { error, value } = createProjectSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
@@ -526,13 +525,120 @@ export const getProjectByShareUrl = asyncHandler(
       const images = dropboxFiles.filter((file: any) =>
         /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
       );
-
-      res.status(200).json({ project: publicProject, images });
+      res.status(200).json({ project: { ...publicProject, share_url: process.env.EXPRESS_PUBLIC_FRONTEND_URL || "" + publicProject.share_url }, images });
     } catch (error: any) {
       console.error("Get project by share URL error:", error);
       res
         .status(500)
         .json({ error: error.message || "Failed to fetch project" });
+    }
+  }
+);
+
+export const addProjectFiles = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { projectId } = req.params;
+
+    let fileLocations =
+      typeof req.body.file_locations === "string"
+        ? JSON.parse(req.body.file_locations as string || "[]")
+        : req.body.file_locations;
+
+
+    const files = req.files as Express.Multer.File[];
+
+    if ((!fileLocations || !fileLocations?.length) && !files) {
+      return res.status(400).json({ error: "No files provided" });
+    }
+
+    try {
+      // Fetch project
+      const getRes = await client.send(
+        new GetItemCommand({
+          TableName: PROJECTS_TABLE,
+          Key: marshall({ project_id: projectId }),
+        })
+      );
+
+      if (!getRes.Item) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const project = unmarshall(getRes.Item);
+
+      if (project.user_id !== req.user?.user_id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      if (!req.user?.dropbox?.access_token) {
+        return res.status(400).json({ error: "Dropbox access token missing" });
+      }
+
+      // Enqueue job for SQS worker to handle Dropbox upload
+      await sqs.send(
+        new SendMessageCommand({
+          QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${ADD_FILES_QUEUE}`,
+          MessageBody: JSON.stringify({
+            projectId,
+            user: { user_id: req.user.user_id, dropbox: req.user.dropbox },
+            files: fileLocations,
+          }),
+        })
+      );
+
+      res.status(202).json({
+        message: "Files queued for upload",
+        files: fileLocations,
+      });
+    } catch (error: any) {
+      console.error("Add project files error:", error);
+      res.status(500).json({ error: error.message || "Failed to add files" });
+    }
+  }
+);
+
+export const removeProjectFile = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { projectId, file_name } = req.params;
+
+    try {
+      // Fetch project
+      const getRes = await client.send(
+        new GetItemCommand({
+          TableName: PROJECTS_TABLE,
+          Key: marshall({ project_id: projectId }),
+        })
+      );
+
+      if (!getRes.Item) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const project = unmarshall(getRes.Item);
+
+      if (project.user_id !== req.user?.user_id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      if (!req.user?.dropbox?.access_token) {
+        return res.status(400).json({ error: "Dropbox access token missing" });
+      }
+
+      const dropboxService = new DropboxService(req.user.dropbox.access_token);
+
+      try {
+        await dropboxService.deleteFile(project.dropbox_folder_path, file_name);
+      } catch (err: any) {
+        console.error("Dropbox file delete failed", err);
+        return res.status(500).json({ error: "Failed to delete file" });
+      }
+
+      res.status(200).json({ message: "File removed successfully" });
+    } catch (error: any) {
+      console.error("Remove project file error:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to remove file" });
     }
   }
 );

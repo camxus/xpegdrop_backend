@@ -7,6 +7,8 @@ import {
   deleteProject,
   getProjectByShareUrl,
   uploadMiddleware,
+  addProjectFiles,
+  removeProjectFile,
 } from '../controllers/projectController';
 import { authenticate } from '../middleware/auth';
 
@@ -23,5 +25,7 @@ router.get('/:projectId', getProject);
 router.put('/:projectId', updateProject);
 router.delete('/:projectId', deleteProject);
 
+router.post("/:projectId/files", uploadMiddleware, addProjectFiles);
+router.delete("/:projectId/files/:file_name", removeProjectFile);
 
 export default router;
