@@ -33,7 +33,10 @@ export class DropboxService {
         return false; // Folder does not exist
       }
       console.error("Error checking Dropbox folder existence:", err);
-      throw { ...new Error("Failed to check Dropbox folder existence"), status: err.status };
+
+      const e = new Error("Failed to check Dropbox folder existence");
+      (e as any).status = err.status; // attach the status code
+      throw e; // throw a proper Error
     }
   }
 
@@ -46,7 +49,10 @@ export class DropboxService {
       });
     } catch (err: any) {
       console.error("Error moving Dropbox folder:", err);
-      throw { ...new Error("Failed to move Dropbox folder"), status: err.status };
+
+      const e = new Error("Failed to move Dropbox folder");
+      (e as any).status = err.status; // preserve the status code
+      throw e; // throw a real Error instance
     }
   }
 
@@ -83,7 +89,10 @@ export class DropboxService {
       return { folder_path: folderPath, share_link: sharedLinkResponse.result.url };
     } catch (error: any) {
       console.error("Dropbox upload error:", error);
-      throw { ...new Error("Failed to upload folder to Dropbox"), status: error.status };
+
+      const e = new Error("Failed to upload folder to Dropbox");
+      (e as any).status = error.status; // attach status
+      throw e; // throw a real Error
     }
   }
 
@@ -205,7 +214,9 @@ export class DropboxService {
         return;
       }
 
-      throw { ...new Error("Failed to delete Dropbox folder"), status: err.status };
+      const e = new Error("Failed to delete Dropbox folder");
+      (e as any).status = err.status; // preserve the status code
+      throw e; // throw a real Error instance
     }
   }
 
@@ -233,7 +244,10 @@ export class DropboxService {
       };
     } catch (err: any) {
       console.error("Error getting Dropbox storage:", err);
-      throw { ...new Error("Failed to fetch Dropbox storage info"), status: err.status };
+
+      const e = new Error("Failed to fetch Dropbox storage info");
+      (e as any).status = err.status; // preserve the status code
+      throw e; // throw a real Error instance
     }
   }
 
@@ -248,9 +262,13 @@ export class DropboxService {
       return { email, first_name, last_name, account_id };
     } catch (err: any) {
       console.error("Error fetching Dropbox user info:", err);
-      throw { ...new Error("Failed to fetch Dropbox user info"), status: err.status };
+
+      const e = new Error("Failed to fetch Dropbox user info");
+      (e as any).status = err.status; // preserve the status code
+      throw e; // throw a real Error instance    
     }
   }
+
   async uploadFile(
     folderPath: string,
     fileName: string,
@@ -279,7 +297,10 @@ export class DropboxService {
             await new Promise((r) => setTimeout(r, waitMs));
           } else {
             console.error("Dropbox uploadFile error:", err);
-            throw { ...new Error("Failed to upload file to Dropbox"), status: err.status };
+
+            const e = new Error("Failed to upload file to Dropbox");
+            (e as any).status = err.status; // preserve the status code
+            throw e; // throw a real Error instance
           }
         }
       }
@@ -305,7 +326,12 @@ export class DropboxService {
         return;
       }
       console.error("Dropbox deleteFile error:", err);
-      throw { ...new Error("Failed to delete file from Dropbox"), status: err.status };
+
+      console.error("Error deleting file from Dropbox:", err);
+
+      const e = new Error("Failed to delete file from Dropbox");
+      (e as any).status = err.status; // preserve the status code
+      throw e; // throw a real Error instance   
     }
   }
 }
