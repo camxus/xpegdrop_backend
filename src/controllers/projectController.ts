@@ -90,31 +90,36 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       file_locations: fileLocations || [],
     };
 
-    // Build share URL
-    const shareUrl = `/${req.user.username}/${encodeURI(name
-      .toLowerCase()
-      .replace(/\s+/g, "-"))}`;
+    // Build initial share URL
+    let shareUrl = `/${req.user.username}/${encodeURI(name.toLowerCase().replace(/\s+/g, "-"))}`;
+    let uniqueShareUrl = shareUrl;
+    let count = 0;
 
+    while (true) {
+      const existingProjectsResponse = await client.send(
+        new QueryCommand({
+          TableName: PROJECTS_TABLE,
+          IndexName: "ShareUrlIndex",
+          KeyConditionExpression: "share_url = :shareUrlPart",
+          ExpressionAttributeValues: marshall({ ":shareUrlPart": uniqueShareUrl }),
+        })
+      );
 
-    const existingProjectsResponse = await client.send(
-      new QueryCommand({
-        TableName: PROJECTS_TABLE,
-        IndexName: "ShareUrlIndex", // 👈 use the GSI
-        KeyConditionExpression: "share_url = :shareUrlPart",
-        ExpressionAttributeValues: marshall({
-          ":shareUrlPart": shareUrl,
-        }),
-      })
-    );
+      if (!existingProjectsResponse.Items || existingProjectsResponse.Items.length === 0) {
+        break; // unique URL found
+      }
 
-    const existingProjects = existingProjectsResponse.Items
+      count += 1;
+      uniqueShareUrl = `${shareUrl}-${count}`;
+    }
 
+    // Then use uniqueShareUrl in projectData
     const projectData = {
       project_id: projectId,
       user_id: req.user.user_id,
-      name: existingProjects?.length ? `${name}-${existingProjects?.length}` : name,
+      name: count > 0 ? `${name}-${count}` : name,
       description: description || null,
-      share_url: existingProjects?.length ? `${shareUrl}-${existingProjects?.length}` : shareUrl,
+      share_url: uniqueShareUrl,
       is_public: false,
       can_download: false,
       approved_emails: [],
@@ -238,25 +243,31 @@ export const updateProject = asyncHandler(
       const exprAttrNames: Record<string, string> = {};
 
       let name = initName
-      let newShareUrl: string | undefined;
       let newDropboxPath: string | undefined;
 
-      const existingProjectsResponse = await client.send(
-        new QueryCommand({
-          TableName: PROJECTS_TABLE,
-          IndexName: "ShareUrlIndex", // 👈 use the GSI
-          KeyConditionExpression: "share_url = :shareUrlPart",
-          ExpressionAttributeValues: marshall({
-            ":shareUrlPart": project.share_url,
-          }),
-        })
-      );
+      let newShareUrl = project.share_url;
+      let count = 0;
 
-      const existingProjects = existingProjectsResponse.Items
+      while (true) {
+        const existingProjectsResponse = await client.send(
+          new QueryCommand({
+            TableName: PROJECTS_TABLE,
+            IndexName: "ShareUrlIndex",
+            KeyConditionExpression: "share_url = :shareUrlPart",
+            ExpressionAttributeValues: marshall({ ":shareUrlPart": newShareUrl }),
+          })
+        );
 
-      name = existingProjects?.length ? `${name}-${existingProjects?.length}` : name
-      newShareUrl = existingProjects?.length ? `${newShareUrl}-${existingProjects?.length}` : newShareUrl
+        const existingProjects = existingProjectsResponse.Items;
 
+        if (!existingProjects || existingProjects.length === 0) {
+          break; // no collision, unique URL found
+        }
+
+        count += 1;
+        name = `${project.name}-${count}`;
+        newShareUrl = `${project.share_url}-${count}`;
+      }
 
       if (name && name !== project.name) {
         updateExpr.push("#n = :name");
