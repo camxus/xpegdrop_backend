@@ -20,6 +20,7 @@ cleanup:
 
 createProject:
   handler: src/sqs/workers/project/create.handler
+  timeout: 60
   events:
     - sqs:
         arn:
