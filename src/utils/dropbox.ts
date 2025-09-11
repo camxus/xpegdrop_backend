@@ -129,27 +129,47 @@ export class DropboxService {
           entry[".tag"] === "file" &&
           /\.(jpg|jpeg|png|gif|webp)$/i.test(entry.name)
       );
-
       const filesWithLinks = await Promise.all(
         imageFiles.map(async (file) => {
+          // Determine if we can generate a Dropbox thumbnail
+          const getThumbnailFormat = (filename: string): "jpeg" | "png" | null => {
+            const match = filename.match(/\.(\w+)$/);
+            if (!match) return null;
+
+            const ext = match[1].toLowerCase();
+            if (ext === "jpeg" || ext === "jpg") return "jpeg";
+            if (ext === "png") return "png";
+            return null; // unsupported
+          };
+
+          const format = getThumbnailFormat(file.name);
+
           // Full preview link
           const linkRes = await this.dbx.filesGetTemporaryLink({
             path: file.path_lower!,
           });
 
-          const thumbnailRes = await this.dbx.filesGetThumbnailV2({
-            resource: { ".tag": "path", path: file.path_lower! },
-            format: { ".tag": "jpeg" },
-            size: { ".tag": "w2048h1536" },
-          });
+          let thumbnail_url: string;
 
-          const thumbnailBase64 = Buffer.from(
-            (thumbnailRes.result as any).fileBinary,
-            "binary"
-          ).toString("base64");
+          if (format) {
+            // Supported format → generate thumbnail
+            const thumbnailRes = await this.dbx.filesGetThumbnailV2({
+              resource: { ".tag": "path", path: file.path_lower! },
+              format: { ".tag": format },
+              size: { ".tag": "w2048h1536" },
+            });
 
-          const meta = Buffer.from(`${file.name}`).toString("base64");
-          const thumbnail_url = `data:image/jpeg;name=${meta};base64,${thumbnailBase64}`;
+            const thumbnailBase64 = Buffer.from(
+              (thumbnailRes.result as any).fileBinary,
+              "binary"
+            ).toString("base64");
+
+            const meta = Buffer.from(file.name).toString("base64");
+            thumbnail_url = `data:image/${format};name=${meta};base64,${thumbnailBase64}`;
+          } else {
+            // Unsupported format → fallback to original file link
+            thumbnail_url = linkRes.result.link;
+          }
 
           return {
             name: file.name,

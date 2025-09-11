@@ -496,7 +496,6 @@ export const getProjectByShareUrl = asyncHandler(
         return res.status(400).json({ error: "User Dropbox tokens missing." });
       }
 
-      console.log(project)
       if (
         !project.dropbox_folder_path
       ) {
@@ -504,8 +503,6 @@ export const getProjectByShareUrl = asyncHandler(
       }
 
       let dropboxAccessToken = user.dropbox.access_token;
-
-      console.log(dropboxAccessToken)
 
       const dropboxService = new DropboxService(dropboxAccessToken);
 
