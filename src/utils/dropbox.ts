@@ -325,8 +325,7 @@ export class DropboxService {
         console.warn(`File not found in Dropbox, skipping delete: ${path}`);
         return;
       }
-      console.error("Dropbox deleteFile error:", err);
-
+      
       console.error("Error deleting file from Dropbox:", err);
 
       const e = new Error("Failed to delete file from Dropbox");
