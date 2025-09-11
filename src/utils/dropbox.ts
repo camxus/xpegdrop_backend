@@ -58,43 +58,48 @@ export class DropboxService {
 
   async upload(files: File[], folderName: string): Promise<{ folder_path: string, share_link: string }> {
     try {
-      const folderPath = `/fframess/${folderName}`;
+      let folderPath = `/fframess/${folderName}`;
+      let count = 0;
 
-      // Create folder
-      if (!await this.folderExists(folderPath)) {
-        await this.dbx.filesCreateFolderV2({
-          path: folderPath,
-          autorename: true,
-        });
+      // Try to create a unique folder if it already exists
+      while (await this.folderExists(folderPath)) {
+        count++;
+        folderPath = `/fframess/${folderName}-${count}`;
       }
+
+      // Create the folder
+      await this.dbx.filesCreateFolderV2({
+        path: folderPath,
+        autorename: false, // already ensured uniqueness
+      });
 
       // Upload in batches of UPLOAD_BATCH_SIZE
       for (let i = 0; i < files.length; i += UPLOAD_BATCH_SIZE) {
         const batch = files.slice(i, i + UPLOAD_BATCH_SIZE);
-        await Promise.all(batch.map(async (file) => this.uploadFile(folderPath, file.name, new Uint8Array(await file.arrayBuffer()))));
-        // Optional small delay between batches to be extra safe
-        await new Promise((r) => setTimeout(r, 500));
+        await Promise.all(batch.map(async (file) =>
+          this.uploadFile(folderPath, file.name, new Uint8Array(await file.arrayBuffer()))
+        ));
+        // Optional small delay between batches
+        await new Promise(r => setTimeout(r, 500));
       }
 
       // Create shared link
-      const sharedLinkResponse =
-        await this.dbx.sharingCreateSharedLinkWithSettings({
-          path: folderPath,
-          settings: {
-            requested_visibility:
-              "public" as unknown as sharing.RequestedVisibility,
-          },
-        });
+      const sharedLinkResponse = await this.dbx.sharingCreateSharedLinkWithSettings({
+        path: folderPath,
+        settings: {
+          requested_visibility: "public" as unknown as sharing.RequestedVisibility,
+        },
+      });
 
       return { folder_path: folderPath, share_link: sharedLinkResponse.result.url };
     } catch (error: any) {
       console.error("Dropbox upload error:", error);
-
       const e = new Error("Failed to upload folder to Dropbox");
-      (e as any).status = error.status; // attach status
-      throw e; // throw a real Error
+      (e as any).status = error.status;
+      throw e;
     }
   }
+
 
   async createSharedLink(path: string): Promise<string> {
     try {
@@ -325,7 +330,7 @@ export class DropboxService {
         console.warn(`File not found in Dropbox, skipping delete: ${path}`);
         return;
       }
-      
+
       console.error("Error deleting file from Dropbox:", err);
 
       const e = new Error("Failed to delete file from Dropbox");
