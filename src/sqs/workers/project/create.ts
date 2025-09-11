@@ -60,9 +60,11 @@ export const handler: SQSHandler = async (event) => {
           );
           console.log("uploaded")
         } else {
+          console.log("throw")
           throw err;
         }
       }
+      console.log("here")
 
       const { folder_path, share_link } = dropboxUploadResponse;
 
