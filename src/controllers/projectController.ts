@@ -435,7 +435,7 @@ export const getProjectByShareUrl = asyncHandler(
         return res.status(404).json({ error: "Project not found" });
       }
 
-      const project = unmarshall(response.Items[0]);
+      const project = unmarshall(response.Items[0]) as Project;
       const isPublic = project.is_public === true;
       const approvedEmails = (project.approved_emails || []).map((e: string) =>
         e.toLowerCase()
@@ -485,6 +485,7 @@ export const getProjectByShareUrl = asyncHandler(
         return res.status(400).json({ error: "User Dropbox tokens missing." });
       }
 
+      console.log(project)
       if (
         !project.dropbox_folder_path
       ) {
@@ -492,6 +493,8 @@ export const getProjectByShareUrl = asyncHandler(
       }
 
       let dropboxAccessToken = user.dropbox.access_token;
+
+      console.log(dropboxAccessToken)
 
       const dropboxService = new DropboxService(dropboxAccessToken);
 

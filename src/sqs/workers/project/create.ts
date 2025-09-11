@@ -17,8 +17,10 @@ export const handler: SQSHandler = async (event) => {
     const { project_id, user, project, files, file_locations } = data;
     const { dropbox } = user;
 
+    const dropboxService = new DropboxService(dropbox.access_token);
+    let folderPath: string | null = null;
+
     try {
-      const dropboxService = new DropboxService(dropbox.access_token);
 
       // Get files (rebuild buffers if needed)
       const getFiles = async () => {
@@ -62,12 +64,14 @@ export const handler: SQSHandler = async (event) => {
         }
       }
 
-      const { folder_path, share_link } = dropboxUploadResponse;
+
+      folderPath = dropboxUploadResponse.folder_path
+      const shareLink = dropboxUploadResponse.share_link
 
       // Save to Dynamo
       const projectData = {
-        dropbox_folder_path: folder_path,
-        dropbox_shared_link: share_link,
+        dropbox_folder_path: folderPath,
+        dropbox_shared_link: shareLink,
         status: "created",
       };
 
@@ -95,6 +99,29 @@ export const handler: SQSHandler = async (event) => {
     } catch (err) {
       console.error("❌ Project worker failed:", err);
       // optionally: retry, dead-letter, or cleanup
+      // Mark project as failed
+      try {
+        const params = new UpdateItemCommand({
+          TableName: PROJECTS_TABLE,
+          Key: marshall({ project_id }),
+          UpdateExpression: "SET #st = :status REMOVE dropbox_shared_link",
+          ExpressionAttributeNames: { "#st": "status" },
+          ExpressionAttributeValues: marshall({ ":status": "failed" }),
+        });
+        await client.send(params);
+      } catch (updateErr) {
+        console.error("❌ Failed to update project status to failed:", updateErr);
+      }
+
+      // Cleanup Dropbox folder if it was partially created
+      if (folderPath) {
+        try {
+          await dropboxService.deleteFolder(folderPath);
+          console.log(`🗑️ Deleted Dropbox folder ${folderPath} after failure.`);
+        } catch (cleanupErr) {
+          console.error("❌ Failed to delete Dropbox folder after failure:", cleanupErr);
+        }
+      }
     }
   }
 };
