@@ -53,18 +53,14 @@ export const handler: SQSHandler = async (event) => {
       } catch (err: any) {
         if (err?.status === 401 && dropbox.refresh_token) {
           await dropboxService.refreshDropboxToken(user);
-          console.log("refreshed")
           dropboxUploadResponse = await dropboxService.upload(
             dropboxFiles,
             project.name
           );
-          console.log("uploaded")
         } else {
-          console.log("throw")
           throw err;
         }
       }
-      console.log("here")
 
       const { folder_path, share_link } = dropboxUploadResponse;
 

@@ -201,7 +201,6 @@ export class DropboxService {
         })
       );
 
-      console.log("Refresh sucess")
       return accessToken;
     } catch (err: any) {
       console.error("Error refreshing Dropbox token:", err.response?.data || err.message || err);
@@ -290,7 +289,7 @@ export class DropboxService {
             path,
             contents: buffer,
             mode: "add" as unknown as files.WriteMode,
-            autorename: false,
+            autorename: true,
             mute: false,
           });
           result = res.result;
