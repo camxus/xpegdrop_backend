@@ -104,9 +104,11 @@ export const handler: SQSHandler = async (event) => {
         const params = new UpdateItemCommand({
           TableName: PROJECTS_TABLE,
           Key: marshall({ project_id }),
-          UpdateExpression: "SET #st = :status REMOVE dropbox_shared_link",
+          UpdateExpression: "SET #st = :status, share_url = :empty ",
           ExpressionAttributeNames: { "#st": "status" },
-          ExpressionAttributeValues: marshall({ ":status": "failed" }),
+          ExpressionAttributeValues: marshall({
+            ":status": "failed", ":empty": ""
+          }),
         });
         await client.send(params);
       } catch (updateErr) {
