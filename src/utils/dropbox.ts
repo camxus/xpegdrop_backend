@@ -152,32 +152,46 @@ export class DropboxService {
   }
 
   async refreshDropboxToken(user: User) {
-    const res = await axios.post(
-      "https://api.dropbox.com/oauth2/token",
-      qs.stringify({
-        refresh_token: user.dropbox?.refresh_token,
-        grant_type: "refresh_token",
-        client_id: process.env.EXPRESS_DROPBOX_CLIENT_ID!,
-        client_secret: process.env.EXPRESS_DROPBOX_CLIENT_SECRET!,
-      }),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-    );
+    try {
+      if (!user.dropbox?.refresh_token) throw new Error("No refresh token for user");
+      if (!process.env.EXPRESS_DROPBOX_CLIENT_ID || !process.env.EXPRESS_DROPBOX_CLIENT_SECRET) {
+        throw new Error("Dropbox client ID or secret missing");
+      }
+      if (!USERS_TABLE) throw new Error("USERS_TABLE not set");
 
-    this.dbx = new Dropbox({
-      accessToken: res.data.access_token,
-      fetch: fetch,
-    });
+      const res = await axios.post(
+        "https://api.dropbox.com/oauth2/token",
+        qs.stringify({
+          refresh_token: user.dropbox.refresh_token,
+          grant_type: "refresh_token",
+          client_id: process.env.EXPRESS_DROPBOX_CLIENT_ID,
+          client_secret: process.env.EXPRESS_DROPBOX_CLIENT_SECRET,
+        }),
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+      );
 
-    await client.send(
-      new UpdateItemCommand({
-        TableName: USERS_TABLE,
-        Key: marshall({ user_id: user.user_id }),
-        UpdateExpression: "SET dropbox.access_token = :t",
-        ExpressionAttributeValues: marshall({ ":t": res.data.access_token }),
-      })
-    );
+      const accessToken = res.data.access_token;
+      if (!accessToken) throw new Error("Failed to obtain new Dropbox access token");
 
-    return res.data.access_token as string;
+      this.dbx = new Dropbox({
+        accessToken,
+        fetch,
+      });
+
+      await client.send(
+        new UpdateItemCommand({
+          TableName: USERS_TABLE,
+          Key: marshall({ user_id: user.user_id }),
+          UpdateExpression: "SET dropbox.access_token = :t",
+          ExpressionAttributeValues: marshall({ ":t": accessToken }),
+        })
+      );
+
+      return accessToken;
+    } catch (err: any) {
+      console.error("Error refreshing Dropbox token:", err.response?.data || err.message || err);
+      throw err; // re-throw so the caller knows it failed
+    }
   }
 
   async deleteFolder(folderPath: string): Promise<void> {
@@ -278,7 +292,7 @@ export class DropboxService {
       throw err;
     }
   }
-  
+
   async deleteFile(folderPath: string, fileName: string): Promise<void> {
     const path = `${folderPath}/${fileName}`;
     try {
