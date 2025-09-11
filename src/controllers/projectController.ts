@@ -392,6 +392,8 @@ export const deleteProject = asyncHandler(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
+      console.log(project.dropbox_folder_path)
+      
       if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
         const dropboxService = new DropboxService(req.user.dropbox.access_token);
         try {

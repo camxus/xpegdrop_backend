@@ -28,6 +28,9 @@
 - httpApi:
     path: /api/dropbox/callback
     method: GET
+- httpApi:
+    path: /api/dropbox/stats
+    method: GET
 
 # Projects routes
 - httpApi:
