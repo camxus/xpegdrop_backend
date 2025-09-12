@@ -168,7 +168,7 @@ export const updateUser = asyncHandler(
         }
 
 
-        avatar = await saveItemImage(s3Client, key(ext), req.file.buffer);
+        avatar = await saveItemImage(s3Client, undefined, key(ext), req.file.buffer);
       }
 
       // Prepare update data

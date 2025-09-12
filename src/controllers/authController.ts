@@ -152,7 +152,7 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
       const ext = mimeExtension(mimeType); // e.g., 'png'
       if (!ext) throw new Error("Unsupported avatar file type.");
 
-      avatar = await saveItemImage(s3Client, key(ext), req.file.buffer);
+      avatar = await saveItemImage(s3Client, undefined, key(ext), req.file.buffer);
       uploadedAvatarKey = avatar.key;
     }
 

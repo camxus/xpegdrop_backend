@@ -1,4 +1,3 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Dropbox } from "../../sdk/dropbox";
 import type { sharing, files, users } from "../../sdk/dropbox";
 import axios from "axios";
@@ -120,7 +119,7 @@ export class DropboxService {
 
   async listFiles(
     folderPath: string
-  ): Promise<{ name: string; preview_url: string; thumbnail_url: string }[]> {
+  ): Promise<{ name: string; preview_url: string; thumbnail_url: string, thumbnail: any }[]> {
     try {
       const response = await this.dbx.filesListFolder({ path: folderPath });
 
@@ -149,7 +148,8 @@ export class DropboxService {
             path: file.path_lower!,
           });
 
-          let thumbnail_url: string;
+          let thumbnailUrl: string = "";
+          let thumbnail = Buffer.from("");
 
           if (format) {
             // Supported format → generate thumbnail
@@ -159,22 +159,15 @@ export class DropboxService {
               size: { ".tag": "w2048h1536" },
             });
 
-            const thumbnailBase64 = Buffer.from(
-              (thumbnailRes.result as any).fileBinary,
-              "binary"
-            ).toString("base64");
-
-            const meta = Buffer.from(file.name).toString("base64");
-            thumbnail_url = `data:image/${format};name=${meta};base64,${thumbnailBase64}`;
-          } else {
-            // Unsupported format → fallback to original file link
-            thumbnail_url = linkRes.result.link;
+            // Convert Dropbox binary to Buffer
+            thumbnail = Buffer.from((thumbnailRes.result as any).fileBinary, "binary");
           }
 
           return {
             name: file.name,
             preview_url: linkRes.result.link,
-            thumbnail_url,
+            thumbnail_url: thumbnailUrl,
+            thumbnail,
           };
         })
       );

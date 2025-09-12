@@ -28,6 +28,20 @@ Resources:
               - x-amz-id-2
             MaxAge: 3000
 
+  UploadsBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref UploadsBucket
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Sid: PublicReadForUploads
+              Effect: Allow
+              Principal: "*"  # allow public read
+              Action:
+                - s3:GetObject
+              Resource: !Sub arn:aws:s3:::${UploadsBucket}/* 
+
   ProjectsTable:
     Type: AWS::DynamoDB::Table
     Properties:

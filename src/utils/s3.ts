@@ -2,6 +2,7 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -53,23 +54,23 @@ export const getItemImages = async (
 
 export const saveItemImage = async (
   client: S3Client,
+  bucket: string = process.env.EXPRESS_S3_APP_BUCKET!,
   key: string,
-  buffer: any
+  buffer: any,
+  isPublic = true
 ): Promise<{ bucket: string; key: string }> => {
-  const bucketName = process.env.EXPRESS_S3_APP_BUCKET!
-
   await client.send(
     new PutObjectCommand({
-      Bucket: bucketName,
+      Bucket: bucket,
       Key: key,
       Body: buffer,
       ContentEncoding: "base64",
       ContentType: "image/jpeg", // You can customize based on actual image type
-      ACL: "public-read", // Optional, adjust based on your needs
+      ACL: isPublic ? "public-read" : undefined, // Optional, adjust based on your needs
     })
   );
 
-  return { bucket: bucketName, key };
+  return { bucket, key };
 };
 
 export const copyItemImage = async (
@@ -162,5 +163,24 @@ export const getItemFile = async (
   } catch (error) {
     console.error("Error getting S3 file:", location, error);
     throw error;
+  }
+};
+
+export const s3ObjectExists = async (
+  client: S3Client,
+  bucket: string,
+  key: string
+): Promise<boolean> => {
+  try {
+    await client.send(
+      new HeadObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      })
+    );
+    return true; // exists
+  } catch (err: any) {
+    if (err.name === "NotFound") return false; // doesn't exist
+    throw err; // some other error
   }
 };

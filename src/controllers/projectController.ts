@@ -21,11 +21,13 @@ import { DropboxService } from "../utils/dropbox";
 import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
 import { Request, RequestHandler, Response } from "express";
 import multer from "multer";
-import { deleteItemImage, getItemFile } from "../utils/s3";
+import { deleteItemImage, getItemFile, getSignedImage, s3ObjectExists, saveItemImage } from "../utils/s3";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
+const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
+
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 const CREATE_PROJECT_QUEUE = "create-project-queue"
@@ -393,7 +395,7 @@ export const deleteProject = asyncHandler(
       }
 
       console.log(project.dropbox_folder_path)
-      
+
       if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
         const dropboxService = new DropboxService(req.user.dropbox.access_token);
         try {
@@ -513,6 +515,25 @@ export const getProjectByShareUrl = asyncHandler(
         dropboxFiles = await dropboxService.listFiles(
           project.dropbox_folder_path
         );
+
+        const resolvedFiles = await Promise.all(
+          dropboxFiles.map(async (file) => {
+            const s3Key = `thumbnails/${username}/${projectName}/${file.name}`;
+            const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
+
+            const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
+
+            const s3Location = exists
+              ? { bucket: bucketName, key: s3Key }
+              : await saveItemImage(s3Client, bucketName, s3Key, file.thumbnail, false);
+
+            const thumbnailUrl = await getSignedImage(s3Client, s3Location) as string;
+
+            return { ...file, thumbnail_url: thumbnailUrl };
+          })
+        );
+
+        dropboxFiles = resolvedFiles
       } catch (err: any) {
         const isUnauthorized = err.status === 401;
 
@@ -523,6 +544,25 @@ export const getProjectByShareUrl = asyncHandler(
             dropboxFiles = await dropboxService.listFiles(
               project.dropbox_folder_path || ""
             );
+
+            const resolvedFiles = await Promise.all(
+              dropboxFiles.map(async (file) => {
+                const s3Key = `thumbnails/${username}/${projectName}/${file.name}`;
+                const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
+
+                const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
+
+                const s3Location = exists
+                  ? { bucket: bucketName, key: s3Key }
+                  : await saveItemImage(s3Client, bucketName, s3Key, file.thumbnail);
+
+                const thumbnailUrl = await getSignedImage(s3Client, s3Location) as string;
+
+                return { ...file, thumbnail_url: thumbnailUrl };
+              })
+            );
+
+            dropboxFiles = resolvedFiles
           } catch (refreshError) {
             console.error("Dropbox token refresh failed", refreshError);
             throw refreshError
