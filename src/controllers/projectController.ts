@@ -512,6 +512,7 @@ export const getProjectByShareUrl = asyncHandler(
 
       let dropboxFiles;
       try {
+        console.log("getting files")
         dropboxFiles = await dropboxService.listFiles(
           project.dropbox_folder_path
         );
@@ -532,6 +533,8 @@ export const getProjectByShareUrl = asyncHandler(
             return { ...file, thumbnail_url: thumbnailUrl };
           })
         );
+
+        console.log("resolved files", JSON.stringify(resolvedFiles))
 
         dropboxFiles = resolvedFiles
       } catch (err: any) {
@@ -578,6 +581,7 @@ export const getProjectByShareUrl = asyncHandler(
       const images = dropboxFiles.filter((file: any) =>
         /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
       );
+      console.log("images")
       res.status(200).json({ project: { ...publicProject, share_url: (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + publicProject.share_url }, images });
     } catch (error: any) {
       console.error("Get project by share URL error:", error);
