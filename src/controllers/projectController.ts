@@ -250,44 +250,44 @@ export const updateProject = asyncHandler(
       let newShareUrl = project.share_url;
       let count = 0;
 
-      while (true) {
-        const existingProjectsResponse = await client.send(
-          new QueryCommand({
-            TableName: PROJECTS_TABLE,
-            IndexName: "ShareUrlIndex",
-            KeyConditionExpression: "share_url = :shareUrlPart",
-            ExpressionAttributeValues: marshall({ ":shareUrlPart": newShareUrl }),
-          })
-        );
-
-        const existingProjects = existingProjectsResponse.Items;
-
-        if (!existingProjects || existingProjects.length === 0) {
-          break; // no collision, unique URL found
-        }
-
-        count += 1;
-        name = `${project.name}-${count}`;
-        newShareUrl = `${project.share_url}-${count}`;
-      }
-
       if (name && name !== project.name) {
         updateExpr.push("#n = :name");
         exprAttrNames["#n"] = "name";
         exprAttrValues[":name"] = name;
 
-        // Rebuild share_url
+
+        while (true) {
+          const existingProjectsResponse = await client.send(
+            new QueryCommand({
+              TableName: PROJECTS_TABLE,
+              IndexName: "ShareUrlIndex",
+              KeyConditionExpression: "share_url = :shareUrlPart",
+              ExpressionAttributeValues: marshall({ ":shareUrlPart": newShareUrl }),
+            })
+          );
+
+          const existingProjects = existingProjectsResponse.Items;
+
+          if (!existingProjects || existingProjects.length === 0) {
+            break; // no collision, unique URL found
+          }
+
+          count += 1;
+        }
+
+        name = `${project.name}-${count}`;
         newShareUrl = `/${req.user?.username}/${encodeURI(name
           .toLowerCase()
           .replace(/\s+/g, "-"))
           }`;
+
         updateExpr.push("share_url = :share_url");
         exprAttrValues[":share_url"] = newShareUrl;
 
 
 
         // Move Dropbox folder if it exists
-        if (project.dropbox_folder_path && req.user?.dropbox?.access_token && name) {
+        if (project.dropbox_folder_path && req.user?.dropbox?.access_token && name !== project.name) {
           const dropboxService = new DropboxService(req.user.dropbox.access_token);
 
           const currentPath = project.dropbox_folder_path;
@@ -360,8 +360,8 @@ export const updateProject = asyncHandler(
 
       res.status(200).json({
         message: "Project updated successfully",
-        ...(newShareUrl ? { share_url: process.env.EXPRESS_PUBLIC_FRONTEND_URL + newShareUrl } : {}),
-        ...(newDropboxPath ? { dropbox_folder_path: newDropboxPath } : {}),
+        ...(newShareUrl !== project.share_url ? { share_url: process.env.EXPRESS_PUBLIC_FRONTEND_URL + newShareUrl } : {}),
+        ...(newDropboxPath !== project.dropbox_folder_path ? { dropbox_folder_path: newDropboxPath } : {}),
       });
     } catch (error: any) {
       console.error("Update project error:", error);
@@ -544,10 +544,12 @@ export const getProjectByShareUrl = asyncHandler(
         dropboxFiles = await resolveFiles(dropboxFiles);
       } catch (err: any) {
         const isUnauthorized = err.status === 401;
+        console.log("is unauthorized", err.status)
 
         if (isUnauthorized && user.dropbox.refresh_token) {
           try {
             await dropboxService.refreshDropboxToken(user as User);
+            console.log("refreshed token")
             dropboxFiles = await dropboxService.listFiles(
               project.dropbox_folder_path
             );
