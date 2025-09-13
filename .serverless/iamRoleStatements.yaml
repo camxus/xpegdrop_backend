@@ -14,7 +14,7 @@
     - dynamodb:GetItem
     - dynamodb:PutItem
     - dynamodb:UpdateItem
-    - dynamodb:DeleteItem 
+    - dynamodb:DeleteItem
     - dynamodb:Query
     - dynamodb:Scan
   Resource:
@@ -43,11 +43,15 @@
   Resource: arn:aws:cognito-idp:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:userpool/${env:EXPRESS_COGNITO_USER_POOL_ID}
 
 - Effect: Allow
-  Action: "*"
+  Action:
+    - s3:GetObject
+    - s3:PutObject
+    - s3:DeleteObject
   Resource: arn:aws:s3:::${env:EXPRESS_S3_TEMP_BUCKET}/*
 
+# permission for HeadObjectCommand
 - Effect: Allow
-  Action: 
+  Action:
     - s3:ListBucket
   Resource: arn:aws:s3:::${env:EXPRESS_S3_TEMP_BUCKET}
 

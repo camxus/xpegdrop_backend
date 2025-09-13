@@ -394,8 +394,6 @@ export const deleteProject = asyncHandler(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      console.log(project.dropbox_folder_path)
-
       if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
         const dropboxService = new DropboxService(req.user.dropbox.access_token);
         try {
@@ -518,10 +516,7 @@ export const getProjectByShareUrl = asyncHandler(
             const s3Key = `thumbnails/${username}/${projectName}/${file.name}`;
             const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
 
-
-            console.log("checking project", bucketName)
-const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
-console.log("project exists")
+            const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
             const s3Location = exists
               ? { bucket: bucketName, key: s3Key }
               : await saveItemImage(
@@ -532,17 +527,13 @@ console.log("project exists")
                 false
               );
 
-              console.log("image saved")
-              
-
             const thumbnailUrl = (await getSignedImage(
               s3Client,
               s3Location
             )) as string;
 
-            console.log("signed image")
             delete file.thumbnail; // prevent Lambda 413
-            console.log("thumbnail deleted")
+
             return { ...file, thumbnail_url: thumbnailUrl };
           })
         );
@@ -552,12 +543,10 @@ console.log("project exists")
         dropboxFiles = await resolveFiles(dropboxFiles);
       } catch (err: any) {
         const isUnauthorized = err.status === 401;
-        console.log("is unauthorized", err.status)
 
         if (isUnauthorized && user.dropbox.refresh_token) {
           try {
             await dropboxService.refreshDropboxToken(user as User);
-            console.log("refreshed token")
             dropboxFiles = await dropboxService.listFiles(
               project.dropbox_folder_path
             );

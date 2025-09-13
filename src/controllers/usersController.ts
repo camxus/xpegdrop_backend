@@ -182,8 +182,6 @@ export const updateUser = asyncHandler(
       if (dropbox !== undefined) updateData.dropbox = dropbox;
       if (avatar !== undefined) updateData.avatar = avatar;
 
-      console.log(updateData.dropbox, dropbox)
-
 
       // Build update expression
       const updateExpressionParts: string[] = [];
