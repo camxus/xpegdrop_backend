@@ -43,12 +43,7 @@
   Resource: arn:aws:cognito-idp:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:userpool/${env:EXPRESS_COGNITO_USER_POOL_ID}
 
 - Effect: Allow
-  Action:
-    - s3:GetObject
-    - s3:PutObject
-    - s3:HeadObject
-    - s3:ListBucket
-    - s3:DeleteObject
+  Action: "*"
   Resource: arn:aws:s3:::${env:EXPRESS_S3_TEMP_BUCKET}/*
 
 - Effect: Allow
