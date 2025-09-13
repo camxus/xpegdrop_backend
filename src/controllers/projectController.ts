@@ -204,7 +204,7 @@ export const getProject = asyncHandler(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      res.status(200).json({ project });
+      res.status(200).json(project);
     } catch (error: any) {
       console.error("Get project error:", error);
       res
@@ -255,14 +255,19 @@ export const updateProject = asyncHandler(
         exprAttrNames["#n"] = "name";
         exprAttrValues[":name"] = name;
 
-
         while (true) {
+          name = `${name}${!!count ? "-" + count : ""}`;
+          newShareUrl = `/${req.user?.username}/${encodeURI(name
+            .toLowerCase()
+            .replace(/\s+/g, "-"))
+            }`;
+
           const existingProjectsResponse = await client.send(
             new QueryCommand({
               TableName: PROJECTS_TABLE,
               IndexName: "ShareUrlIndex",
               KeyConditionExpression: "share_url = :shareUrlPart",
-              ExpressionAttributeValues: marshall({ ":shareUrlPart": newShareUrl }),
+              ExpressionAttributeValues: marshall({ ":shareUrlPart": `${newShareUrl}${!!count ? "-" + count : ""}` }),
             })
           );
 
@@ -274,12 +279,6 @@ export const updateProject = asyncHandler(
 
           count += 1;
         }
-
-        name = `${project.name}-${count}`;
-        newShareUrl = `/${req.user?.username}/${encodeURI(name
-          .toLowerCase()
-          .replace(/\s+/g, "-"))
-          }`;
 
         updateExpr.push("share_url = :share_url");
         exprAttrValues[":share_url"] = newShareUrl;
