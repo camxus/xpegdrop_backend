@@ -518,7 +518,9 @@ export const getProjectByShareUrl = asyncHandler(
             const s3Key = `thumbnails/${username}/${projectName}/${file.name}`;
             const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
 
-            const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
+
+const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
+console.log("project exists")
             const s3Location = exists
               ? { bucket: bucketName, key: s3Key }
               : await saveItemImage(
@@ -529,12 +531,17 @@ export const getProjectByShareUrl = asyncHandler(
                 false
               );
 
+              console.log("image saved")
+              
+
             const thumbnailUrl = (await getSignedImage(
               s3Client,
               s3Location
             )) as string;
 
+            console.log("signed image")
             delete file.thumbnail; // prevent Lambda 413
+            console.log("thumbnail deleted")
             return { ...file, thumbnail_url: thumbnailUrl };
           })
         );
