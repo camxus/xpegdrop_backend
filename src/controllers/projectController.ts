@@ -511,65 +511,50 @@ export const getProjectByShareUrl = asyncHandler(
       const dropboxService = new DropboxService(dropboxAccessToken);
 
       let dropboxFiles;
-      try {
-        dropboxFiles = await dropboxService.listFiles(
-          project.dropbox_folder_path
-        );
 
-        const resolvedFiles = await Promise.all(
-          dropboxFiles.map(async (file) => {
+      const resolveFiles = async (files: any[]) =>
+        Promise.all(
+          files.map(async (file) => {
             const s3Key = `thumbnails/${username}/${projectName}/${file.name}`;
             const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
 
             const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
-
             const s3Location = exists
               ? { bucket: bucketName, key: s3Key }
-              : await saveItemImage(s3Client, bucketName, s3Key, file.thumbnail, false);
+              : await saveItemImage(
+                s3Client,
+                bucketName,
+                s3Key,
+                file.thumbnail,
+                false
+              );
 
-            const thumbnailUrl = await getSignedImage(s3Client, s3Location) as string;
+            const thumbnailUrl = (await getSignedImage(
+              s3Client,
+              s3Location
+            )) as string;
 
-            delete file.thumbnail //413 for lambda
-
+            delete file.thumbnail; // prevent Lambda 413
             return { ...file, thumbnail_url: thumbnailUrl };
           })
         );
 
-        dropboxFiles = resolvedFiles
+      try {
+        dropboxFiles = await dropboxService.listFiles(project.dropbox_folder_path);
+        dropboxFiles = await resolveFiles(dropboxFiles);
       } catch (err: any) {
         const isUnauthorized = err.status === 401;
 
-        // If token expired and refresh token available
         if (isUnauthorized && user.dropbox.refresh_token) {
           try {
             await dropboxService.refreshDropboxToken(user as User);
             dropboxFiles = await dropboxService.listFiles(
-              project.dropbox_folder_path || ""
+              project.dropbox_folder_path
             );
-
-            const resolvedFiles = await Promise.all(
-              dropboxFiles.map(async (file) => {
-                const s3Key = `thumbnails/${username}/${projectName}/${file.name}`;
-                const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
-
-                const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
-
-                const s3Location = exists
-                  ? { bucket: bucketName, key: s3Key }
-                  : await saveItemImage(s3Client, bucketName, s3Key, file.thumbnail);
-
-                const thumbnailUrl = await getSignedImage(s3Client, s3Location) as string;
-
-                delete file.thumbnail //413 for lambda
-
-                return { ...file, thumbnail_url: thumbnailUrl };
-              })
-            );
-
-            dropboxFiles = resolvedFiles
+            dropboxFiles = await resolveFiles(dropboxFiles);
           } catch (refreshError) {
             console.error("Dropbox token refresh failed", refreshError);
-            throw refreshError
+            throw refreshError;
           }
         } else {
           console.error("Dropbox access failed", err);
