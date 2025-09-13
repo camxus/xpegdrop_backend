@@ -181,6 +181,7 @@ export const s3ObjectExists = async (
     return true; // exists
   } catch (err: any) {
     if (err.name === "NotFound") return false; // doesn't exist
+    console.error("Error checking S3 file exists:", err);
     throw err; // some other error
   }
 };

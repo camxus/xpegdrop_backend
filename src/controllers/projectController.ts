@@ -519,7 +519,7 @@ export const getProjectByShareUrl = asyncHandler(
             const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
 
 
-            console.log("checking project", bucketName, JSON.stringify(process.env))
+            console.log("checking project", bucketName)
 const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
 console.log("project exists")
             const s3Location = exists
