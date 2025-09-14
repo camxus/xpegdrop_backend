@@ -204,7 +204,7 @@ export const getProject = asyncHandler(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      res.status(200).json(project);
+      res.status(200).json({ ...project, share_url: project.share_url && process.env.EXPRESS_PUBLIC_FRONTEND_URL + project.share_url });
     } catch (error: any) {
       console.error("Get project error:", error);
       res
