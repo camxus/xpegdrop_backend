@@ -476,6 +476,11 @@ export const getProjectByShareUrl = asyncHandler(
         updated_at: project.updated_at,
       };
 
+      if (req.user?.user_id === project.user_id) {
+        publicProject.approved_emails = project.approved_emails
+        publicProject.is_public = project.is_public
+      }
+
       const userResponse = await client.send(
         new GetItemCommand({
           TableName: USERS_TABLE,
