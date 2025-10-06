@@ -35,6 +35,18 @@
 
 - Effect: Allow
   Action:
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    - dynamodb:UpdateItem
+    - dynamodb:DeleteItem
+    - dynamodb:Query
+    - dynamodb:Scan
+  Resource:
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Notes
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Notes/index/*
+
+- Effect: Allow
+  Action:
     - cognito-idp:AdminConfirmSignUp
     - cognito-idp:GetUser
     - cognito-idp:AdminGetUser

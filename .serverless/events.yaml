@@ -97,6 +97,21 @@
     method: DELETE
     authorizer: jwtAuthorizer
 
+# Notes routes
+- httpApi:
+    path: /api/notes/{projectId}
+    method: GET
+- httpApi:
+    path: /api/notes
+    method: POST
+- httpApi:
+    path: /api/notes/{ratingId}
+    method: PUT
+- httpApi:
+    path: /api/notes/{ratingId}
+    method: DELETE
+    authorizer: jwtAuthorizer
+
 
 # Health check
 - httpApi:

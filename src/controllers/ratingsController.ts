@@ -35,9 +35,7 @@ export const createRating = asyncHandler(
     }
 
     const authHeader = req.headers.authorization;
-
-    if (authHeader)
-      await getUserFromToken(authHeader.substring(7)).then((user) => req.user = user)
+    if (authHeader) await getUserFromToken(authHeader.substring(7)).then((user) => req.user = user)
 
     const rating: Rating = {
       rating_id: uuidv4(),

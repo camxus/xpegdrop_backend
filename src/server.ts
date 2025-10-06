@@ -6,6 +6,7 @@ import projectRoutes from "./routes/projectRoutes";
 import dropboxRoutes from "./routes/dropboxRoutes";
 import usersRoutes from "./routes/usersRoutes";
 import ratingsRoutes from "./routes/ratingsRoutes";
+import notesRoutes from "./routes/notesRoutes";
 import { APIGatewayProxyEvent } from "aws-lambda";
 import { errorHandler } from "./middleware/errorMiddleware";
 import serverless from "serverless-http";
@@ -36,6 +37,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/dropbox", dropboxRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/ratings", ratingsRoutes);
+app.use("/api/notes", notesRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
