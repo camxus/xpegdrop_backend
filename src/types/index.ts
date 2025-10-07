@@ -77,6 +77,7 @@ export interface UpdateUserInput {
 export interface Note {
   note_id: string;
   project_id: string;
+  image_name: string;
   user_id: string;
   content: string;
   created_at: string;

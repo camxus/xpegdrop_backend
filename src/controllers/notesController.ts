@@ -5,14 +5,20 @@ import { v4 as uuidv4 } from "uuid";
 import { Request, Response } from "express";
 import { authenticate, AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
 import { Note } from "../types";
+import { createNoteSchema, updateNoteSchema } from "../utils/validation/noteValidation";
+import { validationErrorHandler } from "../middleware/errorMiddleware";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const NOTES_TABLE = process.env.DYNAMODB_NOTES_TABLE || "Notes";
 
 // CREATE Note
 export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { project_id, content } = req.body;
+  // Validate request body
+  const { error, value } = createNoteSchema.validate(req.body);
+  if (error) throw validationErrorHandler(error);
 
+  const { project_id, image_name, content } = value;
+  
   if (!project_id || !content) {
     return res.status(400).json({ error: "project_id and content are required" });
   }
@@ -23,6 +29,7 @@ export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Re
   const note: Note = {
     note_id: uuidv4(),
     project_id,
+    image_name,
     user_id: req.user?.user_id || `anonymous-${uuidv4()}`,
     content,
     created_at: new Date().toISOString(),
@@ -68,7 +75,12 @@ export const getNotes = asyncHandler(async (req: Request, res: Response) => {
 // UPDATE Note
 export const updateNote = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { noteId } = req.params;
-  const { content } = req.body;
+
+  // Validate request body
+  const { error, value } = updateNoteSchema.validate(req.body);
+  if (error) throw validationErrorHandler(error);
+
+  const { content } = value;
 
   const authHeader = req.headers.authorization;
   if (authHeader) await getUserFromToken(authHeader.substring(7)).then(user => req.user = user);
