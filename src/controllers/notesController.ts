@@ -18,7 +18,7 @@ export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Re
   if (error) throw validationErrorHandler(error);
 
   const { project_id, image_name, content } = value;
-  
+
   if (!project_id || !content) {
     return res.status(400).json({ error: "project_id and content are required" });
   }
@@ -50,21 +50,27 @@ export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Re
 });
 
 // GET Notes by projectId
-export const getNotes = asyncHandler(async (req: Request, res: Response) => {
-  const { projectId } = req.params;
 
-  if (!projectId) return res.status(400).json({ error: "projectId is required" });
+export const getNotes = asyncHandler(async (req: Request, res: Response) => {
+  const { projectId, imageName } = req.params;
+
+  if (!projectId || !imageName) {
+    return res.status(400).json({ error: "projectId and imageName are required" });
+  }
 
   try {
     const response = await client.send(
       new ScanCommand({
         TableName: NOTES_TABLE,
-        FilterExpression: "project_id = :projectId",
-        ExpressionAttributeValues: marshall({ ":projectId": projectId }),
+        FilterExpression: "project_id = :projectId AND image_name = :imageName",
+        ExpressionAttributeValues: marshall({
+          ":projectId": projectId,
+          ":imageName": imageName,
+        }),
       })
     );
 
-    const notes = response.Items?.map(item => unmarshall(item)) || [];
+    const notes = response.Items?.map((item) => unmarshall(item)) || [];
     res.status(200).json({ notes, total: notes.length });
   } catch (error: any) {
     console.error("Get notes error:", error);
