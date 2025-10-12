@@ -108,8 +108,8 @@ Resources:
           AttributeType: S
         - AttributeName: project_id
           AttributeType: S
-        - AttributeName: image_name
-          AttributeType: S
+        # - AttributeName: image_name
+        #   AttributeType: S
         - AttributeName: user_id
           AttributeType: S
       KeySchema:
