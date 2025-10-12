@@ -26,6 +26,6 @@ router.put('/:projectId', updateProject);
 router.delete('/:projectId', deleteProject);
 
 router.post("/:projectId/files", uploadMiddleware, addProjectFiles);
-router.delete("/:projectId/files/:file_name", removeProjectFile);
+router.delete("/:projectId/files/:fileName", removeProjectFile);
 
 export default router;

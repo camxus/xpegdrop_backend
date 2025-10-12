@@ -645,7 +645,7 @@ export const addProjectFiles = asyncHandler(
 
 export const removeProjectFile = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { projectId, file_name } = req.params;
+    const { projectId, fileName } = req.params;
 
     try {
       // Fetch project
@@ -673,7 +673,7 @@ export const removeProjectFile = asyncHandler(
       const dropboxService = new DropboxService(req.user.dropbox.access_token);
 
       try {
-        await dropboxService.deleteFile(project.dropbox_folder_path, file_name);
+        await dropboxService.deleteFile(project.dropbox_folder_path, fileName);
       } catch (err: any) {
         console.error("Dropbox file delete failed", err);
         return res.status(500).json({ error: "Failed to delete file" });

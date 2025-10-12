@@ -56,6 +56,14 @@
     path: /api/projects/{projectId}
     method: DELETE
     authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/projects/{projectId}/files
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/projects/{projectId}/files/{fileName}
+    method: DELETE
+    authorizer: jwtAuthorizer
 
 # Users routes
 - httpApi:
