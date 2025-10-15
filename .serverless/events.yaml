@@ -70,11 +70,10 @@
     path: /api/users/username/{username}
     method: GET
 - httpApi:
-    path: /api/users
-    method: GET
-    authorizer: jwtAuthorizer
-- httpApi:
     path: /api/users/{userId}
+    method: GET
+- httpApi:
+    path: /api/users
     method: GET
     authorizer: jwtAuthorizer
 - httpApi:

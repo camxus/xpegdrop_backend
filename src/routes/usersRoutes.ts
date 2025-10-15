@@ -14,11 +14,11 @@ const router: Router = express.Router();
 
 // Public routes
 router.get('/username/:username', getUserByUsername);
+router.get('/:userId', getUser);
 
 // Protected routes (require authentication)
 router.use(authenticate);
 router.get('/', getCurrentUser);
-router.get('/:userId', getUser);
 router.put('/', uploadAvatar, updateUser);
 router.delete('/', deleteUser);
 router.put('/dropbox-token', updateDropboxToken);
