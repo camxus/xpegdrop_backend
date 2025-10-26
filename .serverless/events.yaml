@@ -109,6 +109,9 @@
     path: /api/notes/{projectId}
     method: GET
 - httpApi:
+    path: /api/notes/{projectId}/{imageName}
+    method: GET
+- httpApi:
     path: /api/notes
     method: POST
 - httpApi:
