@@ -472,7 +472,7 @@ export const getProjectByShareUrl = asyncHandler(
       let user = unmarshall(userResponse.Item) as User
 
       // Handle private project email validation
-      if (emailParam && !isPublic && req.user?.username !== username) {
+      if (!emailParam && !isPublic && req.user?.username !== username) {
         return res.status(400).json({
           error: "EMAIL_REQUIRED",
           user: {
@@ -480,9 +480,6 @@ export const getProjectByShareUrl = asyncHandler(
             last_name: user.last_name,
             username: user.username
           },
-          project: {
-            name: project.name,
-          }
         });
       }
 
