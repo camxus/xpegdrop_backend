@@ -315,7 +315,7 @@ export const getUserByUsername = asyncHandler(
 
       const { email, dropbox, ...cleanUser } = user;
 
-      res.status(200).json({ user: req.user?.user_id ? user : cleanUser });
+      res.status(200).json(req.user?.user_id ? user : cleanUser);
     } catch (error: any) {
       console.error("Get user by username error:", error);
       res.status(500).json({ error: error.message || "Failed to fetch user" });
