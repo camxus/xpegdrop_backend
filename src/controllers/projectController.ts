@@ -453,34 +453,15 @@ export const getProjectByShareUrl = asyncHandler(
         e.toLowerCase()
       );
 
-      if (emailParam && !approvedEmails.includes(emailParam)) {
-        return res.status(403).json({ error: "EMAIL_INVALID" });
-      }
-
-      const userResponse = await client.send(
-        new GetItemCommand({
-          TableName: USERS_TABLE,
-          Key: marshall({ user_id: project.user_id }),
-        })
-      );
-
-      if (!userResponse.Item) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-
-      let user = unmarshall(userResponse.Item) as User
-
       // Handle private project email validation
-      if (!emailParam && !isPublic && req.user?.username !== username) {
-        return res.status(400).json({
-          error: "EMAIL_REQUIRED",
-          user: {
-            first_name: user.first_name,
-            last_name: user.last_name,
-            username: user.username
-          },
-        });
+      if (!isPublic && req.user?.username !== username) {
+        if (!emailParam) {
+          return res.status(400).json({ error: "EMAIL_REQUIRED" });
+        }
+
+        if (!approvedEmails.includes(emailParam)) {
+          return res.status(403).json({ error: "EMAIL_INVALID" });
+        }
       }
 
       const publicProject: Partial<Project> = {
@@ -500,10 +481,23 @@ export const getProjectByShareUrl = asyncHandler(
         publicProject.is_public = project.is_public
       }
 
+      const userResponse = await client.send(
+        new GetItemCommand({
+          TableName: USERS_TABLE,
+          Key: marshall({ user_id: project.user_id }),
+        })
+      );
+
+      if (!userResponse.Item) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      let user = unmarshall(userResponse.Item);
+
+
       if (
         !user.dropbox ||
-        !user.dropbox.access_token ||
-        !user.dropbox.refresh_token
+        (!user.dropbox.access_token && !user.dropbox.refresh_token)
       ) {
         return res.status(400).json({ error: "User Dropbox tokens missing." });
       }
