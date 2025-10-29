@@ -5,6 +5,7 @@ import qs from "qs";
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { User } from "../types";
+import { createThumbnailFromURL } from "./file-utils";
 
 const UPLOAD_BATCH_SIZE = 3;
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
@@ -126,19 +127,24 @@ export class DropboxService {
       const imageFiles = response.result.entries.filter(
         (entry) =>
           entry[".tag"] === "file" &&
-          /\.(jpg|jpeg|png|gif|webp)$/i.test(entry.name)
+          /\.(jpg|jpeg|png|gif|webp|tiff|heic|heif)$/i.test(entry.name)
       );
       const filesWithLinks = await Promise.all(
         imageFiles.map(async (file) => {
-          // Determine if we can generate a Dropbox thumbnail
           const getThumbnailFormat = (filename: string): "jpeg" | "png" | null => {
             const match = filename.match(/\.(\w+)$/);
             if (!match) return null;
 
             const ext = match[1].toLowerCase();
-            if (ext === "jpeg" || ext === "jpg") return "jpeg";
+
+            // Dropbox only supports JPEG or PNG thumbnails, so we map others to those
+            if (["jpg", "jpeg", "tiff", "tif", "gif", "webp", "bmp", "ppm"].includes(ext)) {
+              return "jpeg";
+            }
+
             if (ext === "png") return "png";
-            return null; // unsupported
+
+            return null;
           };
 
           const format = getThumbnailFormat(file.name);
@@ -151,7 +157,9 @@ export class DropboxService {
           let thumbnailUrl: string = "";
           let thumbnail = Buffer.from("");
 
-          if (format) {
+          if (linkRes.result.metadata.size > 20 * 1024 * 1024) {
+            thumbnail = await createThumbnailFromURL(linkRes.result.link)
+          } else if (format) {
             // Supported format → generate thumbnail
             const thumbnailRes = await this.dbx.filesGetThumbnailV2({
               resource: { ".tag": "path", path: file.path_lower! },

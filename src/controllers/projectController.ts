@@ -568,7 +568,7 @@ export const getProjectByShareUrl = asyncHandler(
       }
 
       const images = dropboxFiles.filter((file: any) =>
-        /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name)
+        /\.(jpg|jpeg|png|gif|webp|tiff|heic|heif)$/i.test(file.name)
       );
 
       res.status(200).json({ project: { ...publicProject, share_url: (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + publicProject.share_url }, images });
