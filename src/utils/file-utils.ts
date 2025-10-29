@@ -1,8 +1,7 @@
 import fetch from "node-fetch";
 import gm from "gm";
-import { promisify } from "util";
 
-export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer> {
+export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer<ArrayBuffer>> {
   const allowedTypes = [
     "image/jpeg", "image/png", "image/gif",
     "image/webp", "image/tiff", "image/heic", "image/heif",
@@ -17,13 +16,13 @@ export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer> 
 
   const inputBuffer = Buffer.from(await res.arrayBuffer());
 
-  // gm uses callback style, wrap it in a Promise
-  const toBufferAsync = promisify(gm(inputBuffer).resize(1024, 768, ">").toBuffer.bind(gm(inputBuffer)));
-
-  try {
-    const outputBuffer = await toBufferAsync("JPEG");
-    return outputBuffer;
-  } catch (err) {
-    throw new Error(`Failed to process image with gm: ${err}`);
-  }
+  return new Promise((resolve, reject) => {
+    gm(inputBuffer)
+      .resize(1024, 768, ">") // fit inside 1024x768 without enlarging
+      .quality(80) // JPEG quality
+      .toBuffer("JPEG", (err, buffer) => {
+        if (err) return reject(err);
+        resolve(buffer as Buffer<ArrayBuffer>);
+      });
+  })
 }
