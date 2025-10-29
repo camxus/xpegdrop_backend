@@ -46,7 +46,8 @@
     "serverless-plugin-typescript": "^2.1.5",
     "sharp": "^0.34.3",
     "ts-node": "^10.9.2",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "@img/sharp-linux-x64": "^0.34.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -54,7 +55,5 @@
     "@types/mime-types": "^3.0.1",
     "@types/multer": "^2.0.0"
   },
-  "optionalDependencies": {
-    "@img/sharp-linux-x64": "^0.34.4"
-  }
+  "optionalDependencies": {}
 }
