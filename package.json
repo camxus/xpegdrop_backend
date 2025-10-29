@@ -29,6 +29,7 @@
     "dotenv": "^17.2.1",
     "dropbox": "^10.34.0",
     "express": "^5.1.0",
+    "gm": "^1.25.1",
     "helmet": "^8.1.0",
     "joi": "^18.0.0",
     "jsonwebtoken": "^9.0.2",
@@ -44,13 +45,12 @@
     "serverless-http": "^3.2.0",
     "serverless-offline": "^14.4.0",
     "serverless-plugin-typescript": "^2.1.5",
-    "sharp": "^0.34.3",
     "ts-node": "^10.9.2",
-    "uuid": "^11.1.0",
-    "@img/sharp-linux-x64": "^0.34.4"
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
+    "@types/gm": "^1.25.4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mime-types": "^3.0.1",
     "@types/multer": "^2.0.0"

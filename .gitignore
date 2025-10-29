@@ -7,5 +7,3 @@ coverage/
 .nyc_output/
 
 *env.yaml
-
-yarn.lock
