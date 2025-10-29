@@ -7,10 +7,13 @@ export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer> 
   ];
 
   // Dynamically import the right sharp binary
-  const sharp =
-    process.platform === "linux"
-      ? (await import("@img/sharp-linux-x64")).default
-      : (await import("sharp")).default;
+  let sharp: typeof import("sharp");
+
+  if (process.platform === "linux") {
+    sharp = require("@img/sharp-linux-x64");
+  } else {
+    sharp = require("sharp");
+  }
 
   const res = await fetch(imageUrl);
   if (!res.ok) throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
