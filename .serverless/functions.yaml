@@ -28,5 +28,21 @@ createProject:
             - CreateProjectQueue
             - Arn
 
+addFiles:
+  handler: src/sqs/workers/project/addFiles.handler
+  events:
+    - sqs:
+        arn: !GetAtt AddFilesQueue.Arn
+        batchSize: 5
+        maximumRetryAttempts: 2
+
+addFilesCleanup:
+  handler: src/sqs/workers/project/addFilesCleanup.handler
+  events:
+    - sqs:
+        arn: !GetAtt AddFilesCleanupQueue.Arn
+        batchSize: 5
+        maximumRetryAttempts: 2
+
 authorizer:
   handler: src/middleware/serverlessAuth.authorizeHandler

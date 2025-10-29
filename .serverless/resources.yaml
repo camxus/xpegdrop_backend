@@ -27,7 +27,7 @@ Resources:
               - x-amz-request-id
               - x-amz-id-2
             MaxAge: 3000
-            
+
   ProjectsTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -98,7 +98,7 @@ Resources:
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
-  
+
   NotesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -165,3 +165,14 @@ Resources:
     Properties:
       QueueName: create-project-queue
 
+  AddFilesQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: add-files-queue
+      VisibilityTimeout: 60
+
+  AddFilesCleanupQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: add-files-cleanup-queue
+      VisibilityTimeout: 60
