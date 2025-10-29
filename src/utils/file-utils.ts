@@ -10,7 +10,7 @@ export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer> 
   let sharp: typeof import("sharp");
 
   if (process.platform === "linux") {
-    sharp = require("@img/sharp-linux-x64");
+    sharp = require("@img/sharp-linux-x64/sharp");
   } else {
     sharp = require("sharp");
   }
