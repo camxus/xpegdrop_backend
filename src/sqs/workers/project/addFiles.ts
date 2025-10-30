@@ -83,7 +83,7 @@ export const handler: SQSHandler = async (event) => {
 
           const uploadRes = await dropboxService.uploadFile(
             project.dropbox_folder_path,
-            file.name,
+            destination.file.name,
             destination.buffer,
           );
           uploadedFiles.push({
