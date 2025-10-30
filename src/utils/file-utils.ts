@@ -1,11 +1,19 @@
 import fetch from "node-fetch";
-import gm from "gm";
 
-export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer<ArrayBuffer>> {
+export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer> {
   const allowedTypes = [
     "image/jpeg", "image/png", "image/gif",
     "image/webp", "image/tiff", "image/heic", "image/heif",
   ];
+
+  // Dynamically import the right sharp binary
+  let sharp: typeof import("sharp");
+
+  if (process.platform === "linux") {
+    sharp = require("@img/sharp-linux-x64");
+  } else {
+    sharp = require("sharp");
+  }
 
   const res = await fetch(imageUrl);
   if (!res.ok) throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
@@ -16,13 +24,9 @@ export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer<A
 
   const inputBuffer = Buffer.from(await res.arrayBuffer());
 
-  return new Promise((resolve, reject) => {
-    gm(inputBuffer)
-      .resize(1024, 768, ">") // fit inside 1024x768 without enlarging
-      .quality(80) // JPEG quality
-      .toBuffer("JPEG", (err, buffer) => {
-        if (err) return reject(err);
-        resolve(buffer as Buffer<ArrayBuffer>);
-      });
-  })
+  return await sharp(inputBuffer)
+    .resize({ width: 1024, height: 768, fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 80 })
+    .withMetadata()
+    .toBuffer()
 }

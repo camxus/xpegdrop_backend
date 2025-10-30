@@ -127,7 +127,7 @@ export class DropboxService {
       const imageFiles = response.result.entries.filter(
         (entry) =>
           entry[".tag"] === "file" &&
-          /\.(jpg|jpeg|png|gif|webp|tiff|heic|heif)$/i.test(entry.name)
+          /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i.test(entry.name)
       );
       const filesWithLinks = await Promise.all(
         imageFiles.map(async (file) => {
@@ -158,7 +158,7 @@ export class DropboxService {
           let thumbnail = Buffer.from("");
 
           if (linkRes.result.metadata.size > 20 * 1024 * 1024) {
-            thumbnail = await createThumbnailFromURL(linkRes.result.link)
+            thumbnail = await createThumbnailFromURL(linkRes.result.link) as typeof thumbnail
           } else if (format) {
             // Supported format → generate thumbnail
             const thumbnailRes = await this.dbx.filesGetThumbnailV2({

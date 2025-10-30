@@ -45,6 +45,7 @@
     "serverless-http": "^3.2.0",
     "serverless-offline": "^14.4.0",
     "serverless-plugin-typescript": "^2.1.5",
+    "sharp": "^0.34.4",
     "ts-node": "^10.9.2",
     "uuid": "^11.1.0"
   },
