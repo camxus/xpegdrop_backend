@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: >
-          yarn install --frozen-lockfile
+          yarn add --frozen-lockfile
           yarn add @img/sharp-linux-x64
 
       - name: Configure AWS credentials
