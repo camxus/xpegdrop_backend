@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  checkReferral,
   createReferral,
   getUserReferrals,
   redeemReferral,
@@ -7,6 +8,13 @@ import {
 import { authenticate } from "../middleware/auth";
 
 const router: Router = Router();
+
+/**
+ * @route   GET /referrals/check
+ * @desc    Check if a referral code exists and is not redeemed
+ * @access  Private (or Public if you want)
+ */
+router.get("/check", checkReferral);
 
 router.use(authenticate)
 /**
@@ -17,11 +25,11 @@ router.use(authenticate)
 router.post("/", createReferral);
 
 /**
- * @route   GET /referrals/:userId
+ * @route   GET /referrals
  * @desc    Get all referrals for a specific user
  * @access  Private
  */
-router.get("/:userId", getUserReferrals);
+router.get("/", getUserReferrals);
 
 /**
  * @route   POST /referrals/redeem

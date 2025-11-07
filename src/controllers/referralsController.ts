@@ -3,6 +3,7 @@ import { asyncHandler } from "../middleware/asyncHandler";
 import { DynamoDBClient, PutItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid";
+import { AuthenticatedRequest } from "../middleware/auth";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const REFERRALS_TABLE = process.env.DYNAMODB_REFERRALS_TABLE || "Referrals";
@@ -23,8 +24,8 @@ const generateReferralCode = (): string => {
  * Create a new referral
  * User can only have up to 5 referrals
  */
-export const createReferral = asyncHandler(async (req: Request, res: Response) => {
-  const { userId } = req.body;
+export const createReferral = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.user_id;
 
   if (!userId) {
     return res.status(400).json({ error: "User ID is required" });
@@ -66,8 +67,8 @@ export const createReferral = asyncHandler(async (req: Request, res: Response) =
 /**
  * Get all referrals for a specific user
  */
-export const getUserReferrals = asyncHandler(async (req: Request, res: Response) => {
-  const { userId } = req.params;
+export const getUserReferrals = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.user_id
 
   if (!userId) {
     return res.status(400).json({ error: "User ID is required" });
@@ -91,14 +92,10 @@ export const getUserReferrals = asyncHandler(async (req: Request, res: Response)
  * Redeem a referral code
  */
 export const redeemReferral = asyncHandler(async (req: Request, res: Response) => {
-  const { code, userId } = req.body;
+  const { code } = req.body;
 
   if (!code || code.length !== 6) {
     return res.status(400).json({ error: "Invalid referral code" });
-  }
-
-  if (!userId) {
-    return res.status(400).json({ error: "User ID is required" });
   }
 
   // Check if the referral code exists
@@ -118,32 +115,62 @@ export const redeemReferral = asyncHandler(async (req: Request, res: Response) =
 
   const referral = unmarshall(codeResponse.Items[0]);
 
-  // Prevent user from redeeming their own referral
-  if (referral.created_by === userId) {
-    return res.status(403).json({ error: "Cannot redeem your own referral code" });
-  }
-
   // Check if user already redeemed this referral
-  if (referral.redeemed_by?.includes(userId)) {
-    return res.status(403).json({ error: "Referral code already redeemed by this user" });
+  if (referral.redeemed) {
+    return res.status(403).json({ error: "Referral code has already been redeemed" });
   }
 
-  // Add user to redeemed list
-  const updatedRedeemedBy = [...(referral.redeemed_by || []), userId];
+  const updatedReferral = {
+    ...referral,
+    redeemed: true,
+    updated_at: new Date().toISOString(),
+  }
 
   await client.send(
     new PutItemCommand({
       TableName: REFERRALS_TABLE,
-      Item: marshall({
-        ...referral,
-        redeemed_by: updatedRedeemedBy,
-        updated_at: new Date().toISOString(),
-      }),
+      Item: marshall(updatedReferral),
     })
   );
 
+  res.status(200).json(updatedReferral);
+});
+
+
+/**
+ * Check a referral code (exists and not redeemed)
+ */
+export const checkReferral = asyncHandler(async (req: Request, res: Response) => {
+  const { code } = req.query as { code?: string };
+
+  if (!code || code.length !== 6) {
+    return res.status(400).json({ error: "Invalid referral code" });
+  }
+
+  // Query referral by code
+  const response = await client.send(
+    new QueryCommand({
+      TableName: REFERRALS_TABLE,
+      IndexName: "ReferralCodeIndex", // assumes a GSI on `code`
+      KeyConditionExpression: "code = :code",
+      ExpressionAttributeValues: marshall({ ":code": code }),
+      Limit: 1,
+    })
+  );
+
+  if (!response.Items || response.Items.length === 0) {
+    return res.status(404).json({ error: "NOT_FOUND" });
+  }
+
+  const referral = unmarshall(response.Items[0]);
+
+  // If already redeemed, also return 404
+  if (referral.redeemed) {
+    return res.status(404).json({ error: "ALREADY_REDEEMED" });
+  }
+
   res.status(200).json({
-    message: "Referral code redeemed successfully",
-    referral: { ...referral, redeemed_by: updatedRedeemedBy },
+    code: referral.code,
+    created_at: referral.created_at,
   });
 });

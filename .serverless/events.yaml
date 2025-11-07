@@ -122,6 +122,52 @@
     method: DELETE
     authorizer: jwtAuthorizer
 
+# Referrals routes
+- httpApi:
+    path: /api/referrals/check
+    method: GET
+- httpApi:
+    path: /api/referrals
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/referrals
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/referrals/redeem
+    method: POST
+    authorizer: jwtAuthorizer
+
+# Teams routes
+- httpApi:
+    path: /api/teams
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/teams
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/teams/{teamId}
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/teams/{teamId}
+    method: PUT
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/teams/{teamId}
+    method: DELETE
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/teams/{teamId}/invite
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/teams/{teamId}/members/{userId}
+    method: DELETE
+    authorizer: jwtAuthorizer
 
 # Health check
 - httpApi:

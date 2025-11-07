@@ -106,5 +106,5 @@ export interface Referral {
   code: string;
   created_at: string;
   updated_at?: string;
-  redeemed_by?: string[];
+  redeemed?: boolean;
 }
