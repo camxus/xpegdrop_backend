@@ -9,6 +9,7 @@ import {
   uploadMiddleware,
   addProjectFiles,
   removeProjectFile,
+  getTeamProjectByShareUrl,
 } from '../controllers/projectController';
 import { authenticate } from '../middleware/auth';
 
@@ -16,6 +17,7 @@ const router: Router = express.Router();
 
 // Public route for share URLs
 router.get('/share/:username/:projectName', getProjectByShareUrl);
+router.get('/share/:teamName/:username/:projectName', getTeamProjectByShareUrl);
 
 // Protected routes (require authentication)
 router.use(authenticate);

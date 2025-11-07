@@ -130,6 +130,56 @@ Resources:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
 
+  TeamsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Teams
+      AttributeDefinitions:
+        - AttributeName: team_id
+          AttributeType: S
+        - AttributeName: name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: team_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: TeamNameIndex
+          KeySchema:
+            - AttributeName: name
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  ReferralsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Referrals
+      AttributeDefinitions:
+        - AttributeName: referral_id
+          AttributeType: S
+        - AttributeName: created_by
+          AttributeType: S
+        - AttributeName: code
+          AttributeType: S
+      KeySchema:
+        - AttributeName: referral_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: CreatedByIndex
+          KeySchema:
+            - AttributeName: created_by
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: ReferralCodeIndex
+          KeySchema:
+            - AttributeName: code
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
   # Signup Creation Queue + DLQ
   SignupQueue:
     Type: AWS::SQS::Queue

@@ -51,6 +51,8 @@ export interface Project {
   dropbox_shared_link?: string;
   created_at: string;
   updated_at?: string;
+  status: "initiated" | "created"
+  team_id?: string;
 }
 
 export interface CreateProjectInput {
@@ -82,4 +84,27 @@ export interface Note {
   content: string;
   created_at: string;
   updated_at?: string;
+}
+
+export interface Team {
+  team_id: string;
+  name: string;
+  description?: string;
+  members: {
+    user_id: string;
+    role: "admin" | "member" | "viewer";
+    joined_at: string;
+  }[];
+  avatar?: S3Location | string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface Referral {
+  referral_id: string;
+  created_by: string;
+  code: string;
+  created_at: string;
+  updated_at?: string;
+  redeemed_by?: string[];
 }

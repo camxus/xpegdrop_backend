@@ -15,7 +15,7 @@ import {
   updateProjectSchema,
 } from "../utils/validation/projectValidation";
 import axios from "axios";
-import { CreateProjectInput, UpdateProjectInput, Project, S3Location, User } from "../types";
+import { CreateProjectInput, UpdateProjectInput, Project, S3Location, User, Team } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { DropboxService } from "../utils/dropbox";
 import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
@@ -24,6 +24,7 @@ import multer from "multer";
 import { deleteItemImage, getItemFile, getSignedImage, s3ObjectExists, saveItemImage } from "../utils/s3";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { getProjectWithImages } from "../utils/helpers/project";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
@@ -50,7 +51,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     const { error, value } = createProjectSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
-    const { name, description } = value;
+    const { name, description, team_id: teamId } = value;
     let fileLocations =
       typeof value.file_locations === "string"
         ? JSON.parse(value.file_locations as string || "[]")
@@ -66,6 +67,26 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       return res.status(400).json({
         error: "Dropbox access token not found. Please connect your Dropbox account.",
       });
+    }
+
+
+    let team = {} as Team;
+
+    if (teamId) {
+      const { Item } = await client.send(
+        new GetItemCommand({
+          TableName: "Teams",
+          Key: {
+            team_id: { S: teamId },
+          },
+        })
+      );
+
+      if (Item) {
+        team = unmarshall(Item) as Team;
+      } else {
+        throw new Error(`Team with ID ${teamId} not found`);
+      }
     }
 
     // Prepare job payload
@@ -93,7 +114,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     };
 
     // Build initial share URL
-    let shareUrl = `/${req.user.username}/${encodeURI(name.toLowerCase().replace(/\s+/g, "-"))}`;
+    let shareUrl = `/${team.name ? team.name : req.user.username}/${encodeURI(name.toLowerCase().replace(/\s+/g, "-"))}`;
     let uniqueShareUrl = shareUrl;
     let count = 0;
 
@@ -116,7 +137,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     }
 
     // Then use uniqueShareUrl in projectData
-    const projectData = {
+    const projectData: Project = {
       project_id: projectId,
       user_id: req.user.user_id,
       name: count > 0 ? `${name}-${count}` : name,
@@ -130,6 +151,8 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       created_at: new Date().toISOString(),
       status: "initiated"
     };
+
+    projectData["team_id"] = teamId
 
     await client.send(
       new PutItemCommand({
@@ -481,97 +504,8 @@ export const getProjectByShareUrl = asyncHandler(
         publicProject.is_public = project.is_public
       }
 
-      const userResponse = await client.send(
-        new GetItemCommand({
-          TableName: USERS_TABLE,
-          Key: marshall({ user_id: project.user_id }),
-        })
-      );
-
-      if (!userResponse.Item) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      let user = unmarshall(userResponse.Item);
-
-
-      if (
-        !user.dropbox ||
-        (!user.dropbox.access_token && !user.dropbox.refresh_token)
-      ) {
-        return res.status(400).json({ error: "User Dropbox tokens missing." });
-      }
-
-      if (
-        !project.dropbox_folder_path
-      ) {
-        return res.status(409).json({ error: "Dropbox folder path missing." });
-      }
-
-      let dropboxAccessToken = user.dropbox.access_token;
-
-      const dropboxService = new DropboxService(dropboxAccessToken);
-
-      let dropboxFiles;
-
-      const resolveFiles = async (files: any[]) =>
-        Promise.all(
-          files.map(async (file) => {
-            const s3Key = `thumbnails/${username}/${projectName}/${file.name}`;
-            const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
-
-            const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
-            const s3Location = exists
-              ? { bucket: bucketName, key: s3Key }
-              : await saveItemImage(
-                s3Client,
-                bucketName,
-                s3Key,
-                file.thumbnail,
-                false
-              );
-
-            const thumbnailUrl = (await getSignedImage(
-              s3Client,
-              s3Location
-            )) as string;
-
-            delete file.thumbnail; // prevent Lambda 413
-
-            return { ...file, thumbnail_url: thumbnailUrl };
-          })
-        );
-
-      try {
-        dropboxFiles = await dropboxService.listFiles(project.dropbox_folder_path);
-        dropboxFiles = await resolveFiles(dropboxFiles);
-      } catch (err: any) {
-        const isUnauthorized = err.status === 401;
-
-        if (isUnauthorized && user.dropbox.refresh_token) {
-          try {
-            await dropboxService.refreshDropboxToken(user as User);
-            dropboxFiles = await dropboxService.listFiles(
-              project.dropbox_folder_path
-            );
-            dropboxFiles = await resolveFiles(dropboxFiles);
-          } catch (refreshError) {
-            console.error("Dropbox token refresh failed", refreshError);
-            throw refreshError;
-          }
-        } else {
-          console.error("Dropbox access failed", err);
-          return res
-            .status(500)
-            .json({ error: "Failed to access Dropbox files" });
-        }
-      }
-
-      const images = dropboxFiles.filter((file: any) =>
-        /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i.test(file.name)
-      );
-
-      res.status(200).json({ project: { ...publicProject, share_url: (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + publicProject.share_url }, images });
+      const projectWithImages = await getProjectWithImages(project, username)
+      res.status(200).json(projectWithImages);
     } catch (error: any) {
       console.error("Get project by share URL error:", error);
       res
@@ -580,6 +514,64 @@ export const getProjectByShareUrl = asyncHandler(
     }
   }
 );
+
+/**
+ * Fetch a public or authorized team project by share URL
+ */
+export const getTeamProjectByShareUrl = asyncHandler(async (req: Request, res: Response) => {
+  const { teamName, projectName } = req.params;
+
+  // Build share URL in same format as stored
+  const shareUrl = `/${teamName}/${projectName}`;
+
+  // Query by share_url (requires a GSI with share_url as key)
+  const response = await client.send(
+    new QueryCommand({
+      TableName: PROJECTS_TABLE,
+      IndexName: "ShareUrlIndex",
+      KeyConditionExpression: "share_url = :shareUrl",
+      ExpressionAttributeValues: marshall({ ":shareUrl": shareUrl }),
+      Limit: 1,
+    })
+  );
+
+  const { Item } = await client.send(
+    new GetItemCommand({
+      TableName: "Teams",
+      Key: {
+        name: { S: teamName },
+      },
+    })
+  );
+
+  const team = Item as unknown as Team
+
+  if (!team) { throw new Error(`Team for ${teamName} not found`) }
+
+
+  if (!response.Items || response.Items.length === 0) {
+    return res.status(404).json({ error: "Project not found" });
+  }
+
+  const project = unmarshall(response.Items[0]) as Project;
+
+  const emailParam = (req.query.email as string | undefined)?.toLowerCase();
+
+
+  // Handle private project email validation
+  if (!project.is_public && !team.members?.some((m) => m.user_id === (req as any).user?.user_id)) {
+    if (!emailParam) {
+      return res.status(400).json({ error: "EMAIL_REQUIRED" });
+    }
+
+    if (!project.approved_emails?.includes((req as any).user?.email)) {
+      return res.status(403).json({ error: "EMAIL_INVALID" });
+    }
+  }
+
+  const projectWithImages = await getProjectWithImages(project, teamName)
+  res.status(200).json(projectWithImages);
+});
 
 export const addProjectFiles = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
