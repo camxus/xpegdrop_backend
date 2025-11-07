@@ -16,6 +16,13 @@ const router: Router = Router();
  */
 router.get("/check", checkReferral);
 
+/**
+ * @route   POST /referrals/redeem
+ * @desc    Redeem a referral code
+ * @access  Private
+ */
+router.post("/redeem", redeemReferral);
+
 router.use(authenticate)
 /**
  * @route   POST /referrals
@@ -30,12 +37,5 @@ router.post("/", createReferral);
  * @access  Private
  */
 router.get("/", getUserReferrals);
-
-/**
- * @route   POST /referrals/redeem
- * @desc    Redeem a referral code
- * @access  Private
- */
-router.post("/redeem", redeemReferral);
 
 export default router;

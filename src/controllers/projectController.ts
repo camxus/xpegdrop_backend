@@ -204,6 +204,37 @@ export const getProjects = asyncHandler(
   }
 );
 
+export const getTeamProjects = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { team_id } = req.params;
+
+    if (!team_id) {
+      return res.status(400).json({ error: "team_id parameter is required" });
+    }
+
+    try {
+      const response = await client.send(
+        new ScanCommand({
+          TableName: PROJECTS_TABLE,
+          FilterExpression: "team_id = :teamId",
+          ExpressionAttributeValues: marshall({
+            ":teamId": team_id,
+          }),
+        })
+      );
+
+      const projects = response.Items?.map((item) => unmarshall(item)) || [];
+
+      res.status(200).json(projects);
+    } catch (error: any) {
+      console.error("Get projects error:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to fetch projects" });
+    }
+  }
+);
+
 export const getProject = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const { projectId } = req.params;

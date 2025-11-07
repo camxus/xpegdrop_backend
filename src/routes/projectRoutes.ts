@@ -10,6 +10,7 @@ import {
   addProjectFiles,
   removeProjectFile,
   getTeamProjectByShareUrl,
+  getTeamProjects,
 } from '../controllers/projectController';
 import { authenticate } from '../middleware/auth';
 
@@ -26,6 +27,8 @@ router.get('/', getProjects);
 router.get('/:projectId', getProject);
 router.put('/:projectId', updateProject);
 router.delete('/:projectId', deleteProject);
+
+router.get('/team/:teamId', getTeamProjects);
 
 router.post("/:projectId/files", uploadMiddleware, addProjectFiles);
 router.delete("/:projectId/files/:fileName", removeProjectFile);

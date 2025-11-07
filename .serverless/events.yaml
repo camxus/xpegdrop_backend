@@ -57,6 +57,10 @@
     method: DELETE
     authorizer: jwtAuthorizer
 - httpApi:
+    path: /api/projects/team/{teamId}
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
     path: /api/projects/{projectId}/files
     method: POST
     authorizer: jwtAuthorizer
@@ -127,16 +131,15 @@
     path: /api/referrals/check
     method: GET
 - httpApi:
+    path: /api/referrals/redeem
+    method: POST
+- httpApi:
     path: /api/referrals
     method: POST
     authorizer: jwtAuthorizer
 - httpApi:
     path: /api/referrals
     method: GET
-    authorizer: jwtAuthorizer
-- httpApi:
-    path: /api/referrals/redeem
-    method: POST
     authorizer: jwtAuthorizer
 
 # Teams routes
