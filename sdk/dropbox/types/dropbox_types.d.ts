@@ -15813,7 +15813,7 @@
 
     export type ResellerId = string;
 
-    export type TeamId = string;
+    export type tenantId = string;
 
     export type TeamMemberId = string;
 
@@ -30624,11 +30624,11 @@
       /**
        * Internal only - team user was moved from.
        */
-      source_team_id: team_common.TeamId;
+      source_team_id: team_common.tenantId;
       /**
        * Internal only - team user was moved to.
        */
-      target_team_id: team_common.TeamId;
+      target_team_id: team_common.tenantId;
     }
 
     /**

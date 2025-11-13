@@ -40,6 +40,7 @@ export interface User {
 
 export interface Project {
   project_id: string;
+  tenant_id?: string;
   user_id: string;
   name: string;
   description?: string | null;
@@ -52,7 +53,6 @@ export interface Project {
   created_at: string;
   updated_at?: string;
   status: "initiated" | "created"
-  team_id?: string;
 }
 
 export interface CreateProjectInput {
@@ -86,13 +86,14 @@ export interface Note {
   updated_at?: string;
 }
 
-export interface Team {
-  team_id: string;
+export interface Tenant {
+  tenant_id: string;
+  handle: string;
   name: string;
   description?: string;
   members: {
     user_id: string;
-    role: "admin" | "member" | "viewer";
+    role: "admin" | "editor" | "viewer";
     joined_at: string;
   }[];
   avatar?: S3Location | string;

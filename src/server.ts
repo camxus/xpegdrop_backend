@@ -7,7 +7,7 @@ import dropboxRoutes from "./routes/dropboxRoutes";
 import usersRoutes from "./routes/usersRoutes";
 import ratingsRoutes from "./routes/ratingsRoutes";
 import notesRoutes from "./routes/notesRoutes";
-import teamRoutes from "./routes/teamsRoutes";
+import tenantsRoutes from "./routes/tenantsRoutes";
 import referralsRoutes from "./routes/referralsRoutes";
 import { APIGatewayProxyEvent } from "aws-lambda";
 import { errorHandler } from "./middleware/errorMiddleware";
@@ -40,7 +40,7 @@ app.use("/api/dropbox", dropboxRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/ratings", ratingsRoutes);
 app.use("/api/notes", notesRoutes);
-app.use("/api/teams", teamRoutes);
+app.use("/api/tenants", tenantsRoutes);
 app.use("/api/referrals", referralsRoutes);
 
 // Health check

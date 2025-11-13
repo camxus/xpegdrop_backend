@@ -13,7 +13,7 @@ const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 
 
-export const getProjectWithImages = async (project: Project, entityName: string) => {
+export const getProjectWithImages = async (project: Project, handle: string) => {
     // Fetch user from DynamoDB
     const userResponse = await client.send(
         new GetItemCommand({
@@ -35,7 +35,7 @@ export const getProjectWithImages = async (project: Project, entityName: string)
     if (!project.dropbox_folder_path) {
         throw new Error("Dropbox folder path missing.");
     }
-    
+
     let dropboxAccessToken = user.dropbox.access_token;
     const dropboxService = new DropboxService(dropboxAccessToken);
 
@@ -43,7 +43,7 @@ export const getProjectWithImages = async (project: Project, entityName: string)
         Promise.all(
             files.map(async (file) => {
                 const projectName = project.name.toLowerCase().replace(/\s+/g, "-");
-                const s3Key = `thumbnails/${entityName}/${projectName}/${file.name}`;
+                const s3Key = `thumbnails/${handle}/${projectName}/${file.name}`;
                 const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
 
                 const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
@@ -89,3 +89,27 @@ export const getProjectWithImages = async (project: Project, entityName: string)
         images,
     };
 };
+
+/**
+ * Generates a tenant-specific URL by replacing the subdomain with the tenant handle
+ * @param frontendUrl The base frontend URL (e.g., process.env.EXPRESS_PUBLIC_FRONTEND_URL)
+ * @param handle The tenant's handle
+ * @returns The full tenant URL
+ */
+export function getTenantUrl(frontendUrl: string | undefined, handle: string): string {
+    if (!frontendUrl) throw new Error("Frontend URL not defined");
+    if (!handle) throw new Error("Tenant handle not defined");
+
+    const url = new URL(frontendUrl);
+    const hostParts = url.hostname.split(".");
+
+    // Remove existing subdomain if there are more than 2 parts
+    if (hostParts.length > 2) {
+        hostParts.shift();
+    }
+
+    // Prepend tenant handle as new subdomain
+    const newHostname = `${handle}.${hostParts.join(".")}`;
+
+    return `${url.protocol}//${newHostname}${url.pathname}`;
+}

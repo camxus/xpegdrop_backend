@@ -14,7 +14,7 @@ export const handler: SQSHandler = async (event) => {
   for (const record of event.Records) {
     const data = JSON.parse(record.body);
 
-    const { project_id, user, project, files, file_locations } = data;
+    const { user, project, files, file_locations, tenant } = data;
     const { dropbox } = user;
 
     const dropboxService = new DropboxService(dropbox.access_token);
@@ -47,17 +47,18 @@ export const handler: SQSHandler = async (event) => {
       const dropboxFiles = await getFiles();
 
       let dropboxUploadResponse;
+      const folderName = tenant.name ? `${tenant.name}/${project.name}` : project.name
       try {
         dropboxUploadResponse = await dropboxService.upload(
           dropboxFiles,
-          project.name
+          folderName
         );
       } catch (err: any) {
         if (err?.status === 401 && dropbox.refresh_token) {
           await dropboxService.refreshDropboxToken(user);
           dropboxUploadResponse = await dropboxService.upload(
             dropboxFiles,
-            project.name
+            folderName
           );
         } else {
           throw err;
@@ -77,7 +78,7 @@ export const handler: SQSHandler = async (event) => {
 
       const params = new UpdateItemCommand({
         TableName: PROJECTS_TABLE,
-        Key: marshall({ project_id }),
+        Key: marshall({ project_id: project.project_id }),
         UpdateExpression:
           "SET dropbox_folder_path = :folder, dropbox_shared_link = :link, #st = :status",
         ExpressionAttributeNames: {
@@ -95,7 +96,7 @@ export const handler: SQSHandler = async (event) => {
 
 
 
-      console.log(`✅ Project ${project_id} created successfully.`);
+      console.log(`✅ Project ${project.project_id} created successfully.`);
     } catch (err) {
       console.error("❌ Project worker failed:", err);
       // optionally: retry, dead-letter, or cleanup
@@ -103,7 +104,7 @@ export const handler: SQSHandler = async (event) => {
       try {
         const params = new UpdateItemCommand({
           TableName: PROJECTS_TABLE,
-          Key: marshall({ project_id }),
+          Key: marshall({ project_id: project.project_id }),
           UpdateExpression: "SET #st = :status, share_url = :empty ",
           ExpressionAttributeNames: { "#st": "status" },
           ExpressionAttributeValues: marshall({

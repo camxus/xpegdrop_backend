@@ -37,6 +37,9 @@
     path: /api/projects/share/{username}/{projectName}
     method: GET
 - httpApi:
+    path: /api/projects/share/tenant/{tenantName}/{username}/{projectName}
+    method: GET
+- httpApi:
     path: /api/projects
     method: POST
     authorizer: jwtAuthorizer
@@ -57,7 +60,7 @@
     method: DELETE
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/projects/team/{teamId}
+    path: /api/projects/tenant/{tenantId}
     method: GET
     authorizer: jwtAuthorizer
 - httpApi:
@@ -142,33 +145,33 @@
     method: GET
     authorizer: jwtAuthorizer
 
-# Teams routes
+# Tenants routes
 - httpApi:
-    path: /api/teams
+    path: /api/tenants
     method: POST
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/teams
+    path: /api/tenants
     method: GET
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/teams/{teamId}
+    path: /api/tenants/{tenantId}
     method: GET
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/teams/{teamId}
+    path: /api/tenants/{tenantId}
     method: PUT
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/teams/{teamId}
+    path: /api/tenants/{tenantId}
     method: DELETE
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/teams/{teamId}/invite
+    path: /api/tenants/{tenantId}/invite
     method: POST
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/teams/{teamId}/members/{userId}
+    path: /api/tenants/{tenantId}/members/{userId}
     method: DELETE
     authorizer: jwtAuthorizer
 

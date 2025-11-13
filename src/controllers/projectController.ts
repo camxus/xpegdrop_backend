@@ -15,7 +15,7 @@ import {
   updateProjectSchema,
 } from "../utils/validation/projectValidation";
 import axios from "axios";
-import { CreateProjectInput, UpdateProjectInput, Project, S3Location, User, Team } from "../types";
+import { CreateProjectInput, UpdateProjectInput, Project, S3Location, User, Tenant } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { DropboxService } from "../utils/dropbox";
 import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
@@ -24,12 +24,13 @@ import multer from "multer";
 import { deleteItemImage, getItemFile, getSignedImage, s3ObjectExists, saveItemImage } from "../utils/s3";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { getProjectWithImages } from "../utils/helpers/project";
+import { getProjectWithImages, getTenantUrl } from "../utils/helpers/project";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
+const TENANTS_TABLE = process.env.DYNAMODB_TENANTS_TABLE || "Tenants";
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 const CREATE_PROJECT_QUEUE = "create-project-queue"
 const ADD_FILES_QUEUE = "add-files-queue"
@@ -51,7 +52,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     const { error, value } = createProjectSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
-    const { name, description, team_id: teamId } = value;
+    const { name, description, tenant_id: tenantId } = value;
     let fileLocations =
       typeof value.file_locations === "string"
         ? JSON.parse(value.file_locations as string || "[]")
@@ -70,36 +71,36 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     }
 
 
-    let team = {} as Team;
+    let tenant: Tenant | undefined = undefined;
 
-    if (teamId) {
+    if (tenantId) {
       const { Item } = await client.send(
         new GetItemCommand({
-          TableName: "Teams",
+          TableName: "Tenants",
           Key: {
-            team_id: { S: teamId },
+            tenant_id: { S: tenantId },
           },
         })
       );
 
       if (Item) {
-        team = unmarshall(Item) as Team;
+        tenant = unmarshall(Item) as Tenant;
       } else {
-        throw new Error(`Team with ID ${teamId} not found`);
+        throw new Error(`Tenant with ID ${tenantId} not found`);
       }
     }
 
     // Prepare job payload
     const projectId = uuidv4();
 
-    const payload = {
-      project_id: projectId,
+    const payload: any = {
       user: {
         user_id: req.user.user_id,
         username: req.user.username,
         dropbox: req.user.dropbox,
       },
       project: {
+        project_id: projectId,
         name,
         description,
       },
@@ -113,9 +114,18 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       file_locations: fileLocations || [],
     };
 
+    if (tenant) payload["tenant"] = {
+      tenant: {
+        tenant_id: tenantId,
+        name: tenant?.name
+      }
+    }
+
     // Build initial share URL
-    let shareUrl = `/${team.name ? team.name : req.user.username}/${encodeURI(name.toLowerCase().replace(/\s+/g, "-"))}`;
-    let uniqueShareUrl = shareUrl;
+    const slug = encodeURIComponent(name.trim().toLowerCase().replace(/\s+/g, "-"));
+    const base = `/${req.user.username}`;
+    const shareUrl = `${base}/${slug}`;
+    let uniqueShareUrl = shareUrl
     let count = 0;
 
     while (true) {
@@ -152,7 +162,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       status: "initiated"
     };
 
-    projectData["team_id"] = teamId
+    if (tenantId) projectData["tenant_id"] = tenantId
 
     await client.send(
       new PutItemCommand({
@@ -168,8 +178,9 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       })
     );
 
+
     res.status(202).json({
-      ...projectData, share_url: process.env.EXPRESS_PUBLIC_FRONTEND_URL + projectData.share_url
+      ...projectData, share_url: (tenant?.handle ? getTenantUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant.handle) : process.env.EXPRESS_PUBLIC_FRONTEND_URL) + projectData.share_url
     });
   } catch (error: any) {
     console.error("Create project error:", error);
@@ -204,21 +215,21 @@ export const getProjects = asyncHandler(
   }
 );
 
-export const getTeamProjects = asyncHandler(
+export const getTenantProjects = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { team_id } = req.params;
+    const { tenantId } = req.params;
 
-    if (!team_id) {
-      return res.status(400).json({ error: "team_id parameter is required" });
+    if (!tenantId) {
+      return res.status(400).json({ error: "tenant_id parameter is required" });
     }
 
     try {
       const response = await client.send(
         new ScanCommand({
           TableName: PROJECTS_TABLE,
-          FilterExpression: "team_id = :teamId",
+          FilterExpression: "tenant_id = :tenantId",
           ExpressionAttributeValues: marshall({
-            ":teamId": team_id,
+            ":tenantId": tenantId,
           }),
         })
       );
@@ -253,12 +264,27 @@ export const getProject = asyncHandler(
 
       const project = unmarshall(response.Item);
 
+      let tenant: Tenant | null = null
+
+      if (project.tenant_id) {
+        const response = await client.send(
+          new GetItemCommand({
+            TableName: TENANTS_TABLE,
+            Key: marshall({ tenant_id: project.tenant_id }),
+          })
+        );
+
+        if (!response.Item) return res.status(404).json({ error: "Tenant not found" });
+
+        tenant = unmarshall(response.Item) as Tenant;
+      }
+
       // Ensure user owns the project
       if (project.user_id !== req.user?.user_id) {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      res.status(200).json({ ...project, share_url: project.share_url && process.env.EXPRESS_PUBLIC_FRONTEND_URL + project.share_url });
+      res.status(200).json({ ...project, share_url: project.share_url && (tenant ? getTenantUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant.handle) : process.env.EXPRESS_PUBLIC_FRONTEND_URL) + project.share_url });
     } catch (error: any) {
       console.error("Get project error:", error);
       res
@@ -411,9 +437,24 @@ export const updateProject = asyncHandler(
         })
       );
 
+      let tenant: Tenant | null = null
+
+      if (project.tenant_id) {
+        const response = await client.send(
+          new GetItemCommand({
+            TableName: TENANTS_TABLE,
+            Key: marshall({ tenant_id: project.tenant_id }),
+          })
+        );
+
+        if (!response.Item) return res.status(404).json({ error: "Tenant not found" });
+
+        tenant = unmarshall(response.Item) as Tenant;
+      }
+
       res.status(200).json({
         message: "Project updated successfully",
-        ...(newShareUrl !== project.share_url ? { share_url: process.env.EXPRESS_PUBLIC_FRONTEND_URL + newShareUrl } : {}),
+        ...(newShareUrl !== project.share_url ? { share_url: (tenant ? getTenantUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant.handle) : process.env.EXPRESS_PUBLIC_FRONTEND_URL) + newShareUrl } : {}),
         ...(newDropboxPath !== project.dropbox_folder_path ? { dropbox_folder_path: newDropboxPath } : {}),
       });
     } catch (error: any) {
@@ -547,13 +588,13 @@ export const getProjectByShareUrl = asyncHandler(
 );
 
 /**
- * Fetch a public or authorized team project by share URL
+ * Fetch a public or authorized tenant project by share URL
  */
-export const getTeamProjectByShareUrl = asyncHandler(async (req: Request, res: Response) => {
-  const { teamName, projectName } = req.params;
+export const getTenantProjectByShareUrl = asyncHandler(async (req: Request, res: Response) => {
+  const { tenantHandle, projectName } = req.params;
 
   // Build share URL in same format as stored
-  const shareUrl = `/${teamName}/${projectName}`;
+  const shareUrl = `tenant/${tenantHandle}/${projectName}`;
 
   // Query by share_url (requires a GSI with share_url as key)
   const response = await client.send(
@@ -568,16 +609,16 @@ export const getTeamProjectByShareUrl = asyncHandler(async (req: Request, res: R
 
   const { Item } = await client.send(
     new GetItemCommand({
-      TableName: "Teams",
+      TableName: "Tenants",
       Key: {
-        name: { S: teamName },
+        handle: { S: tenantHandle },
       },
     })
   );
 
-  const team = Item as unknown as Team
+  const tenant = Item as unknown as Tenant
 
-  if (!team) { throw new Error(`Team for ${teamName} not found`) }
+  if (!tenant) { throw new Error(`Tenant for ${tenantHandle} not found`) }
 
 
   if (!response.Items || response.Items.length === 0) {
@@ -590,7 +631,7 @@ export const getTeamProjectByShareUrl = asyncHandler(async (req: Request, res: R
 
 
   // Handle private project email validation
-  if (!project.is_public && !team.members?.some((m) => m.user_id === (req as any).user?.user_id)) {
+  if (!project.is_public && !tenant.members?.some((m) => m.user_id === (req as any).user?.user_id)) {
     if (!emailParam) {
       return res.status(400).json({ error: "EMAIL_REQUIRED" });
     }
@@ -600,7 +641,7 @@ export const getTeamProjectByShareUrl = asyncHandler(async (req: Request, res: R
     }
   }
 
-  const projectWithImages = await getProjectWithImages(project, teamName)
+  const projectWithImages = await getProjectWithImages(project, tenantHandle)
   res.status(200).json(projectWithImages);
 });
 
