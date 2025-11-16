@@ -175,6 +175,19 @@
     method: DELETE
     authorizer: jwtAuthorizer
 
+# Stripe routes
+- httpApi:
+    path: /api/stripe/billing
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/stripe/billing/portal
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/stripe/webhook
+    method: POST
+
 # Health check
 - httpApi:
     path: /health

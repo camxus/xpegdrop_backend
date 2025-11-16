@@ -9,6 +9,7 @@ import ratingsRoutes from "./routes/ratingsRoutes";
 import notesRoutes from "./routes/notesRoutes";
 import tenantsRoutes from "./routes/tenantsRoutes";
 import referralsRoutes from "./routes/referralsRoutes";
+import stripeRoutes from "./routes/stripeRoutes";
 import { APIGatewayProxyEvent } from "aws-lambda";
 import { errorHandler } from "./middleware/errorMiddleware";
 import serverless from "serverless-http";
@@ -42,6 +43,8 @@ app.use("/api/ratings", ratingsRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/tenants", tenantsRoutes);
 app.use("/api/referrals", referralsRoutes);
+
+app.use("/api/stripe", stripeRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
