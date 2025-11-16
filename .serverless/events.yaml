@@ -74,6 +74,9 @@
 
 # Users routes
 - httpApi:
+    path: /api/users/search
+    method: GET
+- httpApi:
     path: /api/users/username/{username}
     method: GET
 - httpApi:
@@ -155,6 +158,10 @@
     method: GET
     authorizer: jwtAuthorizer
 - httpApi:
+    path: /api/tenants/handle/{handle}
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
     path: /api/tenants/{tenantId}
     method: GET
     authorizer: jwtAuthorizer
@@ -171,7 +178,11 @@
     method: POST
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/tenants/{tenantId}/members/{userId}
+    path: /api/tenants/{tenantId}/{userId}
+    method: PATCH
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/tenants/{tenantId}/{userId}
     method: DELETE
     authorizer: jwtAuthorizer
 

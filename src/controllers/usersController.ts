@@ -12,6 +12,7 @@ import {
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { updateUserSchema } from "../utils/validation/userValidation";
+import { updateDropboxTokenSchema } from "../utils/validation/userValidation";
 import { S3Location, UpdateUserInput, User } from "../types";
 import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
 import { copyItemImage, getSignedImage, saveItemImage } from "../utils/s3";
@@ -138,7 +139,7 @@ export const updateUser = asyncHandler(
       const key = (ext: string) => `profile_images/${userId}.${ext}`;
 
 
-      if (avatar) {
+      if (avatar && (avatar as S3Location).key) {
         const s3Client = new S3Client({ region: process.env._CODE });
 
         // Determine file extension
@@ -278,6 +279,58 @@ export const deleteUser = asyncHandler(
   }
 );
 
+export const searchByUsername = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { q } = req.query;
+
+    if (!q || typeof q !== "string") {
+      return res.status(400).json({ error: "Query parameter 'q' is required" });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      await getUserFromToken(authHeader.substring(7)).then(
+        (user) => (req.user = user)
+      );
+    }
+
+    // Scan DynamoDB for usernames containing the query string
+    const response = await client.send(
+      new ScanCommand({
+        TableName: USERS_TABLE,
+        FilterExpression: "contains(username, :q)",
+        ExpressionAttributeValues: marshall({
+          ":q": q,
+        }),
+      })
+    );
+
+    if (!response.Items || response.Items.length === 0) {
+      return res.status(404).json({ error: "No users found" });
+    }
+
+    // Map users and optionally get signed avatars
+    const users = await Promise.all(
+      response.Items.map(async (item) => {
+        const user = unmarshall(item);
+        if (user.avatar && (user.avatar as S3Location).key) {
+          user.avatar = await getSignedImage(
+            s3Client,
+            user.avatar as S3Location
+          );
+        }
+        const { email, dropbox, ...cleanUser } = user;
+        return req.user?.user_id ? user : cleanUser;
+      })
+    );
+
+    res.status(200).json(users);
+  } catch (error: any) {
+    console.error("Search users error:", error);
+    res.status(500).json({ error: error.message || "Failed to search users" });
+  }
+})
+
 export const getUserByUsername = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -322,7 +375,6 @@ export const getUserByUsername = asyncHandler(
     }
   }
 );
-import { updateDropboxTokenSchema } from "../utils/validation/userValidation";
 
 export const updateDropboxToken = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {

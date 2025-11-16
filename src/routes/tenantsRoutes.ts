@@ -7,6 +7,9 @@ import {
   deleteTenant,
   inviteMember,
   removeMember,
+  uploadAvatar,
+  getTenantByHandle,
+  updateMember,
 } from "../controllers/tenantsController";
 import { authenticate } from "../middleware/auth";
 
@@ -18,12 +21,14 @@ router.use(authenticate);
 // --- Tenant core routes ---
 router.post("/", createTenant); // create a new Tenant
 router.get("/", getTenants); // get all Tenants user is part of
+router.get("/handle/:handle", getTenantByHandle); // get single Tenant by handle
 router.get("/:tenantId", getTenant); // get single Tenant
-router.put("/:tenantId", updateTenant); // update Tenant details
+router.put("/:tenantId", uploadAvatar, updateTenant); // update Tenant details
 router.delete("/:tenantId", deleteTenant); // delete a Tenant
 
 // --- Tenant member management ---
 router.post("/:tenantId/invite", inviteMember); // invite a new member
+router.patch("/:tenantId/:userId", updateMember); // invite a new member
 router.delete("/:tenantId/:userId", removeMember); // remove member from Tenant
 
 export default router;

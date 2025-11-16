@@ -6,6 +6,7 @@ import {
   deleteUser,
   getUserByUsername,
   updateDropboxToken,
+  searchByUsername,
 } from '../controllers/usersController';
 import { authenticate } from '../middleware/auth';
 import { uploadAvatar } from '../controllers/authController';
@@ -14,6 +15,7 @@ const router: Router = express.Router();
 
 // Public routes
 router.get('/username/:username', getUserByUsername);
+router.get('/search', searchByUsername);
 router.get('/:userId', getUser);
 
 // Protected routes (require authentication)

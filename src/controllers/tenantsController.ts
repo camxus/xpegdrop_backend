@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, RequestHandler, Response } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validationErrorHandler } from "../middleware/errorMiddleware";
 import {
@@ -15,13 +15,24 @@ import { v4 as uuidv4 } from "uuid";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { S3Location, Tenant } from "../types";
 import { getSignedImage, saveItemImage, copyItemImage } from "../utils/s3";
+import multer from "multer";
+import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
+import { updateUserSchema } from "../utils/validation/userValidation";
+import { updateTenantSchema } from "../utils/validation/tenantsValidation";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 
 const TENANTS_TABLE = process.env.DYNAMODB_TENANTS_TABLE || "Tenants";
 const TEMP_BUCKET = process.env.EXPRESS_S3_TEMP_BUCKET!;
-const APP_BUCKET = process.env.EXPRESS_S3_APP_BUCKET!;
+const EXPRESS_S3_APP_BUCKET = process.env.EXPRESS_S3_APP_BUCKET!;
+
+const upload = multer({
+  storage: multer.memoryStorage(), // stores file in memory for direct upload to S3
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit (optional)
+});
+
+export const uploadAvatar: RequestHandler = upload.single("avatar_file");
 
 /**
  * Create a new tenant
@@ -111,11 +122,63 @@ export const getTenant = asyncHandler(async (req: AuthenticatedRequest, res: Res
 });
 
 /**
+ * Get tenant by handle
+ */
+export const getTenantByHandle = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { handle } = req.params;
+
+  if (!handle) return res.status(400).json({ error: "Handle is required" });
+
+  // Scan to find matching handle
+  const response = await client.send(
+    new ScanCommand({
+      TableName: TENANTS_TABLE,
+      FilterExpression: "#handle = :handle",
+      ExpressionAttributeNames: {
+        "#handle": "handle",
+      },
+      ExpressionAttributeValues: marshall({
+        ":handle": handle,
+      }),
+    })
+  );
+
+  const items = response.Items?.map((item) => unmarshall(item)) as Tenant[] || [];
+  const tenant = items[0];
+
+  if (!tenant) return res.status(404).json({ error: "Tenant not found" });
+
+  // check membership
+  const userId = req.user?.user_id;
+  const isMember = tenant.members.some((m) => m.user_id === userId);
+
+  if (!isMember) {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+
+  // sign avatar if exists
+  if (tenant.avatar && (tenant.avatar as S3Location).key) {
+    tenant.avatar = await getSignedImage(s3Client, tenant.avatar as S3Location);
+  }
+
+  res.status(200).json(tenant);
+});
+
+/**
  * Update tenant details
  */
 export const updateTenant = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { tenantId } = req.params;
-  const { name, description, avatar } = req.body;
+
+  const { error, value } = updateTenantSchema.validate(req.body);
+  if (error) throw validationErrorHandler(error);
+
+  const { name, description, handle } = value;
+
+  let avatar =
+    typeof req.body.avatar === "string"
+      ? JSON.parse((req.body.avatar as string) || "{}")
+      : req.body.avatar;
 
   const response = await client.send(
     new GetItemCommand({
@@ -131,13 +194,16 @@ export const updateTenant = asyncHandler(async (req: AuthenticatedRequest, res: 
   const userRole = tenant.members.find((m) => m.user_id === userId)?.role;
   if (userRole !== "admin") return res.status(403).json({ error: "Only admin can update tenant" });
 
+  // Handle avatar upload if provided
+  const key = (ext: string) => `tenant_avatars/${userId}.${ext}`;
+
   let updatedAvatar = avatar;
-  if (avatar && (avatar as S3Location).bucket === TEMP_BUCKET) {
-    updatedAvatar = await copyItemImage(
-      s3Client,
-      avatar as S3Location,
-      { bucket: APP_BUCKET, key: `tenant_avatars/${tenantId}.png` }
-    );
+
+  if (avatar && (avatar as S3Location).key) {
+    // Determine file extension
+    const ext = avatar.key.split(".").pop();
+
+    const destination = await copyItemImage(s3Client, { bucket: avatar.bucket, key: avatar.key }, { bucket: EXPRESS_S3_APP_BUCKET, key: key(ext!) })
 
     await s3Client.send(
       new DeleteObjectCommand({
@@ -145,6 +211,20 @@ export const updateTenant = asyncHandler(async (req: AuthenticatedRequest, res: 
         Key: (avatar as S3Location).key,
       })
     );
+
+    avatar = destination
+  }
+
+  if (req.file) {
+    const mimeType = req.file.mimetype; // e.g., image/png
+    const ext = mimeExtension(mimeType); // e.g., 'png'
+
+    if (!ext) {
+      throw new Error("Unsupported avatar file type.");
+    }
+
+
+    avatar = await saveItemImage(s3Client, undefined, key(ext), req.file.buffer);
   }
 
   const updateExprParts: any[] = [];
@@ -154,6 +234,7 @@ export const updateTenant = asyncHandler(async (req: AuthenticatedRequest, res: 
   const updateData: Record<string, any> = {
     name,
     description,
+    handle,
     avatar: updatedAvatar,
     updated_at: new Date().toISOString(),
   };
@@ -327,4 +408,65 @@ export const removeMember = asyncHandler(async (req: AuthenticatedRequest, res: 
   );
 
   res.status(200).json({ message: "Member removed successfully", tenant });
+});
+
+
+/**
+ * Update a member's role in a tenant
+ */
+export const updateMember = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { tenantId, userId } = req.params;
+  const { role } = req.body; // expected role: "admin" | "editor" | "viewer"
+
+  if (!role) return res.status(400).json({ error: "Role is required" });
+
+  const response = await client.send(
+    new GetItemCommand({
+      TableName: TENANTS_TABLE,
+      Key: marshall({ tenant_id: tenantId }),
+    })
+  );
+
+  if (!response.Item) return res.status(404).json({ error: "Tenant not found" });
+
+  const tenant = unmarshall(response.Item) as Tenant;
+
+  const requesterId = req.user?.user_id;
+  const requesterRole = tenant.members.find((m) => m.user_id === requesterId)?.role;
+
+  if (requesterRole !== "admin") {
+    return res.status(403).json({ error: "Only admins can update member roles" });
+  }
+
+  const memberIndex = tenant.members.findIndex((m) => m.user_id === userId);
+  if (memberIndex === -1) return res.status(404).json({ error: "Member not found" });
+
+  // prevent removing admin role if it’s the only admin
+  if (tenant.members[memberIndex].role === "admin" && role !== "admin") {
+    const otherAdmins = tenant.members.filter((m) => m.user_id !== userId && m.role === "admin");
+    if (otherAdmins.length === 0) {
+      return res.status(400).json({ error: "Cannot remove admin role from the only admin" });
+    }
+  }
+
+  tenant.members[memberIndex].role = role;
+  tenant.updated_at = new Date().toISOString();
+
+  await client.send(
+    new UpdateItemCommand({
+      TableName: TENANTS_TABLE,
+      Key: marshall({ tenant_id: tenantId }),
+      UpdateExpression: "SET #members = :members, #updated_at = :updated_at",
+      ExpressionAttributeNames: {
+        "#members": "members",
+        "#updated_at": "updated_at",
+      },
+      ExpressionAttributeValues: marshall({
+        ":members": tenant.members,
+        ":updated_at": tenant.updated_at,
+      }),
+    })
+  );
+
+  res.status(200).json({ message: "Member role updated successfully", tenant });
 });
