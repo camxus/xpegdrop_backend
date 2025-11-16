@@ -151,7 +151,7 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-        - IndexName: TenantNameIndex
+        - IndexName: TenantHandleIndex
           KeySchema:
             - AttributeName: handle
               KeyType: HASH
