@@ -279,7 +279,7 @@ export const deleteUser = asyncHandler(
   }
 );
 
-export const searchByUsername = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+export const searchByUsername = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { q } = req.query;
 
@@ -313,7 +313,7 @@ export const searchByUsername = asyncHandler(async (req: AuthenticatedRequest, r
           );
         }
         const { email, dropbox, ...cleanUser } = user;
-        return req.user?.user_id ? user : cleanUser;
+        return cleanUser;
       })
     );
 
