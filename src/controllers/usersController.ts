@@ -287,13 +287,6 @@ export const searchByUsername = asyncHandler(async (req: AuthenticatedRequest, r
       return res.status(400).json({ error: "Query parameter 'q' is required" });
     }
 
-    const authHeader = req.headers.authorization;
-    if (authHeader) {
-      await getUserFromToken(authHeader.substring(7)).then(
-        (user) => (req.user = user)
-      );
-    }
-
     // Scan DynamoDB for usernames containing the query string
     const response = await client.send(
       new ScanCommand({
