@@ -153,7 +153,7 @@ Resources:
             ProjectionType: ALL
         - IndexName: TenantNameIndex
           KeySchema:
-            - AttributeName: hanlde
+            - AttributeName: handle
               KeyType: HASH
           Projection:
             ProjectionType: ALL
