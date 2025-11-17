@@ -10,6 +10,7 @@ import notesRoutes from "./routes/notesRoutes";
 import tenantsRoutes from "./routes/tenantsRoutes";
 import referralsRoutes from "./routes/referralsRoutes";
 import stripeRoutes from "./routes/stripeRoutes";
+import { createCorsConfig } from "./utils/cors";
 import { APIGatewayProxyEvent } from "aws-lambda";
 import { errorHandler } from "./middleware/errorMiddleware";
 import serverless from "serverless-http";
@@ -21,15 +22,7 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // Middleware
-app.use(
-  cors({
-    origin: [
-      process.env.EXPRESS_PUBLIC_FRONTEND_URL || "",
-      "http://localhost:3000"
-    ],
-    credentials: true,
-  })
-);
+app.use(cors(createCorsConfig()));
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
