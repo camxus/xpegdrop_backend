@@ -12,6 +12,8 @@ const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 
+const BASE_SUBDOMAIN = "app"
+
 
 export const getProjectWithImages = async (project: Project, handle: string) => {
     // Fetch user from DynamoDB
@@ -96,7 +98,7 @@ export const getProjectWithImages = async (project: Project, handle: string) => 
  * @param handle The tenant's handle
  * @returns The full tenant URL
  */
-export function getTenantUrl(frontendUrl: string | undefined, handle: string): string {
+export function getHandleUrl(frontendUrl: string | undefined, handle = BASE_SUBDOMAIN): string {
     if (!frontendUrl) throw new Error("Frontend URL not defined");
     if (!handle) throw new Error("Tenant handle not defined");
 

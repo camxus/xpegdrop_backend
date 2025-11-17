@@ -24,7 +24,7 @@ import multer from "multer";
 import { deleteItemImage, getItemFile, getSignedImage, s3ObjectExists, saveItemImage } from "../utils/s3";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { getProjectWithImages, getTenantUrl } from "../utils/helpers/project";
+import { getProjectWithImages, getHandleUrl } from "../utils/helpers/project";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
@@ -180,7 +180,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
 
 
     res.status(202).json({
-      ...projectData, share_url: (tenant?.handle ? getTenantUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant.handle) : process.env.EXPRESS_PUBLIC_FRONTEND_URL) + projectData.share_url
+      ...projectData, share_url: (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + projectData.share_url
     });
   } catch (error: any) {
     console.error("Create project error:", error);
@@ -284,7 +284,7 @@ export const getProject = asyncHandler(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      res.status(200).json({ ...project, share_url: project.share_url && (tenant ? getTenantUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant.handle) : process.env.EXPRESS_PUBLIC_FRONTEND_URL) + project.share_url });
+      res.status(200).json({ ...project, share_url: project.share_url && (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + project.share_url });
     } catch (error: any) {
       console.error("Get project error:", error);
       res
@@ -454,7 +454,7 @@ export const updateProject = asyncHandler(
 
       res.status(200).json({
         message: "Project updated successfully",
-        ...(newShareUrl !== project.share_url ? { share_url: (tenant ? getTenantUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant.handle) : process.env.EXPRESS_PUBLIC_FRONTEND_URL) + newShareUrl } : {}),
+        ...(newShareUrl !== project.share_url ? { share_url: (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + newShareUrl } : {}),
         ...(newDropboxPath !== project.dropbox_folder_path ? { dropbox_folder_path: newDropboxPath } : {}),
       });
     } catch (error: any) {
