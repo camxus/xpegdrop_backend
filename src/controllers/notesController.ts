@@ -17,7 +17,7 @@ export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Re
   const { error, value } = createNoteSchema.validate(req.body);
   if (error) throw validationErrorHandler(error);
 
-  const { project_id, image_name, content } = value;
+  const { project_id, image_name, content, author } = value;
 
   if (!project_id || !content) {
     return res.status(400).json({ error: "project_id and content are required" });
@@ -33,6 +33,7 @@ export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Re
     user_id: req.user?.user_id || `anonymous-${uuidv4()}`,
     content,
     created_at: new Date().toISOString(),
+    author: req.user ? { first_name: req.user?.first_name, last_name: req?.user?.last_name } : author
   };
 
   try {

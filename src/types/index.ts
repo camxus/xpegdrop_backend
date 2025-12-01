@@ -84,6 +84,7 @@ export interface Note {
   content: string;
   created_at: string;
   updated_at?: string;
+  author: { first_name: string, last_name: string }
 }
 
 export interface Tenant {
