@@ -23,7 +23,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
 
   try {
     event = stripe.webhooks.constructEvent(
-      req.body,                       // raw body from express.raw()
+      req.body,
       sig,
       process.env.EXPRESS_STRIPE_WEBHOOK_SECRET!
     )
@@ -33,7 +33,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // ------------------------------------------------------------
-  // 🔥 Handle the checkout session payment confirmation
+  // checkout.session.completed
   // ------------------------------------------------------------
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session
@@ -41,6 +41,13 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
     const userId = session.client_reference_id
     const stripeCustomerId = session.customer as string
     const subscriptionId = session.subscription as string
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    const trialEnd = subscription.trial_end ?? null
+
+    const now = Math.floor(Date.now() / 1000) // current Unix timestamp in seconds
+    const status = trialEnd && trialEnd > now ? "trialing" : "active"
+
 
     if (!userId) {
       console.error("❌ Missing client_reference_id on Stripe session.")
@@ -55,30 +62,30 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
         TableName: USERS_TABLE,
         Key: marshall({ user_id: userId }),
         UpdateExpression:
-          "SET membershipId = :membershipId, stripeCustomerId = :customer, membership_status = :status",
+          "SET stripe.customer_id = :customer, membership.membership_id = :sub, membership.status = :status",
         ExpressionAttributeValues: marshall({
-          ":membershipId": subscriptionId,
           ":customer": stripeCustomerId,
-          ":status": "active",
+          ":sub": subscriptionId,
+          ":status": status,
         }),
       })
     )
   }
 
   // ------------------------------------------------------------
-  // 🔥 Optional: Handle subscription updated (renewals, changes)
+  // customer.subscription.updated
   // ------------------------------------------------------------
   if (event.type === "customer.subscription.updated") {
     const subscription = event.data.object as Stripe.Subscription
 
-    const userId = subscription.metadata?.userId // if you add metadata at creation
+    const userId = subscription.metadata?.userId
 
     if (userId) {
       await client.send(
         new UpdateItemCommand({
           TableName: USERS_TABLE,
           Key: marshall({ user_id: userId }),
-          UpdateExpression: "SET membership_status = :status",
+          UpdateExpression: "SET membership.status = :status",
           ExpressionAttributeValues: marshall({
             ":status": subscription.status, // active | past_due | canceled
           }),
@@ -92,14 +99,13 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
 
 /* ------------------------------------------------------------
    GET /billing
-   Fetch subscription, invoices, payment method for logged-in user
 ------------------------------------------------------------ */
 export const getBillingInfo = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?.user_id
 
   if (!userId) return res.status(400).json({ error: "Missing userId" })
 
-  // Fetch user from DynamoDB
+  // Fetch user
   const userResult = await client.send(
     new GetItemCommand({
       TableName: USERS_TABLE,
@@ -113,7 +119,8 @@ export const getBillingInfo = asyncHandler(async (req: AuthenticatedRequest, res
 
   const user = unmarshall(userResult.Item)
 
-  if (!user.stripeCustomerId) {
+  // No billing info yet
+  if (!user.stripe?.customer_id) {
     return res.json({
       subscription: null,
       invoices: [],
@@ -121,9 +128,9 @@ export const getBillingInfo = asyncHandler(async (req: AuthenticatedRequest, res
     })
   }
 
-  const customerId = user.stripeCustomerId
+  const customerId = user.stripe.customer_id
 
-  // Fetch subscription
+  // Subscription
   const subscriptions = await stripe.subscriptions.list({
     customer: customerId,
     status: "all",
@@ -132,13 +139,13 @@ export const getBillingInfo = asyncHandler(async (req: AuthenticatedRequest, res
 
   const subscription = subscriptions.data[0] || null
 
-  // Fetch invoices
+  // Invoices
   const invoices = await stripe.invoices.list({
     customer: customerId,
     limit: 10,
   })
 
-  // Fetch default payment method
+  // Payment method
   let paymentMethod = null
   if (subscription?.default_payment_method) {
     paymentMethod = await stripe.paymentMethods.retrieve(
@@ -153,17 +160,15 @@ export const getBillingInfo = asyncHandler(async (req: AuthenticatedRequest, res
   })
 })
 
-
 /* ------------------------------------------------------------
    GET /billing/portal
-   Creates a Stripe Billing Portal session
 ------------------------------------------------------------ */
 export const getBillingPortalSession = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?.user_id
 
   if (!userId) return res.status(400).json({ error: "Missing userId" })
 
-  // Fetch user from DynamoDB
+  // Fetch user
   const userResult = await client.send(
     new GetItemCommand({
       TableName: USERS_TABLE,
@@ -177,13 +182,13 @@ export const getBillingPortalSession = asyncHandler(async (req: AuthenticatedReq
 
   const user = unmarshall(userResult.Item)
 
-  if (!user.stripeCustomerId) {
+  if (!user.stripe?.customer_id) {
     return res.status(400).json({ error: "User has no Stripe customer" })
   }
 
-  // Create Stripe Billing Portal session
+  // Create portal session
   const portal = await stripe.billingPortal.sessions.create({
-    customer: user.stripeCustomerId,
+    customer: user.stripe.customer_id,
     return_url: process.env.FRONTEND_URL + "/billing",
   })
 

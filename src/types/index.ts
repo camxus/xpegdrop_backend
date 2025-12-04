@@ -34,6 +34,14 @@ export interface User {
     access_token?: string;
     refresh_token?: string;
   };
+  stripe?: {
+    customer_id?: string;
+  };
+
+  membership?: {
+    membership_id?: string;
+    status?: "active" | "past_due" | "canceled" | "incomplete" | "trialing" | string;
+  };
   created_at: string;
   updated_at?: string;
 }
