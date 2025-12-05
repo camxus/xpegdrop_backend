@@ -16,6 +16,8 @@ const router: Router = Router();
  */
 router.get("/check", checkReferral);
 
+router.use(authenticate)
+
 /**
  * @route   POST /referrals/redeem
  * @desc    Redeem a referral code
@@ -23,7 +25,6 @@ router.get("/check", checkReferral);
  */
 router.post("/redeem", redeemReferral);
 
-router.use(authenticate)
 /**
  * @route   POST /referrals
  * @desc    Create a new referral (max 5 per user)
