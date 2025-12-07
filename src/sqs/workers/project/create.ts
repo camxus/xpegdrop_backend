@@ -47,7 +47,7 @@ export const handler: SQSHandler = async (event) => {
       const dropboxFiles = await getFiles();
 
       let dropboxUploadResponse;
-      const folderName = tenant.name ? `${tenant.name}/${project.name}` : project.name
+      const folderName = tenant?.name ? `${tenant.name}/${project.name}` : project.name
       try {
         dropboxUploadResponse = await dropboxService.upload(
           dropboxFiles,
@@ -105,10 +105,10 @@ export const handler: SQSHandler = async (event) => {
         const params = new UpdateItemCommand({
           TableName: PROJECTS_TABLE,
           Key: marshall({ project_id: project.project_id }),
-          UpdateExpression: "SET #st = :status, share_url = :empty ",
+          UpdateExpression: "SET #st = :status REMOVE share_url",
           ExpressionAttributeNames: { "#st": "status" },
           ExpressionAttributeValues: marshall({
-            ":status": "failed", ":empty": ""
+            ":status": "failed",
           }),
         });
         await client.send(params);
