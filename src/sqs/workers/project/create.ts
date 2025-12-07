@@ -47,7 +47,7 @@ export const handler: SQSHandler = async (event) => {
       const dropboxFiles = await getFiles();
 
       let dropboxUploadResponse;
-      const folderName = tenant.name ? `${tenant.name}/${project.name}` : project.name
+      const folderName = tenant?.name ? `${tenant.name}/${project.name}` : project.name
       try {
         dropboxUploadResponse = await dropboxService.upload(
           dropboxFiles,
