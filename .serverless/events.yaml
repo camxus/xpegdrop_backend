@@ -139,6 +139,7 @@
 - httpApi:
     path: /api/referrals/redeem
     method: POST
+    authorizer: jwtAuthorizer
 - httpApi:
     path: /api/referrals
     method: POST

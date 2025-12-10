@@ -12,6 +12,17 @@ const stripe = new Stripe(process.env.EXPRESS_STRIPE_SECRET_KEY!, {
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE })
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users"
 
+function resolveMembershipType(priceId: string | null | undefined) {
+  if (!priceId) return "unknown"
+
+  // Example pattern:
+  if (priceId.includes("pro")) return "pro"
+  if (priceId.includes("agency")) return "agency"
+  if (priceId.includes("artist")) return "artist"
+
+  return "unknown"
+}
+
 export const stripeWebhook = asyncHandler(async (req: Request, res: Response) => {
   const sig = req.headers["stripe-signature"]
 
@@ -47,7 +58,10 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
 
     const now = Math.floor(Date.now() / 1000) // current Unix timestamp in seconds
     const status = trialEnd && trialEnd > now ? "trialing" : "active"
+    const priceId = subscription.items.data[0]?.price?.id || null
+    const productId = subscription.items.data[0]?.price?.product || null
 
+    const membershipType = resolveMembershipType(priceId)
 
     if (!userId) {
       console.error("❌ Missing client_reference_id on Stripe session.")
@@ -62,10 +76,18 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
         TableName: USERS_TABLE,
         Key: marshall({ user_id: userId }),
         UpdateExpression:
-          "SET stripe.customer_id = :customer, membership.membership_id = :sub, membership.status = :status",
+          `SET 
+            stripe.customer_id = :customer,
+            stripe.subscription_id = :sub,
+            stripe.product = :product,
+            membership.membership_id = :memberType,
+            membership.status = :status
+          `,
         ExpressionAttributeValues: marshall({
           ":customer": stripeCustomerId,
           ":sub": subscriptionId,
+          ":memberType": membershipType,
+          ":product": productId,
           ":status": status,
         }),
       })
@@ -80,13 +102,26 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
 
     const userId = subscription.metadata?.userId
 
+
+    const priceId = subscription.items.data[0]?.price?.id || null
+    const productId = subscription.items.data[0]?.price?.product || null
+    const membershipType = resolveMembershipType(priceId)
+
+
     if (userId) {
       await client.send(
         new UpdateItemCommand({
           TableName: USERS_TABLE,
           Key: marshall({ user_id: userId }),
-          UpdateExpression: "SET membership.status = :status",
+          UpdateExpression:
+            `SET 
+              stripe.product = :product,
+              membership.membership_id = :memberType,
+              membership.status = :status,
+            `,
           ExpressionAttributeValues: marshall({
+            ":memberType": membershipType,
+            ":product": productId,
             ":status": subscription.status, // active | past_due | canceled
           }),
         })

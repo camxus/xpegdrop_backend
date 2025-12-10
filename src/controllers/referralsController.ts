@@ -1,12 +1,13 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
-import { DynamoDBClient, PutItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, PutItemCommand, QueryCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import { AuthenticatedRequest } from "../middleware/auth";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const REFERRALS_TABLE = process.env.DYNAMODB_REFERRALS_TABLE || "Referrals";
+const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 
 /**
  * Generate a 6-character alphanumeric referral code
@@ -91,7 +92,7 @@ export const getUserReferrals = asyncHandler(async (req: AuthenticatedRequest, r
 /**
  * Redeem a referral code
  */
-export const redeemReferral = asyncHandler(async (req: Request, res: Response) => {
+export const redeemReferral = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { code } = req.body;
 
   if (!code || code.length !== 6) {
@@ -125,6 +126,29 @@ export const redeemReferral = asyncHandler(async (req: Request, res: Response) =
     redeemed: true,
     updated_at: new Date().toISOString(),
   }
+
+  await client.send(
+    new UpdateItemCommand({
+      TableName: USERS_TABLE,
+      Key: marshall({ user_id: req.user?.user_id }),
+      UpdateExpression: `
+      SET 
+        stripe = :stripe,
+        membership = :membership
+    `,
+      ExpressionAttributeValues: marshall({
+        ":stripe": {
+          customer_id: "referral",
+          subscription_id: "referral",
+          product: "artist",
+        },
+        ":membership": {
+          membership_id: "artist",
+          status: "active",
+        },
+      }),
+    })
+  );
 
   await client.send(
     new PutItemCommand({
