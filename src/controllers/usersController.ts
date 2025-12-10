@@ -90,7 +90,7 @@ export const getCurrentUser = asyncHandler(
         user.avatar = await getSignedImage(s3Client, user.avatar);
       }
 
-      res.status(200).json({ user });
+      res.status(200).json(user);
     } catch (error: any) {
       console.error("Get current user error:", error);
       res.status(500).json({ error: error.message || "Failed to fetch user" });

@@ -128,34 +128,34 @@ export const redeemReferral = asyncHandler(async (req: AuthenticatedRequest, res
   }
 
   await client.send(
+    new UpdateItemCommand({
+      TableName: USERS_TABLE,
+      Key: marshall({ user_id: req.user?.user_id }),
+      UpdateExpression: `
+      SET 
+        stripe = :stripe,
+        membership = :membership
+    `,
+      ExpressionAttributeValues: marshall({
+        ":stripe": {
+          customer_id: "referral",
+          subscription_id: "referral",
+          product: "artist",
+        },
+        ":membership": {
+          membership_id: "artist",
+          status: "active",
+        },
+      }),
+    })
+  );
+
+  await client.send(
     new PutItemCommand({
       TableName: REFERRALS_TABLE,
       Item: marshall(updatedReferral),
     })
   );
-
-  await client.send(
-    new UpdateItemCommand({
-      TableName: USERS_TABLE,
-      Key: marshall({ user_id: req.user?.user_id }),
-      UpdateExpression: `
-        SET 
-          stripe.customer_id = :customer,
-          stripe.subscription_id = :sub,
-          stripe.product = :product,
-          membership.membership_id = :memberType,
-          membership.status = :status
-      `,
-      ExpressionAttributeValues: marshall({
-        ":customer": "referral",
-        ":sub": "referral",
-        ":product": "artist",
-        ":memberType": "artist",
-        ":status": "active",
-      }),
-    })
-  );
-
 
   res.status(200).json(updatedReferral);
 });
