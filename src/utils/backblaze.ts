@@ -1,6 +1,6 @@
 import B2 from "backblaze-b2";
-import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
+import { DynamoDBClient, GetItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { User } from "../types";
 import { createThumbnailFromURL } from "./file-utils";
 
@@ -146,7 +146,7 @@ export class BackblazeService {
         const previewUrl =
           `https://f003.backblazeb2.com/file/${process.env.EXPRESS_B2_BUCKET_NAME}/${file.fileName}` +
           `?Authorization=${authResp.data.authorizationToken}`;
-          
+
         let thumbnail = Buffer.from(""); // optional thumbnail
         let thumbnailUrl = "";
 
@@ -209,24 +209,68 @@ export class BackblazeService {
     });
   }
 
-  async getStorageSpaceUsage(allocated: number = Infinity) {
+  async getStorageSpaceUsage(membershipId?: string) {
     await this.authorize();
     let totalUsed = 0;
     let marker: string | undefined = undefined;
     const prefix = this.getStoragePrefix(); // user folder or tenant/user folder
 
-    do {
-      const resp = await this.b2.listFileNames({
-        bucketId: this.bucketId,
-        maxFileCount: 1000,
-        startFileName: marker || "",
-        prefix,
-        delimiter: "",
-      });
+    let allocated = 0;
 
-      totalUsed += resp.data.files.reduce((acc: any, file: any) => acc + (file.size || 0), 0);
-      marker = resp.data.nextFileName;
-    } while (marker);
+    if (!this.tenantId) {
+      if (!membershipId) {
+        // Fetch user from DynamoDB
+        const response = await client.send(
+          new GetItemCommand({
+            TableName: USERS_TABLE,
+            Key: marshall({ user_id: this.userId }),
+          })
+        );
+  
+        if (!response.Item) {
+          throw new Error("User not found")
+        }
+  
+        const user = unmarshall(response.Item);
+
+        membershipId = user.membership?.membership_id
+      }
+
+      // Set storage allocation based on membership
+      if (membershipId === "artist") {
+        allocated = 2 * 1024 ** 3; // 2 GB
+      } else if (membershipId === "pro") {
+        allocated = 500 * 1024 ** 3; // 500 GB
+      }
+    } else {
+      allocated = 2000 * 1024 ** 3; // 2 TB
+    }
+
+    try {
+      do {
+        const resp = await this.b2.listFileNames({
+          bucketId: this.bucketId,
+          maxFileCount: 1000,
+          startFileName: marker || "",
+          prefix,
+          delimiter: "",
+        });
+
+        totalUsed += resp.data.files.reduce((acc: any, file: any) => acc + (file.size || 0), 0);
+        marker = resp.data.nextFileName;
+      } while (marker);
+    } catch (err: any) {
+      if (err?.status === 404) {
+        // Bucket or prefix not found, return 0 usage
+        return {
+          used: 0,
+          allocated,
+          used_percent: 0,
+        };
+      }
+      // Re-throw other errors
+      throw err;
+    }
 
     const usedPercent = allocated === Infinity ? 0 : (totalUsed / allocated) * 100;
 

@@ -57,7 +57,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     const { error, value } = createProjectSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
-    const { name, description, tenant_id: tenantId, storage_provider = "dropbox" } = value;
+    const { name, description, tenant_id: tenantId, storage_provider: storageProvider = "dropbox" } = value;
     let fileLocations =
       typeof value.file_locations === "string"
         ? JSON.parse(value.file_locations as string || "[]")
@@ -117,7 +117,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
         }))
         : [],
       file_locations: fileLocations || [],
-      storage_provider
+      storage_provider: storageProvider
     };
 
     if (tenant) payload["tenant"] = {

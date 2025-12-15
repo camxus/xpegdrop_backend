@@ -17,7 +17,7 @@ const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID || "";
 export const handler: SQSHandler = async (event) => {
   for (const record of event.Records) {
     const data = JSON.parse(record.body);
-    const { user, project, files, file_locations, tenant, storage_provider } = data;
+    const { user, project, files, file_locations, tenant, storage_provider: storageProvider } = data;
 
     let folderPath: string | null = null;
     let shareLink = "";
@@ -48,7 +48,7 @@ export const handler: SQSHandler = async (event) => {
       const uploadFiles = await getFiles();
       const folderName = tenant?.name ? `${tenant.name}/${project.name}` : project.name;
 
-      if (storage_provider === "dropbox") {
+      if (storageProvider === "dropbox") {
         if (!user.dropbox?.access_token) throw new Error("Dropbox access token missing");
         const dropboxService = new DropboxService(user.dropbox.access_token);
 
@@ -66,18 +66,28 @@ export const handler: SQSHandler = async (event) => {
             throw err;
           }
         }
-      } else if (storage_provider === "b2") {
+      } else if (storageProvider === "b2") {
         const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, tenant?.tenant_id);
+
+        const storageUsage = await b2Service.getStorageSpaceUsage()
+
+        const uploadSize = uploadFiles.reduce((acc: number, file: File) => acc + file.size, 0);
+
+        if (storageUsage.allocated < storageUsage.used + uploadSize) {
+          // Not enough space to upload files
+          throw new Error(`Upload exceeds allocated storage`);
+        }
+
         const response = await b2Service.upload(uploadFiles, folderName);
         folderPath = response.folder_path;
         shareLink = response.share_link;
       } else {
-        throw new Error(`Unsupported storage provider: ${storage_provider}`);
+        throw new Error(`Unsupported storage provider: ${storageProvider}`);
       }
 
       // Determine provider-specific attributes
-      const folderAttr = storage_provider === "dropbox" ? "dropbox_folder_path" : "b2_folder_path";
-      const linkAttr = storage_provider === "dropbox" ? "dropbox_shared_link" : "b2_shared_link";
+      const folderAttr = storageProvider === "dropbox" ? "dropbox_folder_path" : "b2_folder_path";
+      const linkAttr = storageProvider === "dropbox" ? "dropbox_shared_link" : "b2_shared_link";
 
       // Update DynamoDB with provider-specific folder path and share link
       const updateExpr = `SET ${folderAttr} = :folder, ${linkAttr} = :link, #st = :status`;
@@ -117,11 +127,11 @@ export const handler: SQSHandler = async (event) => {
       // Cleanup partially created folder
       if (folderPath) {
         try {
-          if (storage_provider === "dropbox" && user.dropbox?.access_token) {
+          if (storageProvider === "dropbox" && user.dropbox?.access_token) {
             const dropboxService = new DropboxService(user.dropbox.access_token);
             await dropboxService.deleteFolder(folderPath);
             console.log(`🗑️ Deleted Dropbox folder ${folderPath} after failure.`);
-          } else if (storage_provider === "b2") {
+          } else if (storageProvider === "b2") {
             const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, tenant?.tenant_id);
             await b2Service.deleteFolder(folderPath);
             console.log(`🗑️ Deleted B2 folder ${folderPath} after failure.`);

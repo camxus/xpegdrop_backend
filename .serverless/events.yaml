@@ -32,6 +32,12 @@
     path: /api/dropbox/stats
     method: GET
 
+# Storage routes
+- httpApi:
+    path: /api/storage/stats
+    method: GET
+    authorizer: jwtAuthorizer
+
 # Projects routes
 - httpApi:
     path: /api/projects/share/{username}/{projectName}
