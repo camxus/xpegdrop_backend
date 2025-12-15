@@ -137,11 +137,20 @@ export class BackblazeService {
 
     const filesWithLinks = await Promise.all(
       resp.data.files.map(async (file: any) => {
-        const previewUrl = `https://f003.backblazeb2.com/file/${process.env.EXPRESS_B2_BUCKET_NAME}/${file.fileName}`;
+        const authResp = await this.b2.getDownloadAuthorization({
+          bucketId: this.bucketId,
+          fileNamePrefix: file.fileName,
+          validDurationInSeconds: 60 * 60, // 1 hour
+        });
+
+        const previewUrl =
+          `https://f003.backblazeb2.com/file/${process.env.EXPRESS_B2_BUCKET_NAME}/${file.fileName}` +
+          `?Authorization=${authResp.data.authorizationToken}`;
+          
         let thumbnail = Buffer.from(""); // optional thumbnail
         let thumbnailUrl = "";
 
-        thumbnail = await this.createThumbnailFromB2File(file.fileName) as typeof thumbnail;
+        thumbnail = await createThumbnailFromURL(previewUrl) as typeof thumbnail;
 
         return {
           name: file.fileName.split("/").pop()!,
@@ -287,7 +296,7 @@ export class BackblazeService {
     await this.authorize()
 
     let sharp = require("sharp")
-    
+
     // Download file via B2 API
     const res = await this.b2.downloadFileByName({
       bucketName: process.env.EXPRESS_B2_BUCKET_NAME!,
