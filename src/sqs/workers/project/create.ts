@@ -1,28 +1,29 @@
 import { SQSHandler } from "aws-lambda";
-
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { DropboxService } from "../../../utils/dropbox";
+import { BackblazeService } from "../../../utils/backblaze"; // Your B2 wrapper
 import { getItemFile } from "../../../utils/s3";
 import { S3Client } from "@aws-sdk/client-s3";
+import dotenv from "dotenv"
+
+dotenv.config()
 
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
+const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID || "";
 
 export const handler: SQSHandler = async (event) => {
   for (const record of event.Records) {
     const data = JSON.parse(record.body);
+    const { user, project, files, file_locations, tenant, storage_provider } = data;
 
-    const { user, project, files, file_locations, tenant } = data;
-    const { dropbox } = user;
-
-    const dropboxService = new DropboxService(dropbox.access_token);
     let folderPath: string | null = null;
+    let shareLink = "";
 
     try {
-
-      // Get files (rebuild buffers if needed)
+      // Helper to fetch files from S3 or reconstruct from buffers
       const getFiles = async () => {
         if (files.length) {
           return files.map((f: any) => {
@@ -44,85 +45,89 @@ export const handler: SQSHandler = async (event) => {
         return [];
       };
 
-      const dropboxFiles = await getFiles();
+      const uploadFiles = await getFiles();
+      const folderName = tenant?.name ? `${tenant.name}/${project.name}` : project.name;
 
-      let dropboxUploadResponse;
-      const folderName = tenant?.name ? `${tenant.name}/${project.name}` : project.name
-      try {
-        dropboxUploadResponse = await dropboxService.upload(
-          dropboxFiles,
-          folderName
-        );
-      } catch (err: any) {
-        if (err?.status === 401 && dropbox.refresh_token) {
-          await dropboxService.refreshDropboxToken(user);
-          dropboxUploadResponse = await dropboxService.upload(
-            dropboxFiles,
-            folderName
-          );
-        } else {
-          throw err;
+      if (storage_provider === "dropbox") {
+        if (!user.dropbox?.access_token) throw new Error("Dropbox access token missing");
+        const dropboxService = new DropboxService(user.dropbox.access_token);
+
+        try {
+          const response = await dropboxService.upload(uploadFiles, folderName);
+          folderPath = response.folder_path;
+          shareLink = response.share_link;
+        } catch (err: any) {
+          if (err?.status === 401 && user.dropbox.refresh_token) {
+            await dropboxService.refreshDropboxToken(user);
+            const response = await dropboxService.upload(uploadFiles, folderName);
+            folderPath = response.folder_path;
+            shareLink = response.share_link;
+          } else {
+            throw err;
+          }
         }
+      } else if (storage_provider === "b2") {
+        const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, tenant?.tenant_id);
+        const response = await b2Service.upload(uploadFiles, folderName);
+        folderPath = response.folder_path;
+        shareLink = response.share_link;
+      } else {
+        throw new Error(`Unsupported storage provider: ${storage_provider}`);
       }
 
+      // Determine provider-specific attributes
+      const folderAttr = storage_provider === "dropbox" ? "dropbox_folder_path" : "b2_folder_path";
+      const linkAttr = storage_provider === "dropbox" ? "dropbox_shared_link" : "b2_shared_link";
 
-      folderPath = dropboxUploadResponse.folder_path
-      const shareLink = dropboxUploadResponse.share_link
-
-      // Save to Dynamo
-      const projectData = {
-        dropbox_folder_path: folderPath,
-        dropbox_shared_link: shareLink,
-        status: "created",
-      };
-
+      // Update DynamoDB with provider-specific folder path and share link
+      const updateExpr = `SET ${folderAttr} = :folder, ${linkAttr} = :link, #st = :status`;
       const params = new UpdateItemCommand({
         TableName: PROJECTS_TABLE,
         Key: marshall({ project_id: project.project_id }),
-        UpdateExpression:
-          "SET dropbox_folder_path = :folder, dropbox_shared_link = :link, #st = :status",
-        ExpressionAttributeNames: {
-          "#st": "status", // because "status" is a reserved word in DynamoDB
-        },
+        UpdateExpression: updateExpr,
+        ExpressionAttributeNames: { "#st": "status" }, // because "status" is reserved
         ExpressionAttributeValues: marshall({
-          ":folder": projectData.dropbox_folder_path,
-          ":link": projectData.dropbox_shared_link,
-          ":status": projectData.status,
+          ":folder": folderPath,
+          ":link": shareLink,
+          ":status": "created",
         }),
-        ReturnValues: "ALL_NEW", // returns the updated item
+        ReturnValues: "ALL_NEW",
       });
 
+
       await client.send(params);
-
-
-
       console.log(`✅ Project ${project.project_id} created successfully.`);
     } catch (err) {
       console.error("❌ Project worker failed:", err);
-      // optionally: retry, dead-letter, or cleanup
-      // Mark project as failed
+
+      // Mark project as failed in DynamoDB
       try {
-        const params = new UpdateItemCommand({
+        const failParams = new UpdateItemCommand({
           TableName: PROJECTS_TABLE,
           Key: marshall({ project_id: project.project_id }),
           UpdateExpression: "SET #st = :status REMOVE share_url",
           ExpressionAttributeNames: { "#st": "status" },
-          ExpressionAttributeValues: marshall({
-            ":status": "failed",
-          }),
+          ExpressionAttributeValues: marshall({ ":status": "failed" }),
         });
-        await client.send(params);
+        await client.send(failParams);
       } catch (updateErr) {
         console.error("❌ Failed to update project status to failed:", updateErr);
       }
 
-      // Cleanup Dropbox folder if it was partially created
+      // Cleanup partially created folder
       if (folderPath) {
         try {
-          await dropboxService.deleteFolder(folderPath);
-          console.log(`🗑️ Deleted Dropbox folder ${folderPath} after failure.`);
+          if (storage_provider === "dropbox" && user.dropbox?.access_token) {
+            const dropboxService = new DropboxService(user.dropbox.access_token);
+            await dropboxService.deleteFolder(folderPath);
+            console.log(`🗑️ Deleted Dropbox folder ${folderPath} after failure.`);
+          } else if (storage_provider === "b2") {
+            const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, tenant?.tenant_id);
+            await b2Service.deleteFolder(folderPath);
+            console.log(`🗑️ Deleted B2 folder ${folderPath} after failure.`);
+          }
         } catch (cleanupErr) {
-          console.error("❌ Failed to delete Dropbox folder after failure:", cleanupErr);
+          console.error("❌ Failed to delete folder after failure:", cleanupErr);
         }
       }
     }

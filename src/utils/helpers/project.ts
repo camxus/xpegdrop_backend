@@ -4,18 +4,43 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { DropboxService } from "../dropbox";
 import { getSignedImage, s3ObjectExists, saveItemImage } from "../s3";
 import { S3Client } from "@aws-sdk/client-s3";
+import { BackblazeService } from "../backblaze";
+import dotenv from "dotenv"
 
+dotenv.config()
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 
+const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID || "";
+
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 
 const BASE_SUBDOMAIN = "app"
 
+export const getProjectWithImages = async (
+    project: Project,
+    handle: string,
+) => {
+    const isB2Project = Boolean(project.b2_folder_path);
+    const isDropboxProject = Boolean(project.dropbox_folder_path);
 
-export const getProjectWithImages = async (project: Project, handle: string) => {
+    if (!isB2Project && !isDropboxProject) {
+        throw new Error("No storage provider configured for project (B2 or Dropbox missing).");
+    }
+
+    // Prefer B2 if both exist
+    if (isB2Project) {
+        return getB2ProjectWithImages(project, handle);
+    }
+
+    if (isDropboxProject) {
+        return getDropboxProjectWithImages(project, handle);
+    }
+};
+
+export const getDropboxProjectWithImages = async (project: Project, handle: string) => {
     // Fetch user from DynamoDB
     const userResponse = await client.send(
         new GetItemCommand({
@@ -35,7 +60,7 @@ export const getProjectWithImages = async (project: Project, handle: string) => 
     }
 
     if (!project.dropbox_folder_path) {
-        throw new Error("Dropbox folder path missing.");
+        if (!project.dropbox_folder_path) throw new Error("Dropbox folder path missing.");
     }
 
     let dropboxAccessToken = user.dropbox.access_token;
@@ -91,6 +116,58 @@ export const getProjectWithImages = async (project: Project, handle: string) => 
         images,
     };
 };
+
+export const getB2ProjectWithImages = async (project: Project, handle: string) => {
+    if (!project.b2_folder_path) {
+        throw new Error("Backblaze folder path missing.");
+    }
+
+    const b2Service = new BackblazeService(B2_BUCKET_ID, project.user_id, project.tenant_id);
+
+    // List files in Backblaze folder
+    let b2Files: any[] = [];
+    try {
+        b2Files = await b2Service.listFiles(project.b2_folder_path);
+    } catch (err: any) {
+        console.error("Backblaze access failed:", err);
+        throw new Error("Failed to access Backblaze files");
+    }
+
+    // Resolve thumbnails in S3
+    const resolveFiles = async (files: any[]) =>
+        Promise.all(
+            files.map(async (file) => {
+                const projectName = project.name.toLowerCase().replace(/\s+/g, "-");
+                const s3Key = `thumbnails/${handle}/${projectName}/${file.name}`;
+                const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
+
+                const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
+                const s3Location = exists
+                    ? { bucket: bucketName, key: s3Key }
+                    : await saveItemImage(s3Client, bucketName, s3Key, file.thumbnail, false);
+
+                const thumbnailUrl = await getSignedImage(s3Client, s3Location);
+
+                delete file.thumbnail;
+                return { ...file, thumbnail_url: thumbnailUrl };
+            })
+        );
+
+    b2Files = await resolveFiles(b2Files);
+
+    const images = b2Files.filter((file: any) =>
+        /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i.test(file.name)
+    );
+
+    return {
+        project: {
+            ...project,
+            share_url: (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
+        },
+        images,
+    };
+};
+
 
 /**
  * Generates a tenant-specific URL by replacing the subdomain with the tenant handle

@@ -1,13 +1,18 @@
 import Joi from 'joi';
 
 export const createProjectSchema = Joi.object({
-  tenantId: Joi.string(),
+  tenantId: Joi.string().optional(),
   name: Joi.string().min(1).max(100).required(),
   description: Joi.string().max(500).optional(),
   is_public: Joi.boolean().optional(),
   can_download: Joi.boolean().optional(),
   approved_emails: Joi.array().items(Joi.string().email()).optional(),
-  file_locations: Joi.string().optional()
+  file_locations: Joi.string().optional(),
+  storage_provider: Joi.string().valid("dropbox", "b2").optional()
+    .messages({
+      "any.only": "storage_provider must be either 'dropbox' or 'b2'",
+      "any.required": "storage_provider is required",
+    }),
 });
 
 export const updateProjectSchema = Joi.object({

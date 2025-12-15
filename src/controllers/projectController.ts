@@ -25,9 +25,14 @@ import { deleteItemImage, getItemFile, getSignedImage, s3ObjectExists, saveItemI
 import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { getProjectWithImages, getHandleUrl } from "../utils/helpers/project";
+import { BackblazeService } from "../utils/backblaze";
+import { handler } from "../sqs/workers/project/create";
+import { Context, SQSEvent } from "aws-lambda";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
+
+const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID!;
 
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const TENANTS_TABLE = process.env.DYNAMODB_TENANTS_TABLE || "Tenants";
@@ -52,7 +57,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     const { error, value } = createProjectSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
-    const { name, description, tenant_id: tenantId } = value;
+    const { name, description, tenant_id: tenantId, storage_provider = "dropbox" } = value;
     let fileLocations =
       typeof value.file_locations === "string"
         ? JSON.parse(value.file_locations as string || "[]")
@@ -112,6 +117,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
         }))
         : [],
       file_locations: fileLocations || [],
+      storage_provider
     };
 
     if (tenant) payload["tenant"] = {
@@ -158,6 +164,8 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       approved_emails: [],
       dropbox_folder_path: "",
       dropbox_shared_link: "",
+      b2_folder_path: "",
+      b2_shared_link: "",
       created_at: new Date().toISOString(),
       status: "initiated"
     };
@@ -171,12 +179,14 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       })
     );
 
-    await sqs.send(
-      new SendMessageCommand({
-        QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
-        MessageBody: JSON.stringify(payload),
-      })
-    );
+    handler({ Records: [{ body: JSON.stringify(payload) }] } as SQSEvent, {} as Context, () => { })
+
+    // await sqs.send(
+    //   new SendMessageCommand({
+    //     QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
+    //     MessageBody: JSON.stringify(payload),
+    //   })
+    // );
 
 
     res.status(202).json({
@@ -314,7 +324,7 @@ export const updateProject = asyncHandler(
         return res.status(404).json({ error: "Project not found" });
       }
 
-      const project = unmarshall(getRes.Item);
+      const project = unmarshall(getRes.Item) as Project;
 
       if (project.user_id !== req.user?.user_id) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -366,36 +376,58 @@ export const updateProject = asyncHandler(
 
 
         // Move Dropbox folder if it exists
-        if (project.dropbox_folder_path && req.user?.dropbox?.access_token && name !== project.name) {
-          const dropboxService = new DropboxService(req.user.dropbox.access_token);
+        let newPath: string | undefined;
 
-          const currentPath = project.dropbox_folder_path;
-          const parentFolder = currentPath.split("/").slice(0, -1).join("/") || "";
-          newDropboxPath = `${parentFolder}/${name}`;
+        if (name !== project.name) {
+          if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
+            // Handle Dropbox rename
+            const dropboxService = new DropboxService(req.user.dropbox.access_token);
 
-          const tryMoveFolder = async (targetPath: string) => {
-            await dropboxService.moveFolder(currentPath, targetPath);
-            updateExpr.push("dropbox_folder_path = :dropbox_folder_path");
-            exprAttrValues[":dropbox_folder_path"] = targetPath;
-          };
+            const currentPath = project.dropbox_folder_path;
+            const parentFolder = currentPath.split("/").slice(0, -1).join("/") || "";
+            newPath = `${parentFolder}/${name}`;
 
-          try {
-            await tryMoveFolder(newDropboxPath);
-          } catch (err: any) {
-            const isUnauthorized = err.status === 401;
+            const tryMoveFolder = async (targetPath: string) => {
+              await dropboxService.moveFolder(currentPath, targetPath);
+              updateExpr.push("dropbox_folder_path = :dropbox_folder_path");
+              exprAttrValues[":dropbox_folder_path"] = targetPath;
+            };
 
-            // If token expired and refresh token available
-            if (isUnauthorized && req.user.dropbox.refresh_token) {
-              try {
-                await dropboxService.refreshDropboxToken(req.user);
-                await tryMoveFolder(newDropboxPath);
-              } catch (refreshError) {
-                console.error("Dropbox token refresh failed", refreshError);
-                return res.status(500).json({ error: "Failed to refresh Dropbox token" });
+            try {
+              await tryMoveFolder(newPath);
+            } catch (err: any) {
+              const isUnauthorized = err.status === 401;
+
+              if (isUnauthorized && req.user.dropbox.refresh_token) {
+                try {
+                  await dropboxService.refreshDropboxToken(req.user);
+                  await tryMoveFolder(newPath);
+                } catch (refreshError) {
+                  console.error("Dropbox token refresh failed", refreshError);
+                  return res.status(500).json({ error: "Failed to refresh Dropbox token" });
+                }
+              } else {
+                console.error("Dropbox folder move failed", err);
+                return res.status(500).json({ error: "Failed to move Dropbox folder" });
               }
-            } else {
-              console.error("Dropbox folder move failed", err);
-              return res.status(500).json({ error: "Failed to move Dropbox folder" });
+            }
+          } else if (project.b2_folder_path) {
+            const b2Service = new BackblazeService(B2_BUCKET_ID, req.user?.user_id!, project.tenant_id);
+
+            const currentPath = project.b2_folder_path;
+            const parentFolder = currentPath.split("/").slice(0, -1).join("/") || "";
+            const newPath = `${parentFolder}/${name}`;
+
+            try {
+              // Move folder in Backblaze
+              await b2Service.moveFolder(currentPath, newPath);
+
+              // Update DynamoDB expression
+              updateExpr.push("b2_folder_path = :b2_folder_path");
+              exprAttrValues[":b2_folder_path"] = newPath;
+            } catch (err) {
+              console.error("Backblaze folder rename failed", err);
+              return res.status(500).json({ error: "Failed to rename Backblaze folder" });
             }
           }
         }
@@ -497,7 +529,17 @@ export const deleteProject = asyncHandler(
           await dropboxService.deleteFolder(project.dropbox_folder_path);
           console.warn("Failed to delete Dropbox folder:", err);
         }
+      } else if (project.b2_folder_path && req.user?.user_id) {
+        const b2Service = new BackblazeService(B2_BUCKET_ID, req.user.user_id, project.tenant_id);
+
+        try {
+          await b2Service.deleteFolder(project.b2_folder_path);
+        } catch (err) {
+          console.error("Failed to delete Backblaze folder:", err);
+          return res.status(500).json({ error: "Failed to delete Backblaze folder" });
+        }
       }
+
 
       await client.send(
         new DeleteItemCommand({
@@ -734,13 +776,24 @@ export const removeProjectFile = asyncHandler(
         return res.status(400).json({ error: "Dropbox access token missing" });
       }
 
-      const dropboxService = new DropboxService(req.user.dropbox.access_token);
+      if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
+        const dropboxService = new DropboxService(req.user.dropbox.access_token);
 
-      try {
-        await dropboxService.deleteFile(project.dropbox_folder_path, fileName);
-      } catch (err: any) {
-        console.error("Dropbox file delete failed", err);
-        return res.status(500).json({ error: "Failed to delete file" });
+        try {
+          await dropboxService.deleteFile(project.dropbox_folder_path, fileName);
+        } catch (err: any) {
+          console.error("Dropbox file delete failed", err);
+          return res.status(500).json({ error: "Failed to delete file" });
+        }
+      } else if (project.b2_folder_path && req.user?.user_id) {
+        const b2Service = new BackblazeService(B2_BUCKET_ID, req.user.user_id, project.tenant_id);
+
+        try {
+          await b2Service.deleteFile(project.b2_folder_path, fileName);
+        } catch (err: any) {
+          console.error("Backblaze file delete failed", err);
+          return res.status(500).json({ error: "Failed to delete file" });
+        }
       }
 
       res.status(200).json({ message: "File removed successfully" });

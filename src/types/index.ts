@@ -58,6 +58,8 @@ export interface Project {
   can_download: boolean,
   dropbox_folder_path?: string;
   dropbox_shared_link?: string;
+  b2_folder_path?: string;
+  b2_shared_link?: string;
   created_at: string;
   updated_at?: string;
   status: "initiated" | "created"
