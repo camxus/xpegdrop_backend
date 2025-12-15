@@ -226,11 +226,11 @@ export class BackblazeService {
             Key: marshall({ user_id: this.userId }),
           })
         );
-  
+
         if (!response.Item) {
           throw new Error("User not found")
         }
-  
+
         const user = unmarshall(response.Item);
 
         membershipId = user.membership?.membership_id
@@ -256,7 +256,8 @@ export class BackblazeService {
           delimiter: "",
         });
 
-        totalUsed += resp.data.files.reduce((acc: any, file: any) => acc + (file.size || 0), 0);
+        
+        totalUsed += resp.data.files.reduce((acc: any, file: any) => acc + (file.contentLength || 0), 0);
         marker = resp.data.nextFileName;
       } while (marker);
     } catch (err: any) {

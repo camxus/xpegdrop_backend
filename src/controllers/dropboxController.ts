@@ -139,31 +139,15 @@ export const getDropboxStats = asyncHandler(async (req: AuthenticatedRequest, re
 
     const dropbox = new DropboxService(req.user.dropbox.access_token);
 
-    let response;
+    let accountInfo;
 
     try {
-      const accountInfo = await dropbox.getStorageSpaceUsage();
-
-      response = {
-        storage: {
-          used: accountInfo.used,
-          allocated: accountInfo.allocated,
-          used_percent: accountInfo.used_percent,
-        },
-      };
+      accountInfo = await dropbox.getStorageSpaceUsage();
     } catch (err: any) {
       if (err.status === 401 && req.user.dropbox.refresh_token) {
         try {
           await dropbox.refreshDropboxToken(req.user);
-          const accountInfo = await dropbox.getStorageSpaceUsage();
-
-          response = {
-            storage: {
-              used: accountInfo.used,
-              allocated: accountInfo.allocated,
-              used_percent: accountInfo.used_percent,
-            },
-          };
+          accountInfo = await dropbox.getStorageSpaceUsage();
         } catch (refreshError) {
           console.error("Dropbox token refresh failed", refreshError);
           return res.status(500).json({ error: "Failed to refresh Dropbox token" });
@@ -174,7 +158,11 @@ export const getDropboxStats = asyncHandler(async (req: AuthenticatedRequest, re
       }
     }
 
-    return res.json(response);
+    return res.json({
+      used: accountInfo.used,
+      allocated: accountInfo.allocated,
+      used_percent: accountInfo.used_percent,
+    });
   } catch (error: any) {
     console.error("Dropbox token exchange failed:", error);
     return res.status(500).json({ error: "Dropbox authentication failed" });

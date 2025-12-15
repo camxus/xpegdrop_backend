@@ -16,7 +16,7 @@ export const getStorageStats = asyncHandler(async (req: AuthenticatedRequest, re
     // Get storage usage
     const storageInfo = await b2Service.getStorageSpaceUsage(req.user!.membership?.membership_id);
 
-    return res.json({ storage: storageInfo });
+    return res.json(storageInfo);
   } catch (error: any) {
     console.error("Failed to fetch B2 storage stats:", error);
     return res.status(500).json({ error: "Failed to fetch storage stats" });
