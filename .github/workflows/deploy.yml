@@ -36,6 +36,11 @@ jobs:
           AWS_REGION_CODE: eu-west-1
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 
+          EXPRESS_B2_APP_KEY_ID: ${{ secrets.EXPRESS_B2_APP_KEY_ID }}
+          EXPRESS_B2_APP_KEY: ${{ secrets.EXPRESS_B2_APP_KEY }}
+          EXPRESS_B2_BUCKET_ID: ${{ secrets.EXPRESS_B2_BUCKET_ID }}
+          EXPRESS_B2_BUCKET_NAME: ${{ secrets.EXPRESS_B2_BUCKET_NAME }}
+
           EXPRESS_COGNITO_CLIENT_ID: ${{ secrets.EXPRESS_COGNITO_CLIENT_ID }}
           EXPRESS_DROPBOX_CLIENT_ID: ${{ secrets.EXPRESS_DROPBOX_CLIENT_ID }}
           EXPRESS_STRIPE_SECRET_KEY: ${{ secrets.EXPRESS_STRIPE_SECRET_KEY }}
