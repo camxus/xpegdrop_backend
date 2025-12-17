@@ -4,6 +4,8 @@ import { asyncHandler } from "../middleware/asyncHandler";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { BackblazeService } from "../utils/backblaze";
 
+require("dotenv").config();
+
 const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID!;
 
 export const getStorageStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
