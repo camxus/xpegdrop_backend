@@ -36,6 +36,7 @@ resources: ${file(./.serverless/resources.yaml)}
 functions: ${file(./.serverless/functions.yaml)}
 
 plugins:
+  - serverless-esbuild
   - serverless-offline
   - serverless-dotenv-plugin
 
