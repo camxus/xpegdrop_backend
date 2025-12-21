@@ -7,8 +7,9 @@ export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer> 
   ];
 
   // Dynamically import the right sharp binary
-  let sharp = require("sharp")
-  
+  const sharpModule = require("sharp");
+  const sharp = sharpModule.default || sharpModule;
+
   const res = await fetch(imageUrl);
   if (!res.ok) throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
 
