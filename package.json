@@ -58,7 +58,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mime-types": "^3.0.1",
     "@types/multer": "^2.0.0",
-    "esbuild": "^0.27.2",
-    "serverless-esbuild": "^1.56.1"
+    "esbuild": "^0.27.2"
   }
 }
