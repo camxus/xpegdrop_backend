@@ -22,7 +22,7 @@ jobs:
         run: yarn set version stable
 
       - name: Show Yarn config
-        run: yarn config list
+        run: yarn config get supportedArchitectures
 
       - name: Install dependencies
         run: >

@@ -1,8 +1,0 @@
-# Only install packages for the OS/CPU/libc used by AWS Lambda
-supportedArchitectures:
-  os:
-    - linux       # AWS Lambda runtime is Linux
-  cpu:
-    - x64         # AWS Lambda x64 architecture
-  libc:
-    - glibc      # Amazon Linux uses glibc
