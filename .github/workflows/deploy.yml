@@ -20,7 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: >
-          yarn add --frozen-lockfile && yarn add sharp --force --platform=linux --arch=x64
+          yarn add --frozen-lockfile
+          yarn add sharp --force --platform=linux --arch=x64
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
