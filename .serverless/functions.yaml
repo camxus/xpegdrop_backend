@@ -1,5 +1,5 @@
 api:
-  handler: src/server.handler
+  handler: src/server2.handler
   events: ${file(./.serverless/events.yaml)}
 
 signup:
