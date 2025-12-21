@@ -21,6 +21,9 @@ jobs:
       - name: Setup Yarn 4
         run: yarn set version stable
 
+      - name: Show Yarn config
+        run: yarn config list
+
       - name: Install dependencies
         run: >
           yarn install
