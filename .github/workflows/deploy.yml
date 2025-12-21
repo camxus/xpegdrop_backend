@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: >
-          yarn install --frozen-lockfile
+          yarn install
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
