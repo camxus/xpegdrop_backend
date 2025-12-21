@@ -38,11 +38,3 @@ functions: ${file(./.serverless/functions.yaml)}
 plugins:
   - serverless-offline
   - serverless-dotenv-plugin
-
-build:
-  bundle: true
-  external:
-    - sharp
-  packagerOptions:
-    scripts:
-      - npm install --os=linux --cpu=x64 sharp
