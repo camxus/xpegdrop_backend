@@ -1,9 +1,9 @@
 api:
-  handler: src/server.handler
+  handler: dist/server.handler
   events: ${file(./.serverless/events.yaml)}
 
 signup:
-  handler: src/sqs/workers/signup/create.handler
+  handler: dist/sqs/workers/signup/create.handler
   events:
     - sqs:
         arn: !GetAtt SignupQueue.Arn
@@ -11,7 +11,7 @@ signup:
         maximumRetryAttempts: 2
 
 cleanup:
-  handler: src/sqs/workers/signup/cleanup.handler
+  handler: dist/sqs/workers/signup/cleanup.handler
   events:
     - sqs:
         arn: !GetAtt CleanupQueue.Arn
@@ -19,7 +19,7 @@ cleanup:
         maximumRetryAttempts: 2
 
 createProject:
-  handler: src/sqs/workers/project/create.handler
+  handler: dist/sqs/workers/project/create.handler
   timeout: 60
   events:
     - sqs:
@@ -29,7 +29,7 @@ createProject:
             - Arn
 
 addFiles:
-  handler: src/sqs/workers/project/addFiles.handler
+  handler: dist/sqs/workers/project/addFiles.handler
   events:
     - sqs:
         arn: !GetAtt AddFilesQueue.Arn
@@ -37,7 +37,7 @@ addFiles:
         maximumRetryAttempts: 2
 
 addFilesCleanup:
-  handler: src/sqs/workers/project/addFilesCleanup.handler
+  handler: dist/sqs/workers/project/addFilesCleanup.handler
   events:
     - sqs:
         arn: !GetAtt AddFilesCleanupQueue.Arn
@@ -45,4 +45,4 @@ addFilesCleanup:
         maximumRetryAttempts: 2
 
 authorizer:
-  handler: src/middleware/serverlessAuth.authorizeHandler
+  handler: dist/middleware/serverlessAuth.authorizeHandler
