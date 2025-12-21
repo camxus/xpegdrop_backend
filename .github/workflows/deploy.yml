@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: >
-          npm install sharp --force --platform=linux --arch=x64
+          npm install sharp --force --platform=linux --cpu=x64
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
