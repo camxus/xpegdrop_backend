@@ -20,12 +20,12 @@ jobs:
 
       - name: Setup Yarn 4
         run: yarn set version stable
-        
+
       - name: Install dependencies
         run: yarn install --immutable
 
       - name: Install Sharp
-        run: SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm_config_arch=x64 npm_config_platform=linux yarn add sharp
+        run: SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm_config_arch=x64 npm_config_platform=linux yarn remove sharp && yarn add sharp
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
