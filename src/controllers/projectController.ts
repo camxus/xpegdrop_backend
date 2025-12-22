@@ -162,6 +162,8 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       is_public: false,
       can_download: false,
       approved_emails: [],
+      approved_users: [],
+      approved_tenant_users: [],
       dropbox_folder_path: "",
       dropbox_shared_link: "",
       b2_folder_path: "",
@@ -234,6 +236,17 @@ export const getTenantProjects = asyncHandler(
     }
 
     try {
+      const tenantResponse = await client.send(
+        new GetItemCommand({
+          TableName: TENANTS_TABLE,
+          Key: marshall({ tenant_id: tenantId }),
+        })
+      );
+
+      if (!tenantResponse.Item) return res.status(404).json({ error: "Tenant not found" });
+
+      const tenant = unmarshall(tenantResponse.Item) as Tenant;
+
       const response = await client.send(
         new ScanCommand({
           TableName: PROJECTS_TABLE,
@@ -244,9 +257,19 @@ export const getTenantProjects = asyncHandler(
         })
       );
 
-      const projects = response.Items?.map((item) => unmarshall(item)) || [];
+      const member = tenant.members.find((m) => m.user_id === req.user?.user_id);
+      if (!member) return res.status(403).json({ error: "User is not a tenant member" });
 
-      res.status(200).json(projects);
+      const projects = response.Items?.map((item) => unmarshall(item)) as Project[] || [];
+
+      // Apply filtering based on role
+      const visibleProjects = member.role === "admin"
+        ? projects // admin sees all
+        : projects.filter((project) =>
+          project.approved_tenant_users?.map((u) => u.user_id).includes(req.user?.user_id || "")
+        );
+
+      res.status(200).json(visibleProjects);
     } catch (error: any) {
       console.error("Get projects error:", error);
       res
@@ -451,6 +474,24 @@ export const updateProject = asyncHandler(
       if (value.approved_emails?.length) {
         updateExpr.push("approved_emails = :approved_emails");
         exprAttrValues[":approved_emails"] = value.approved_emails;
+      }
+
+      if (value.approved_users !== undefined) {
+        updateExpr.push("approved_users = :approved_users");
+        exprAttrValues[":approved_users"] = value.approved_users;
+      }
+
+      if (value.approved_tenant_users !== undefined) {
+        updateExpr.push("approved_tenant_users = :approved_tenant_users");
+        exprAttrValues[":approved_tenant_users"] = value.approved_tenant_users;
+      }
+
+      if (value.approved_tenant_users) {
+        const self = (value.approved_tenant_users as Project["approved_tenant_users"]).find(
+          (u) => u.user_id === req.user?.user_id
+        );
+
+        if (self) return res.status(400).json({ error: "You cannot edit or add yourself" });
       }
 
       // Add updated_at timestamp

@@ -6,7 +6,24 @@ export const createProjectSchema = Joi.object({
   description: Joi.string().max(500).optional(),
   is_public: Joi.boolean().optional(),
   can_download: Joi.boolean().optional(),
-  approved_emails: Joi.array().items(Joi.string().email()).optional(),
+  approved_emails: Joi.array()
+    .items(Joi.string().email())
+    .optional(),
+  approved_users: Joi.array()
+    .items(
+      Joi.object({
+        user_id: Joi.array().items(Joi.string()).required(),
+      })
+    )
+    .optional(),
+  approved_tenant_users: Joi.array()
+    .items(
+      Joi.object({
+        user_id: Joi.string().required(),
+        role: Joi.string().valid("admin", "editor", "viewer").required(),
+      })
+    )
+    .optional(),
   file_locations: Joi.string().optional(),
   storage_provider: Joi.string().valid("dropbox", "b2").optional()
     .messages({
@@ -22,5 +39,20 @@ export const updateProjectSchema = Joi.object({
   is_public: Joi.boolean().optional(),
   can_download: Joi.boolean().optional(),
   approved_emails: Joi.array().items(Joi.string().email()).optional(),
+  approved_users: Joi.array()
+    .items(
+      Joi.object({
+        user_id: Joi.array().items(Joi.string()).required(),
+      })
+    )
+    .optional(),
+  approved_tenant_users: Joi.array()
+    .items(
+      Joi.object({
+        user_id: Joi.string().required(),
+        role: Joi.string().valid("admin", "editor", "viewer").required(),
+      })
+    )
+    .optional(),
   file_locations: Joi.string().optional()
 });

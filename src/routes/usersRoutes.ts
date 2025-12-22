@@ -6,7 +6,7 @@ import {
   deleteUser,
   getUserByUsername,
   updateDropboxToken,
-  searchByUsername,
+  searchByUsername
 } from '../controllers/usersController';
 import { authenticate } from '../middleware/auth';
 import { uploadAvatar } from '../controllers/authController';

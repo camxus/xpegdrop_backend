@@ -55,6 +55,8 @@ export interface Project {
   share_url: string;
   is_public: boolean;
   approved_emails: string[];
+  approved_users: { user_id: string[] }[];
+  approved_tenant_users: { user_id: string, role: string }[]
   can_download: boolean,
   dropbox_folder_path?: string;
   dropbox_shared_link?: string;
@@ -102,12 +104,13 @@ export interface Tenant {
   handle: string;
   name: string;
   description?: string;
-  members: {
+  members?: {
     user_id: string;
     role: "admin" | "editor" | "viewer";
     joined_at: string;
   }[];
   avatar?: S3Location | string;
+  created_by: string;
   created_at: string;
   updated_at?: string;
 }

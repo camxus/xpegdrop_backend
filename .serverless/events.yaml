@@ -192,6 +192,11 @@
     path: /api/tenants/{tenantId}/{userId}
     method: DELETE
     authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/tenants/{tenantId}/users/search
+    method: GET
+    authorizer: jwtAuthorizer
+
 
 # Stripe routes
 - httpApi:

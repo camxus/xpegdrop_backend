@@ -13,7 +13,7 @@ import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import { AuthenticatedRequest } from "../middleware/auth";
-import { S3Location, Tenant } from "../types";
+import { S3Location, Tenant, User } from "../types";
 import { getSignedImage, saveItemImage, copyItemImage } from "../utils/s3";
 import multer from "multer";
 import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
@@ -23,6 +23,7 @@ import { updateTenantSchema } from "../utils/validation/tenantsValidation";
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 
+const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 const TENANTS_TABLE = process.env.DYNAMODB_TENANTS_TABLE || "Tenants";
 const TEMP_BUCKET = process.env.EXPRESS_S3_TEMP_BUCKET!;
 const EXPRESS_S3_APP_BUCKET = process.env.EXPRESS_S3_APP_BUCKET!;
@@ -59,6 +60,7 @@ export const createTenant = asyncHandler(async (req: AuthenticatedRequest, res: 
         joined_at: created_at,
       },
     ],
+    created_by: req.user?.user_id,
     created_at,
   };
 
@@ -82,7 +84,7 @@ export const getTenants = asyncHandler(async (req: AuthenticatedRequest, res: Re
   const response = await client.send(new ScanCommand({ TableName: TENANTS_TABLE }));
   const allTenants = response.Items?.map((item) => unmarshall(item)) as Tenant[] || [];
   const tenants = allTenants.filter((tenant: Tenant) =>
-    tenant.members.some((m) => m.user_id === userId)
+    tenant.members?.some((m) => m.user_id === userId)
   );
 
   for (const tenant of tenants) {
@@ -110,7 +112,7 @@ export const getTenant = asyncHandler(async (req: AuthenticatedRequest, res: Res
 
   const tenant = unmarshall(response.Item) as Tenant;
   const userId = req.user?.user_id;
-  const isMember = tenant.members.some((m) => m.user_id === userId);
+  const isMember = tenant.members?.some((m) => m.user_id === userId);
 
   if (!isMember) return res.status(403).json({ error: "Unauthorized" });
 
@@ -150,16 +152,14 @@ export const getTenantByHandle = asyncHandler(async (req: AuthenticatedRequest, 
 
   // check membership
   const userId = req.user?.user_id;
-  const isMember = tenant.members.some((m) => m.user_id === userId);
-
-  if (!isMember) {
-    return res.status(403).json({ error: "Unauthorized" });
-  }
 
   // sign avatar if exists
   if (tenant.avatar && (tenant.avatar as S3Location).key) {
     tenant.avatar = await getSignedImage(s3Client, tenant.avatar as S3Location);
   }
+
+  const isMember = tenant.members?.some((m) => m.user_id === userId);
+  if (!isMember) delete tenant.members
 
   res.status(200).json(tenant);
 });
@@ -191,7 +191,7 @@ export const updateTenant = asyncHandler(async (req: AuthenticatedRequest, res: 
   const tenant = unmarshall(response.Item) as Tenant;
 
   const userId = req.user?.user_id;
-  const userRole = tenant.members.find((m) => m.user_id === userId)?.role;
+  const userRole = tenant.members?.find((m) => m.user_id === userId)?.role;
   if (userRole !== "admin") return res.status(403).json({ error: "Only admin can update tenant" });
 
   // Handle avatar upload if provided
@@ -284,7 +284,7 @@ export const deleteTenant = asyncHandler(async (req: AuthenticatedRequest, res: 
 
   const tenant = unmarshall(response.Item) as Tenant;
   const userId = req.user?.user_id;
-  const userRole = tenant.members.find((m) => m.user_id === userId)?.role;
+  const userRole = tenant.members?.find((m) => m.user_id === userId)?.role;
   if (userRole !== "admin") return res.status(403).json({ error: "Only admin can delete tenant" });
 
   await client.send(
@@ -317,13 +317,13 @@ export const inviteMember = asyncHandler(async (req: AuthenticatedRequest, res: 
   const tenant = unmarshall(response.Item) as Tenant;
 
   const requesterId = req.user?.user_id;
-  const requesterRole = tenant.members.find((m) => m.user_id === requesterId)?.role;
+  const requesterRole = tenant.members?.find((m) => m.user_id === requesterId)?.role;
 
   if (requesterRole !== "admin") {
     return res.status(403).json({ error: "Only admins can invite members" });
   }
 
-  const alreadyMember = tenant.members.some((m) => m.user_id === user_id);
+  const alreadyMember = tenant.members?.some((m) => m.user_id === user_id);
   if (alreadyMember) {
     return res.status(400).json({ error: "User is already a tenant member" });
   }
@@ -335,7 +335,7 @@ export const inviteMember = asyncHandler(async (req: AuthenticatedRequest, res: 
     invited_by: requesterId,
   };
 
-  tenant.members.push(newMember);
+  tenant.members?.push(newMember);
   tenant.updated_at = new Date().toISOString();
 
   await client.send(
@@ -374,6 +374,10 @@ export const removeMember = asyncHandler(async (req: AuthenticatedRequest, res: 
   const tenant = unmarshall(response.Item) as Tenant;
 
   const requesterId = req.user?.user_id;
+  if (!tenant.members) {
+    return res.status(403).json({ error: "No memebers to remove" });
+  }
+
   const requesterRole = tenant.members.find((m) => m.user_id === requesterId)?.role;
 
   if (requesterRole !== "admin") {
@@ -432,6 +436,11 @@ export const updateMember = asyncHandler(async (req: AuthenticatedRequest, res: 
   const tenant = unmarshall(response.Item) as Tenant;
 
   const requesterId = req.user?.user_id;
+
+  if (!tenant.members) {
+    return res.status(403).json({ error: "No memebers to update" });
+  }
+
   const requesterRole = tenant.members.find((m) => m.user_id === requesterId)?.role;
 
   if (requesterRole !== "admin") {
@@ -470,3 +479,94 @@ export const updateMember = asyncHandler(async (req: AuthenticatedRequest, res: 
 
   res.status(200).json({ message: "Member role updated successfully", tenant });
 });
+
+export const searchTenantUserByUsername = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { tenantId } = req.params;
+      const { q } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ error: "Tenant ID is required" });
+      }
+
+      if (!q || typeof q !== "string") {
+        return res.status(400).json({ error: "Query parameter 'q' is required" });
+      }
+
+      // 1. Fetch tenant
+      const tenantRes = await client.send(
+        new GetItemCommand({
+          TableName: TENANTS_TABLE,
+          Key: marshall({ tenant_id: tenantId }),
+        })
+      );
+
+      if (!tenantRes.Item) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      const tenant = unmarshall(tenantRes.Item) as {
+        members: { user_id: string; role: string }[];
+      };
+
+      // Authorization: must be tenant member
+      const isMember = tenant.members.some(
+        m => m.user_id === req.user?.user_id
+      );
+
+      if (!isMember) {
+        return res.status(403).json({ error: "Unauthorized to search tenants" });
+      }
+
+      if (!tenant.members.length) {
+        return res.status(200).json([]);
+      }
+
+      // 2. Fetch users and filter by username
+      const results = await Promise.all(
+        tenant.members.map(async (member) => {
+          const userRes = await client.send(
+            new GetItemCommand({
+              TableName: USERS_TABLE,
+              Key: marshall({ user_id: member.user_id }),
+            })
+          );
+
+          if (!userRes.Item) return null;
+
+          const user = unmarshall(userRes.Item) as User;
+
+          if (
+            !user.username ||
+            !user.username.toLowerCase().includes(q.toLowerCase())
+          ) {
+            return null;
+          }
+
+          // sign avatar
+          if (user.avatar && (user.avatar as S3Location).key) {
+            user.avatar = await getSignedImage(
+              s3Client,
+              user.avatar as S3Location
+            );
+          }
+
+          const { email, dropbox, ...cleanUser } = user;
+
+          return {
+            ...cleanUser,
+            role: member.role,
+          };
+        })
+      );
+
+      res.status(200).json(results.filter(Boolean));
+    } catch (error: any) {
+      console.error("Search tenant users error:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to search tenant users" });
+    }
+  }
+);
