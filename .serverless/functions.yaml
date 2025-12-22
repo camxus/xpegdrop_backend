@@ -1,7 +1,8 @@
 api:
   handler: src/server.handler
   events: ${file(./.serverless/events.yaml)}
-
+  layers:
+      - arn:aws:lambda:eu-west-1:439125467255:layer:sharp-lambda-x64:1
 signup:
   handler: src/sqs/workers/signup/create.handler
   events:
