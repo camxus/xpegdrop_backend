@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 export const createProjectSchema = Joi.object({
-  tenantId: Joi.string().optional(),
+  tenant_id: Joi.string().optional(),
   name: Joi.string().min(1).max(100).required(),
   description: Joi.string().max(500).optional(),
   is_public: Joi.boolean().optional(),

@@ -88,8 +88,17 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
         })
       );
 
+
       if (Item) {
         tenant = unmarshall(Item) as Tenant;
+        const isMember = tenant.members?.some(
+          member => member.user_id === req.user?.user_id
+        );
+
+        if (!isMember) {
+          return res.status(403).json({ message: "User not in team" });
+        }
+
       } else {
         throw new Error(`Tenant with ID ${tenantId} not found`);
       }
@@ -257,7 +266,7 @@ export const getTenantProjects = asyncHandler(
         })
       );
 
-      const member = tenant.members.find((m) => m.user_id === req.user?.user_id);
+      const member = tenant.members?.find((m) => m.user_id === req.user?.user_id);
       if (!member) return res.status(403).json({ error: "User is not a tenant member" });
 
       const projects = response.Items?.map((item) => unmarshall(item)) as Project[] || [];
