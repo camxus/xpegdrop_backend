@@ -25,6 +25,7 @@ export const createProjectSchema = Joi.object({
     )
     .optional(),
   file_locations: Joi.string().optional(),
+  file_metadata: Joi.string().optional(),
   storage_provider: Joi.string().valid("dropbox", "b2").optional()
     .messages({
       "any.only": "storage_provider must be either 'dropbox' or 'b2'",

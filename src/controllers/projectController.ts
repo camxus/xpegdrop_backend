@@ -62,6 +62,10 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       typeof value.file_locations === "string"
         ? JSON.parse(value.file_locations as string || "[]")
         : value.file_locations;
+    let fileMetadata =
+      typeof value.file_metadata === "string"
+        ? JSON.parse(value.file_metadata as string || "[]")
+        : value.file_metadata;
 
     const files = req.files as Express.Multer.File[];
 
@@ -126,7 +130,8 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
         }))
         : [],
       file_locations: fileLocations || [],
-      storage_provider: storageProvider
+      storage_provider: storageProvider,
+      metadata: fileMetadata
     };
 
     if (tenant) payload["tenant"] = {
@@ -178,7 +183,8 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       b2_folder_path: "",
       b2_shared_link: "",
       created_at: new Date().toISOString(),
-      status: "initiated"
+      status: "initiated",
+      images: fileMetadata || []
     };
 
     if (tenantId) projectData["tenant_id"] = tenantId
@@ -746,6 +752,11 @@ export const addProjectFiles = asyncHandler(
         ? JSON.parse(req.body.file_locations as string || "[]")
         : req.body.file_locations;
 
+    let metadata =
+      typeof req.body.metadata === "string"
+        ? JSON.parse(req.body.metadata as string || "[]")
+        : req.body.metadata;
+
 
     const files = req.files as Express.Multer.File[];
 
@@ -784,6 +795,7 @@ export const addProjectFiles = asyncHandler(
             projectId,
             user: { user_id: req.user.user_id, dropbox: req.user.dropbox },
             files: fileLocations,
+            metadata
           }),
         })
       );

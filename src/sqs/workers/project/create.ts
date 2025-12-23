@@ -14,10 +14,44 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID || "";
 
+const updateProjectImagesMetadata = async (
+  projectId: string,
+  metadata: Record<string, any>
+) => {
+  const expressions: string[] = [];
+  const exprNames: Record<string, string> = { "#images": "images" };
+  const exprValues: Record<string, any> = {};
+
+  let idx = 0;
+  for (const [fileName, meta] of Object.entries(metadata)) {
+    const key = `#img${idx}`;
+    const value = `:meta${idx}`;
+    expressions.push(`#images.${key}.metadata = ${value}`);
+    exprNames[key] = fileName;
+    exprValues[value] = meta;
+    idx++;
+  }
+
+  if (!expressions.length) return;
+
+  const updateExpr = `SET ${expressions.join(", ")}`;
+
+  await client.send(
+    new UpdateItemCommand({
+      TableName: PROJECTS_TABLE,
+      Key: marshall({ project_id: projectId }),
+      UpdateExpression: updateExpr,
+      ExpressionAttributeNames: exprNames,
+      ExpressionAttributeValues: marshall(exprValues),
+      ReturnValues: "ALL_NEW",
+    })
+  );
+};
+
 export const handler: SQSHandler = async (event) => {
   for (const record of event.Records) {
     const data = JSON.parse(record.body);
-    const { user, project, files, file_locations, tenant, storage_provider: storageProvider } = data;
+    const { user, project, files, file_locations, tenant, storage_provider: storageProvider, metadata } = data;
 
     let folderPath: string | null = null;
     let shareLink = "";
@@ -85,27 +119,11 @@ export const handler: SQSHandler = async (event) => {
         throw new Error(`Unsupported storage provider: ${storageProvider}`);
       }
 
-      // Determine provider-specific attributes
-      const folderAttr = storageProvider === "dropbox" ? "dropbox_folder_path" : "b2_folder_path";
-      const linkAttr = storageProvider === "dropbox" ? "dropbox_shared_link" : "b2_shared_link";
+      if (metadata && Object.keys(metadata).length > 0) {
+        await updateProjectImagesMetadata(project.project_id, metadata);
+        console.log(`📝 Updated project ${project.project_id} images metadata.`);
+      }
 
-      // Update DynamoDB with provider-specific folder path and share link
-      const updateExpr = `SET ${folderAttr} = :folder, ${linkAttr} = :link, #st = :status`;
-      const params = new UpdateItemCommand({
-        TableName: PROJECTS_TABLE,
-        Key: marshall({ project_id: project.project_id }),
-        UpdateExpression: updateExpr,
-        ExpressionAttributeNames: { "#st": "status" }, // because "status" is reserved
-        ExpressionAttributeValues: marshall({
-          ":folder": folderPath,
-          ":link": shareLink,
-          ":status": "created",
-        }),
-        ReturnValues: "ALL_NEW",
-      });
-
-
-      await client.send(params);
       console.log(`✅ Project ${project.project_id} created successfully.`);
     } catch (err) {
       console.error("❌ Project worker failed:", err);
