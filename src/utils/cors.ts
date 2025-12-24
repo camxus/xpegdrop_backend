@@ -1,30 +1,31 @@
 export function createCorsConfig() {
-  const allowedOrigins: (string | RegExp)[] = ["http://localhost:3000"];
+  const allowedOrigins: (string | RegExp)[] = [
+    "http://localhost:3000",
+  ];
 
   const envOrigin = process.env.EXPRESS_PUBLIC_FRONTEND_URL;
+  const allowSubdomains = Boolean(process.env.EXPRESS_CORS_ALLOW_SUBDOMAINS) || true;
 
   if (envOrigin) {
-    // Case 1: Wildcard, like "*.fframess.com"
-    if (envOrigin.startsWith("*.")) {
-      // remove "*."
-      const domain = envOrigin.slice(2);
+    const url = new URL(envOrigin);
 
-      // escape dots
-      const escaped = domain.replace(/\./g, "\\.");
+    if (allowSubdomains) {
+      /**
+       * Extract base domain:
+       * app.example.com → example.com
+       */
+      const parts = url.hostname.split(".");
+      const baseDomain =
+        parts.length > 2 ? parts.slice(-2).join(".") : url.hostname;
 
-      // allow:
-      // https://fframess.com
-      // https://app.fframess.com
-      // https://sub.app.fframess.com
+      const escaped = baseDomain.replace(/\./g, "\\.");
+
       const regex = new RegExp(
-        `^https?:\\/\\/([a-zA-Z0-9-]+\\.)*${escaped}$`
+        `^${url.protocol}//([a-zA-Z0-9-]+\\.)*${escaped}(?::${url.port || "\\d+"})?$`
       );
 
       allowedOrigins.push(regex);
-    }
-
-    // Case 2: Normal exact URL, like "https://studio.fframess.com"
-    else {
+    } else {
       allowedOrigins.push(envOrigin);
     }
   }
