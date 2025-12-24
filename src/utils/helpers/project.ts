@@ -108,10 +108,12 @@ export const getDropboxProjectWithImages = async (project: Project, handle: stri
     );
 
     return {
-        ...project,
-        images: images.map((image) => ({ ...image, ...project.images[image.name] })),
-        share_url:
-            (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
+        project: {
+            ...project,
+            share_url:
+                (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
+        },
+        images,
     };
 };
 
@@ -158,9 +160,11 @@ export const getB2ProjectWithImages = async (project: Project, handle: string) =
     );
 
     return {
-        ...project,
-        images: images.map((image) => ({ ...image, ...project.images[image.name] })),
-        share_url: (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
+        project: {
+            ...project,
+            share_url: (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
+        },
+        images,
     };
 };
 

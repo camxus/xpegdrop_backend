@@ -1,6 +1,6 @@
 import { SQSHandler } from "aws-lambda";
 import { S3Client, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { DynamoDBClient, GetItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { DropboxService } from "../../../utils/dropbox";
@@ -41,7 +41,7 @@ export const handler: SQSHandler = async (event) => {
       data = await readS3Json(data.bucket, data.key);
     }
 
-    const { projectId, files, user, metadata } = data;
+    const { projectId, files, user } = data;
     let uploadedFiles: any[] = [];
 
     try {
@@ -99,37 +99,6 @@ export const handler: SQSHandler = async (event) => {
         }
       } else {
         throw new Error("No valid folder path found for upload");
-      }
-
-      const updateProjectMetadata = async (projectId: string, uploadedFiles: any[], metadata: Record<string, any>) => {
-        // Build the UpdateExpression dynamically
-        const updateExpressions: string[] = [];
-        const expressionAttributeNames: Record<string, string> = {};
-        const expressionAttributeValues: Record<string, any> = {};
-
-        uploadedFiles.forEach((file, index) => {
-          const imageKey = file.name;
-          updateExpressions.push(`#images.#img${index}.metadata = :meta${index}`);
-          expressionAttributeNames[`#images`] = "images";
-          expressionAttributeNames[`#img${index}`] = imageKey;
-          expressionAttributeValues[`:meta${index}`] = metadata[imageKey] || {};
-        });
-
-        const updateExpression = "SET " + updateExpressions.join(", ");
-
-        await client.send(
-          new UpdateItemCommand({
-            TableName: PROJECTS_TABLE,
-            Key: marshall({ project_id: projectId }),
-            UpdateExpression: updateExpression,
-            ExpressionAttributeNames: expressionAttributeNames,
-            ExpressionAttributeValues: marshall(expressionAttributeValues),
-          })
-        );
-      };
-
-      if (uploadedFiles.length > 0 && metadata) {
-        await updateProjectMetadata(projectId, uploadedFiles, metadata);
       }
 
       console.log(`Files added successfully to project ${projectId}`, uploadedFiles);
