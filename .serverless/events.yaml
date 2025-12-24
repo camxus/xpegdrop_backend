@@ -197,6 +197,27 @@
     method: GET
     authorizer: jwtAuthorizer
 
+# Metadata routes
+- httpApi:
+    path: /api/metadata
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/metadata/batch
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/metadata/{project_id}
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/metadata/{project_id}/{image_name}
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/metadata/{project_id}/{image_name}
+    method: DELETE
+    authorizer: jwtAuthorizer
 
 # Stripe routes
 - httpApi:
