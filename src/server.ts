@@ -10,6 +10,7 @@ import ratingsRoutes from "./routes/ratingsRoutes";
 import notesRoutes from "./routes/notesRoutes";
 import tenantsRoutes from "./routes/tenantsRoutes";
 import referralsRoutes from "./routes/referralsRoutes";
+import metadataRoutes from "./routes/metadataRoutes";
 import stripeRoutes from "./routes/stripeRoutes";
 import { createCorsConfig } from "./utils/cors";
 import { APIGatewayProxyEvent } from "aws-lambda";
@@ -38,6 +39,7 @@ app.use("/api/ratings", ratingsRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/tenants", tenantsRoutes);
 app.use("/api/referrals", referralsRoutes);
+app.use("/api/metadata", metadataRoutes);
 
 app.use("/api/stripe", stripeRoutes);
 

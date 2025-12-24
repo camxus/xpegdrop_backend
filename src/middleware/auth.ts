@@ -16,38 +16,55 @@ export interface AuthenticatedRequest extends Request {
 }
 
 export const getUserFromToken = async (token: string) => {
-  // Verify token with Cognito
-  const userResponse = await cognito.send(
-    new GetUserCommand({
-      AccessToken: token,
-    })
-  );
+  try {
+    // Verify token with Cognito
+    const userResponse = await cognito.send(
+      new GetUserCommand({
+        AccessToken: token,
+      })
+    );
 
-  const userAttributes = userResponse.UserAttributes?.reduce((acc, attr) => {
-    if (attr.Name && attr.Value) {
-      acc[attr.Name] = attr.Value;
+    const userAttributes = userResponse.UserAttributes?.reduce((acc, attr) => {
+      if (attr.Name && attr.Value) {
+        acc[attr.Name] = attr.Value;
+      }
+      return acc;
+    }, {} as Record<string, string>) || {};
+
+    const sub = userAttributes['sub'];
+    if (!sub) {
+      const error: any = new Error('Invalid token: sub not found');
+      error.status = 401;
+      throw error;
     }
-    return acc;
-  }, {} as Record<string, string>) || {};
 
-  const sub = userAttributes['sub'];
+    // Get user details from DynamoDB
+    const userDetailsResponse = await client.send(
+      new GetItemCommand({
+        TableName: USERS_TABLE,
+        Key: marshall({ user_id: sub }),
+      })
+    );
 
-  // Get user details from DynamoDB
-  const userDetailsResponse = await client.send(
-    new GetItemCommand({
-      TableName: USERS_TABLE,
-      Key: marshall({ user_id: sub }),
-    })
-  );
+    if (!userDetailsResponse.Item) {
+      const error: any = new Error('User not found');
+      error.status = 401;
+      throw error;
+    }
 
-  if (!userDetailsResponse.Item) {
-    const error: any = new Error('User not found')
-    error.status = 401
-    throw error
+    return unmarshall(userDetailsResponse.Item) as User;
+  } catch (err: any) {
+    // Optionally log the error
+    console.error('Error in getUserFromToken:', err);
+
+    // Re-throw the error with status if missing
+    if (!err.status) {
+      err.status = 500;
+      err.message = err.message;
+    }
+    throw err;
   }
-
-  return unmarshall(userDetailsResponse.Item) as User;
-}
+};
 
 export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
