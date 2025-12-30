@@ -119,3 +119,9 @@
     - arn:aws:sqs:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:create-project-queue
     - arn:aws:sqs:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:add-files-queue
     - arn:aws:sqs:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:add-files-cleanup-queue
+
+- Effect: Allow
+  Action:
+    - ses:SendEmail
+    - ses:SendRawEmail
+  Resource: "*"

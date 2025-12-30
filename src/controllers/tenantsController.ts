@@ -19,6 +19,7 @@ import multer from "multer";
 import { lookup as mimeLookup, extension as mimeExtension } from "mime-types";
 import { updateUserSchema } from "../utils/validation/userValidation";
 import { updateTenantSchema } from "../utils/validation/tenantsValidation";
+import { sendInviteEmail } from "../services/email/sendInviteEmail";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
@@ -353,6 +354,13 @@ export const inviteMember = asyncHandler(async (req: AuthenticatedRequest, res: 
       }),
     })
   );
+
+  await sendInviteEmail({
+    to: req.body.email,
+    inviterName: req.user?.first_name ?? "A team member",
+    tenantName: tenant.name,
+    inviteLink: `${process.env.EXPRESS_PUBLIC_FRONTEND_URL}`,
+  });
 
   res.status(200).json({ message: "Member invited successfully", tenant });
 });
