@@ -73,12 +73,19 @@ export const getDropboxProjectWithImages = async (project: Project, handle: stri
                 const s3Key = `thumbnails/${handle}/${projectName}/${file.name}`;
                 const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
 
-                const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
-                const s3Location = exists
-                    ? { bucket: bucketName, key: s3Key }
-                    : await saveItemImage(s3Client, bucketName, s3Key, file.thumbnail, false);
+                await saveItemImage(
+                    s3Client,
+                    bucketName,
+                    s3Key,
+                    file.thumbnail,
+                    false
+                );
 
-                const thumbnailUrl = await getSignedImage(s3Client, s3Location);
+                const thumbnailUrl = await getSignedImage(s3Client, {
+                    bucket: bucketName,
+                    key: s3Key,
+                });
+
 
                 delete file.thumbnail;
                 return { ...file, thumbnail_url: thumbnailUrl };
@@ -141,12 +148,18 @@ export const getB2ProjectWithImages = async (project: Project, handle: string) =
                 const s3Key = `thumbnails/${handle}/${projectName}/${file.name}`;
                 const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
 
-                const exists = await s3ObjectExists(s3Client, bucketName, s3Key);
-                const s3Location = exists
-                    ? { bucket: bucketName, key: s3Key }
-                    : await saveItemImage(s3Client, bucketName, s3Key, file.thumbnail, false);
+                await saveItemImage(
+                    s3Client,
+                    bucketName,
+                    s3Key,
+                    file.thumbnail,
+                    false
+                );
 
-                const thumbnailUrl = await getSignedImage(s3Client, s3Location);
+                const thumbnailUrl = await getSignedImage(s3Client, {
+                    bucket: bucketName,
+                    key: s3Key,
+                });
 
                 delete file.thumbnail;
                 return { ...file, thumbnail_url: thumbnailUrl };
