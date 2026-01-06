@@ -3,6 +3,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -183,5 +184,64 @@ export const s3ObjectExists = async (
     if (err.name === "NotFound") return false; // doesn't exist
     console.error("Error checking S3 file exists:", err);
     throw err; // some other error
+  }
+};
+
+export const moveFolder = async (
+  client: S3Client,
+  bucket: string,
+  sourcePrefix: string,
+  destinationPrefix: string,
+): Promise<void> => {
+  let continuationToken: string | undefined;
+
+  try {
+    do {
+      const listResponse = await client.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: sourcePrefix,
+          ContinuationToken: continuationToken,
+        })
+      );
+
+      const objects = listResponse.Contents || [];
+
+      for (const object of objects) {
+        if (!object.Key) continue;
+
+        const destinationKey = object.Key.replace(
+          sourcePrefix,
+          destinationPrefix
+        );
+
+        // Copy object
+        await client.send(
+          new CopyObjectCommand({
+            Bucket: bucket,
+            CopySource: encodeURIComponent(`${bucket}/${object.Key}`),
+            Key: destinationKey,
+            ACL: "public-read", // adjust if needed
+          })
+        );
+
+        // Delete original
+        await client.send(
+          new DeleteObjectCommand({
+            Bucket: bucket,
+            Key: object.Key,
+          })
+        );
+      }
+
+      continuationToken = listResponse.NextContinuationToken;
+    } while (continuationToken);
+  } catch (error) {
+    console.error(
+      "Error moving S3 folder:",
+      { bucket, sourcePrefix, destinationPrefix },
+      error
+    );
+    throw error;
   }
 };

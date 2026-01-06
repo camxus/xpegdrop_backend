@@ -158,7 +158,7 @@ export class BackblazeService {
         let thumbnailUrl;
 
 
-        thumbnailUrl = await getSignedImage(s3Client, { bucket: THUMBNAILS_BUCKET, key: `${this.getPrefix(folderPath)}/${file.fileName}` })
+        thumbnailUrl = await getSignedImage(s3Client, { bucket: THUMBNAILS_BUCKET, key: file.fileName })
         thumbnail = await createThumbnailFromURL(previewUrl) as typeof thumbnail;
 
         return {

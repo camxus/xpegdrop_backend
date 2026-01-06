@@ -15,7 +15,7 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID || "";
 
-const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET_ID || "";
+const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET || "";
 
 export const handler: SQSHandler = async (event) => {
   for (const record of event.Records) {
@@ -100,8 +100,8 @@ export const handler: SQSHandler = async (event) => {
             });
 
             await s3Client.send(putCommand);
-          } catch {
-            throw new Error(`Generating thumbnails failed`);
+          } catch (e) {
+            throw e;
           }
         }
       } else {

@@ -21,7 +21,7 @@ import { DropboxService } from "../utils/dropbox";
 import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
 import { Request, RequestHandler, Response } from "express";
 import multer from "multer";
-import { deleteItemImage, getItemFile, getSignedImage, s3ObjectExists, saveItemImage } from "../utils/s3";
+import { deleteItemImage, getItemFile, getSignedImage, moveFolder, s3ObjectExists, saveItemImage } from "../utils/s3";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { getProjectWithImages, getHandleUrl } from "../utils/helpers/project";
@@ -33,6 +33,7 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 
 const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID!;
+const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET!;
 
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const TENANTS_TABLE = process.env.DYNAMODB_TENANTS_TABLE || "Tenants";
@@ -104,38 +105,6 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       }
     }
 
-    // Prepare job payload
-    const projectId = uuidv4();
-
-    const payload: any = {
-      user: {
-        user_id: req.user.user_id,
-        username: req.user.username,
-        dropbox: req.user.dropbox,
-      },
-      project: {
-        project_id: projectId,
-        name,
-        description,
-      },
-      files: files?.length
-        ? files.map((f) => ({
-          originalname: f.originalname,
-          mimetype: f.mimetype,
-          buffer: f.buffer.toString("base64"), // serialize buffer
-        }))
-        : [],
-      file_locations: fileLocations || [],
-      storage_provider: storageProvider
-    };
-
-    if (tenant) payload["tenant"] = {
-      tenant: {
-        tenant_id: tenantId,
-        name: tenant?.name
-      }
-    }
-
     // Build initial share URL
     const slug = encodeURIComponent(name.trim().toLowerCase().replace(/\s+/g, "-"));
     const base = `/${req.user.username}`;
@@ -161,11 +130,43 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       uniqueShareUrl = `${shareUrl}-${count}`;
     }
 
+    // Prepare job payload
+    const projectId = uuidv4();
+    const projectName = count > 0 ? `${name}-${count}` : name
+    const payload: any = {
+      user: {
+        user_id: req.user.user_id,
+        username: req.user.username,
+        dropbox: req.user.dropbox,
+      },
+      project: {
+        project_id: projectId,
+        name: projectName,
+        description,
+      },
+      files: files?.length
+        ? files.map((f) => ({
+          originalname: f.originalname,
+          mimetype: f.mimetype,
+          buffer: f.buffer.toString("base64"), // serialize buffer
+        }))
+        : [],
+      file_locations: fileLocations || [],
+      storage_provider: storageProvider
+    };
+
+    if (tenant) payload["tenant"] = {
+      tenant: {
+        tenant_id: tenantId,
+        name: tenant?.name
+      }
+    }
+
     // Then use uniqueShareUrl in projectData
     const projectData: Project = {
       project_id: projectId,
       user_id: req.user.user_id,
-      name: count > 0 ? `${name}-${count}` : name,
+      name: projectName,
       description: description || null,
       share_url: uniqueShareUrl,
       is_public: false,
@@ -453,6 +454,8 @@ export const updateProject = asyncHandler(
             try {
               // Move folder in Backblaze
               await b2Service.moveFolder(currentPath, newPath);
+
+              await moveFolder(s3Client, THUMBNAILS_BUCKET, currentPath, newPath)
 
               // Update DynamoDB expression
               updateExpr.push("b2_folder_path = :b2_folder_path");
