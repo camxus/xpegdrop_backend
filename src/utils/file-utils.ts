@@ -1,14 +1,16 @@
 import fetch from "node-fetch";
 
+const allowedTypes = [
+  "image/jpeg", "image/png", "image/gif",
+  "image/webp", "image/tiff", "image/heic", "image/heif",
+];
+
+const sharpModule = require("sharp");
+const sharp = sharpModule.default || sharpModule;
+
 export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer> {
-  const allowedTypes = [
-    "image/jpeg", "image/png", "image/gif",
-    "image/webp", "image/tiff", "image/heic", "image/heif",
-  ];
 
   // Dynamically import the right sharp binary
-  const sharpModule = require("sharp");
-  const sharp = sharpModule.default || sharpModule;
 
   const res = await fetch(imageUrl);
   if (!res.ok) throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
@@ -24,4 +26,21 @@ export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer> 
     .jpeg({ quality: 80 })
     .withMetadata()
     .toBuffer()
+}
+
+export async function createThumbnailFromFile(file: File): Promise<Buffer> {
+  if (!allowedTypes.includes(file.type.toLowerCase())) {
+    throw new Error(`Unsupported file type: ${file.type}`);
+  }
+
+  // Read file into buffer
+  const arrayBuffer = await file.arrayBuffer();
+  const inputBuffer = Buffer.from(arrayBuffer);
+
+  // Resize and convert
+  return await sharp(inputBuffer)
+    .resize({ width: 1024, height: 768, fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 80 })
+    .withMetadata()
+    .toBuffer();
 }

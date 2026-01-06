@@ -219,6 +219,24 @@
     method: DELETE
     authorizer: jwtAuthorizer
 
+# Notifications routes
+- httpApi:
+    path: /api/notifications
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/notifications
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/notifications/{id}/read
+    method: PATCH
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/notifications/{id}
+    method: DELETE
+    authorizer: jwtAuthorizer
+
 # Stripe routes
 - httpApi:
     path: /api/stripe/billing

@@ -4,8 +4,9 @@ import { marshall } from "@aws-sdk/util-dynamodb";
 import { DropboxService } from "../../../utils/dropbox";
 import { BackblazeService } from "../../../utils/backblaze"; // Your B2 wrapper
 import { getItemFile } from "../../../utils/s3";
-import { S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import dotenv from "dotenv"
+import { createThumbnailFromFile } from "../../../utils/file-utils";
 
 dotenv.config()
 
@@ -13,6 +14,8 @@ const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID || "";
+
+const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET_ID || "";
 
 export const handler: SQSHandler = async (event) => {
   for (const record of event.Records) {
@@ -81,6 +84,26 @@ export const handler: SQSHandler = async (event) => {
         const response = await b2Service.upload(uploadFiles, folderName);
         folderPath = response.folder_path;
         shareLink = response.share_link;
+
+        // --- CREATE THUMBNAILS AND UPLOAD TO S3 ---
+        for (const file of uploadFiles) {
+          try {
+            const thumbnailBuffer = await createThumbnailFromFile(file);
+            const thumbnailKey = `${b2Service.getPrefix(folderName)}/${file.name}`;
+
+            const putCommand = new PutObjectCommand({
+              Bucket: THUMBNAILS_BUCKET,
+              Key: thumbnailKey,
+              Body: thumbnailBuffer,
+              ContentType: "image/jpeg",
+              StorageClass: "INTELLIGENT_TIERING", // S3 Intelligent-Tiering
+            });
+
+            await s3Client.send(putCommand);
+          } catch {
+            throw new Error(`Generating thumbnails failed`);
+          }
+        }
       } else {
         throw new Error(`Unsupported storage provider: ${storageProvider}`);
       }

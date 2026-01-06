@@ -167,6 +167,10 @@ export class DropboxService {
               size: { ".tag": "w2048h1536" },
             });
 
+            if (thumbnailRes.result.link_metadata?.url) {
+              thumbnailUrl = thumbnailRes.result.link_metadata?.url
+            }
+
             // Convert Dropbox binary to Buffer
             thumbnail = Buffer.from((thumbnailRes.result as any).fileBinary, "binary");
           }

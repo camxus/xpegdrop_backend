@@ -129,6 +129,9 @@ export interface User {
   last_name: string;
   bio?: string;
   avatar?: S3Location | string;
+  expo?: {
+    push_token: string
+  }
   dropbox?: {
     access_token?: string;
     refresh_token?: string;
@@ -228,6 +231,20 @@ export interface Metadata {
   image_name: string;
   exif_data: EXIFData;
   image_hash?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Notification {
+  notification_id: string;
+  user_id: string;
+  actor_id: string
+  type: string;
+  message: string;
+  link?: string;
+  expo_uri?: string;
+  expo_push_token?: string;
+  is_read: boolean;
   created_at: string;
   updated_at: string;
 }

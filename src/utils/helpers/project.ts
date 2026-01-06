@@ -69,6 +69,10 @@ export const getDropboxProjectWithImages = async (project: Project, handle: stri
     const resolveFiles = async (files: any[]) =>
         Promise.all(
             files.map(async (file) => {
+                if (file.thumbnail_url) {
+                    return file
+                }
+
                 const projectName = project.name.toLowerCase().replace(/\s+/g, "-");
                 const s3Key = `thumbnails/${handle}/${projectName}/${file.name}`;
                 const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
@@ -144,6 +148,10 @@ export const getB2ProjectWithImages = async (project: Project, handle: string) =
     const resolveFiles = async (files: any[]) =>
         Promise.all(
             files.map(async (file) => {
+                if (file.thumbnail_url) {
+                    return file
+                }
+                
                 const projectName = project.name.toLowerCase().replace(/\s+/g, "-");
                 const s3Key = `thumbnails/${handle}/${projectName}/${file.name}`;
                 const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;

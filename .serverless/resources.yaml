@@ -28,6 +28,30 @@ Resources:
               - x-amz-id-2
             MaxAge: 3000
 
+  ThumbnailsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ${env:EXPRESS_S3_THUMBNAILS_BUCKET}
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - ${env:EXPRESS_PUBLIC_FRONTEND_URL}
+              - http://localhost:3000
+            AllowedHeaders:
+              - Authorization
+              - Content-Type
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            ExposedHeaders:
+              - ETag
+              - x-amz-request-id
+              - x-amz-id-2
+            MaxAge: 3000
+
   ProjectsTable:
     Type: AWS::DynamoDB::Table
     Properties:

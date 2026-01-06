@@ -5,8 +5,14 @@ import { User } from "../types";
 import { createThumbnailFromURL } from "./file-utils";
 
 import dotenv from "dotenv"
+import { getPresignURL } from "../controllers/authController";
+import { getSignedImage } from "./s3";
+import { S3Client } from "@aws-sdk/client-s3";
 
 dotenv.config()
+
+const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
+const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET_ID || "";
 
 const UPLOAD_BATCH_SIZE = 3;
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
@@ -52,7 +58,7 @@ export class BackblazeService {
   // -----------------------
   // Helper: full prefix
   // -----------------------
-  private getPrefix(folderPath: string = ""): string {
+  public getPrefix(folderPath: string = ""): string {
     if (!this.userId) throw new Error("userId not set");
     if (this.tenantId) {
       return `tenant/${this.tenantId}/user/${this.userId}/${folderPath}`.replace(/\/+$/, ""); // remove trailing slash
@@ -137,19 +143,22 @@ export class BackblazeService {
 
     const filesWithLinks = await Promise.all(
       resp.data.files.map(async (file: any) => {
+        // get s3 thumbnail file
         const authResp = await this.b2.getDownloadAuthorization({
+
           bucketId: this.bucketId,
           fileNamePrefix: file.fileName,
           validDurationInSeconds: 60 * 60, // 1 hour
         });
-
         const previewUrl =
           `https://f003.backblazeb2.com/file/${process.env.EXPRESS_B2_BUCKET_NAME}/${file.fileName}` +
           `?Authorization=${authResp.data.authorizationToken}`;
 
         let thumbnail = Buffer.from(""); // optional thumbnail
-        let thumbnailUrl = "";
+        let thumbnailUrl;
 
+
+        thumbnailUrl = await getSignedImage(s3Client, { bucket: THUMBNAILS_BUCKET, key: `${this.getPrefix(folderPath)}/${file.fileName}` })
         thumbnail = await createThumbnailFromURL(previewUrl) as typeof thumbnail;
 
         return {
@@ -256,7 +265,7 @@ export class BackblazeService {
           delimiter: "",
         });
 
-        
+
         totalUsed += resp.data.files.reduce((acc: any, file: any) => acc + (file.contentLength || 0), 0);
         marker = resp.data.nextFileName;
       } while (marker);
