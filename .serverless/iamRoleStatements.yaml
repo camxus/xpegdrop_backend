@@ -77,6 +77,7 @@
     - dynamodb:DeleteItem
     - dynamodb:Query
     - dynamodb:Scan
+    - dynamodb:BatchWriteItem
   Resource:
     - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Metadata
     - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Metadata/index/*
