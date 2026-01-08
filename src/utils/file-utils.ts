@@ -1,12 +1,9 @@
 import fetch from "node-fetch";
-
+import sharp from "sharp"
 const allowedTypes = [
   "image/jpeg", "image/png", "image/gif",
   "image/webp", "image/tiff", "image/heic", "image/heif",
 ];
-
-const sharpModule = require("sharp");
-const sharp = sharpModule.default || sharpModule;
 
 export async function createThumbnailFromURL(imageUrl: string): Promise<Buffer> {
 
