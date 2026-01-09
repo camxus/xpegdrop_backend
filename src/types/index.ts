@@ -193,7 +193,7 @@ export interface UpdateUserInput {
 export interface Note {
   note_id: string;
   project_id: string;
-  image_name: string;
+  media_name: string;
   user_id: string;
   content: string;
   created_at: string;
@@ -228,7 +228,7 @@ export interface Referral {
 
 export interface Metadata {
   project_id: string;
-  image_name: string;
+  media_name: string;
   exif_data: EXIFData;
   image_hash?: string;
   created_at: string;

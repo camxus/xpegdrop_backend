@@ -21,7 +21,7 @@ export class Rating {
   rating_id?: string = undefined;
   project_id: string = "";
   user_id: string = "";
-  image_name: string = "";
+  media_name: string = "";
   value: number = 0;
   author = { first_name: "", last_name: "" }
 }
@@ -29,10 +29,10 @@ export class Rating {
 // CREATE Rating
 export const createRating = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { project_id, image_name, value, author } = req.body;
+    const { project_id, media_name, value, author } = req.body;
 
-    if (!project_id || !image_name || value === undefined) {
-      return res.status(400).json({ error: "project_id, image_name and value are required" });
+    if (!project_id || !media_name || value === undefined) {
+      return res.status(400).json({ error: "project_id, media_name and value are required" });
     }
 
     const authHeader = req.headers.authorization;
@@ -41,7 +41,7 @@ export const createRating = asyncHandler(
     const rating: Rating = {
       rating_id: uuidv4(),
       project_id,
-      image_name,
+      media_name,
       user_id: req.user?.user_id || `anonymous-${uuidv4()}`, // mark as anonymous if no user
       value,
       author: req.user ? { first_name: req.user?.first_name, last_name: req?.user?.last_name } : author

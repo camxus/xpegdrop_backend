@@ -24,7 +24,7 @@ import multer from "multer";
 import { deleteItemImage, getItemFile, getSignedImage, moveFolder, s3ObjectExists, saveItemImage } from "../utils/s3";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { getProjectWithImages, getHandleUrl } from "../utils/helpers/project";
+import { getProjectWithMedia, getHandleUrl } from "../utils/helpers/project";
 import { BackblazeService } from "../utils/backblaze";
 import { handler } from "../sqs/workers/project/create";
 import { Context, SQSEvent } from "aws-lambda";
@@ -75,7 +75,6 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
         error: "Dropbox access token not found. Please connect your Dropbox account.",
       });
     }
-
 
     let tenant: Tenant | undefined = undefined;
 
@@ -671,8 +670,8 @@ export const getProjectByShareUrl = asyncHandler(
         publicProject.is_public = project.is_public
       }
 
-      const projectWithImages = await getProjectWithImages(project, username)
-      res.status(200).json(projectWithImages);
+      const projectWithMedia = await getProjectWithMedia(project, username)
+      res.status(200).json(projectWithMedia);
     } catch (error: any) {
       console.error("Get project by share URL error:", error);
       res
@@ -736,8 +735,8 @@ export const getTenantProjectByShareUrl = asyncHandler(async (req: Request, res:
     }
   }
 
-  const projectWithImages = await getProjectWithImages(project, tenantHandle)
-  res.status(200).json(projectWithImages);
+  const projectWithMedia = await getProjectWithMedia(project, tenantHandle)
+  res.status(200).json(projectWithMedia);
 });
 
 export const addProjectFiles = asyncHandler(

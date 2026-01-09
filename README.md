@@ -58,3 +58,6 @@ See `.env.example` for required configuration.
 - dropbox_shared_link (string, optional)
 - created_at (string)
 - updated_at (string, optional)
+
+### READ SHARP LAMDBA LAYER DEPLOYMENT
+https://github.com/cbschuld/sharp-aws-lambda-layer

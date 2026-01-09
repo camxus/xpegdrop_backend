@@ -1,11 +1,9 @@
 import B2 from "backblaze-b2";
 import { DynamoDBClient, GetItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { User } from "../types";
-import { createThumbnailFromURL } from "./file-utils";
+import { createThumbnailFromURL, transcodeVideoToMp4 } from "./file-utils";
 
 import dotenv from "dotenv"
-import { getPresignURL } from "../controllers/authController";
 import { getSignedImage } from "./s3";
 import { S3Client } from "@aws-sdk/client-s3";
 
@@ -17,6 +15,7 @@ const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET_ID || "";
 const UPLOAD_BATCH_SIZE = 3;
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID!;
+const B2_TRANSCODED_MEDIA_BUCKET_ID = process.env.EXPRESS_B2_TRANSCODED_MEDIA_BUCKET_ID!;
 
 const client = new DynamoDBClient({
   region: process.env.AWS_REGION_CODE,
@@ -97,7 +96,10 @@ export class BackblazeService {
     }
   }
 
-  async upload(files: File[], folderName: string): Promise<{ folder_path: string; share_link: string }> {
+  async upload(
+    files: File[],
+    folderName: string
+  ): Promise<{ folder_path: string; share_link: string }> {
     await this.authorize();
 
     let folderPath = folderName;
@@ -109,29 +111,87 @@ export class BackblazeService {
     }
 
     const uploadFile = async (file: File) => {
-      const uploadUrlResp = await this.b2.getUploadUrl({ bucketId: this.bucketId });
-      const fileBuffer = new Uint8Array(await file.arrayBuffer());
+      const fileBuffer = Buffer.from(await file.arrayBuffer());
+      const uploadFileName = `${this.getPrefix(folderPath)}/${file.name}`;
 
-      await this.b2.uploadFile({
-        uploadUrl: uploadUrlResp.data.uploadUrl,
-        uploadAuthToken: uploadUrlResp.data.authorizationToken,
-        fileName: `${this.getPrefix(folderPath)}/${file.name}`,
-        data: fileBuffer as Buffer,
-      });
+      const videoTypes = [
+        "video/mp4",
+        "video/quicktime",
+        "video/webm",
+        "video/x-matroska",
+      ];
+
+      // ---- Original upload promise ----
+      const originalUploadPromise = (async () => {
+        const uploadUrlResp = await this.b2.getUploadUrl({
+          bucketId: this.bucketId,
+        });
+
+        await this.b2.uploadFile({
+          uploadUrl: uploadUrlResp.data.uploadUrl,
+          uploadAuthToken: uploadUrlResp.data.authorizationToken,
+          fileName: uploadFileName,
+          data: fileBuffer,
+        });
+      })();
+
+      // ---- Transcode + upload promise (conditional) ----
+      const transcodePromise =
+        videoTypes.includes(file.type.toLowerCase()) && this.userId
+          ? (async () => {
+            const transcodedService = new BackblazeService(
+              B2_TRANSCODED_MEDIA_BUCKET_ID!,
+              this.userId!,
+              this.tenantId
+            );
+
+            const transcodedFileName = file.name.replace(/\.\w+$/, ".mp4");
+
+            await transcodedService.b2.authorize();
+
+            const existingFiles = await transcodedService.listFiles(folderPath);
+            const exists = existingFiles.some(
+              (f) => f.name === transcodedFileName
+            );
+
+            if (exists) {
+              await transcodedService.deleteFile(folderPath, transcodedFileName)
+            }
+
+            const transcodedBuffer = await transcodeVideoToMp4(fileBuffer);
+
+            const uploadUrlResp = await transcodedService.b2.getUploadUrl({
+              bucketId: transcodedService.bucketId,
+            });
+
+            await transcodedService.b2.uploadFile({
+              uploadUrl: uploadUrlResp.data.uploadUrl,
+              uploadAuthToken: uploadUrlResp.data.authorizationToken,
+              fileName: transcodedFileName,
+              data: transcodedBuffer,
+            });
+          })()
+          : Promise.resolve();
+
+      // ---- Run both in parallel ----
+      await Promise.all([originalUploadPromise, transcodePromise]);
     };
+
 
     for (let i = 0; i < files.length; i += UPLOAD_BATCH_SIZE) {
       const batch = files.slice(i, i + UPLOAD_BATCH_SIZE);
       await Promise.all(batch.map(uploadFile));
     }
 
-    const shareLink = `https://f003.backblazeb2.com/file/${process.env.EXPRESS_B2_BUCKET_NAME}/${this.getPrefix(folderPath)}/`;
+    const shareLink = `https://f003.backblazeb2.com/file/${process.env.EXPRESS_B2_BUCKET_NAME}/${this.getPrefix(folderPath)}`;
 
     return { folder_path: folderPath, share_link: shareLink };
   }
 
   async listFiles(folderPath: string) {
-    await this.authorize();
+    const imageRegex = /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i;
+    const videoRegex = /\.(mp4|mov|webm|mkv)$/i;
+    await this.authorize(); // authorize B2
 
     const resp = await this.b2.listFileNames({
       bucketId: this.bucketId,
@@ -141,34 +201,103 @@ export class BackblazeService {
       delimiter: "",
     });
 
-    const filesWithLinks = await Promise.all(
-      resp.data.files.map(async (file: any) => {
-        // get s3 thumbnail file
-        const authResp = await this.b2.getDownloadAuthorization({
+    type FileWithLinks = {
+      id: string
+      name: string;
+      type: "image" | "video" | "other";
+      preview_url: string;
+      full_file_url: string;
+      thumbnail: Buffer;
+      thumbnail_url?: string;
+    };
 
+    const filesWithLinks: FileWithLinks[] = await Promise.all(
+      resp.data.files.map(async (file: {
+        fileId: string;
+        fileName: string;
+        accountId: string;
+        bucketId: string;
+        contentLength: number;
+        contentSha1: string;
+        contentType: string;
+        fileInfo: Record<string, string>;
+        uploadTimestamp: number;
+        action: string;
+        serverSideEncryption?: string;
+      }) => {
+        const fileName = file.fileName.split("/").pop()!;
+
+        // Temporary auth token for main bucket
+        const authResp = await this.b2.getDownloadAuthorization({
           bucketId: this.bucketId,
           fileNamePrefix: file.fileName,
           validDurationInSeconds: 60 * 60, // 1 hour
         });
-        const previewUrl =
-          `https://f003.backblazeb2.com/file/${process.env.EXPRESS_B2_BUCKET_NAME}/${file.fileName}` +
+
+        let fullFileUrl = `https://f003.backblazeb2.com/file/${B2_BUCKET_ID}/${file.fileName}` +
           `?Authorization=${authResp.data.authorizationToken}`;
 
-        let thumbnail = Buffer.from(""); // optional thumbnail
-        let thumbnailUrl;
+        let previewUrl: string;
+        let thumbnail: Buffer = Buffer.from("");
+        let thumbnailUrl: string | undefined;
 
+        // Determine file type
+        const type: FileWithLinks["type"] = videoRegex.test(fileName)
+          ? "video"
+          : imageRegex.test(fileName)
+            ? "image"
+            : "other";
 
-        thumbnailUrl = await getSignedImage(s3Client, { bucket: THUMBNAILS_BUCKET, key: file.fileName })
-        thumbnail = await createThumbnailFromURL(previewUrl) as typeof thumbnail;
+        if (type === "video" && this.userId) {
+          // Video → preview is from transcoded bucket
+          const transcodedService = new BackblazeService(
+            B2_TRANSCODED_MEDIA_BUCKET_ID!,
+            this.userId,
+            this.tenantId
+          );
+
+          const transcodedFiles = await transcodedService.listFiles(folderPath);
+          const transcodedFile = transcodedFiles.find(
+            (f) => f.name === fileName.replace(/\.\w+$/, ".mp4")
+          );
+
+          if (transcodedFile) {
+            const authTranscoded = await transcodedService.b2.getDownloadAuthorization({
+              bucketId: transcodedService.bucketId,
+              fileNamePrefix: transcodedFile.name,
+              validDurationInSeconds: 60 * 60,
+            });
+
+            previewUrl = `https://f003.backblazeb2.com/file/${B2_TRANSCODED_MEDIA_BUCKET_ID}/${transcodedFile.name}` +
+              `?Authorization=${authTranscoded.data.authorizationToken}`;
+          } else {
+            previewUrl = fullFileUrl;
+          }
+
+          thumbnail = await createThumbnailFromURL(previewUrl);
+          thumbnailUrl = await getSignedImage(s3Client, { bucket: THUMBNAILS_BUCKET, key: file.fileName });
+        } else {
+          // Image / other → preview & download are the same
+          previewUrl = fullFileUrl;
+
+          if (type === "image") {
+            thumbnail = await createThumbnailFromURL(previewUrl);
+            thumbnailUrl = await getSignedImage(s3Client, { bucket: THUMBNAILS_BUCKET, key: file.fileName });
+          }
+        }
 
         return {
-          name: file.fileName.split("/").pop()!,
+          id: file.fileId,
+          name: fileName,
+          type,
           preview_url: previewUrl,
-          thumbnail_url: thumbnailUrl,
           thumbnail,
+          thumbnail_url: thumbnailUrl,
+          full_file_url: fullFileUrl,
         };
       })
     );
+
 
     return filesWithLinks;
   }
@@ -176,6 +305,7 @@ export class BackblazeService {
   async deleteFolder(folderPath: string) {
     await this.authorize();
 
+    // Delete from main bucket
     const resp = await this.b2.listFileNames({
       bucketId: this.bucketId,
       prefix: this.getPrefix(folderPath) + "/",
@@ -191,6 +321,30 @@ export class BackblazeService {
             fileName: file.fileName,
             fileId: file.fileId,
           });
+
+          const fileName = file.fileName.split("/").pop()!;
+          const videoRegex = /\.(mp4|mov|webm|mkv)$/i;
+
+          // If video → delete from transcoded bucket as well
+          if (videoRegex.test(fileName) && this.userId) {
+            const transcodedService = new BackblazeService(
+              B2_TRANSCODED_MEDIA_BUCKET_ID!,
+              this.userId,
+              this.tenantId
+            );
+
+            const transcodedFiles = await transcodedService.listFiles(folderPath);
+            const transcodedFile = transcodedFiles.find(
+              (f) => f.name === fileName.replace(/\.\w+$/, ".mp4")
+            );
+
+            if (transcodedFile) {
+              await transcodedService.b2.deleteFileVersion({
+                fileName: transcodedFile.name,
+                fileId: transcodedFile.id,
+              });
+            }
+          }
         } catch (err) {
           console.error("Error deleting B2 file:", file.fileName, err);
         }
@@ -212,10 +366,33 @@ export class BackblazeService {
 
     if (resp.data.files.length === 0) return;
 
+    const file = resp.data.files[0];
     await this.b2.deleteFileVersion({
-      fileName: resp.data.files[0].fileName,
-      fileId: resp.data.files[0].fileId,
+      fileName: file.fileName,
+      fileId: file.fileId,
     });
+
+    // If video → delete from transcoded bucket
+    const videoRegex = /\.(mp4|mov|webm|mkv)$/i;
+    if (videoRegex.test(fileName) && this.userId) {
+      const transcodedService = new BackblazeService(
+        B2_TRANSCODED_MEDIA_BUCKET_ID!,
+        this.userId,
+        this.tenantId
+      );
+
+      const transcodedFiles = await transcodedService.listFiles(folderPath);
+      const transcodedFile = transcodedFiles.find(
+        (f) => f.name === fileName.replace(/\.\w+$/, ".mp4")
+      );
+
+      if (transcodedFile) {
+        await transcodedService.b2.deleteFileVersion({
+          fileName: transcodedFile.name,
+          fileId: transcodedFile.id,
+        });
+      }
+    }
   }
 
   async getStorageSpaceUsage(membershipId?: string) {
@@ -334,43 +511,14 @@ export class BackblazeService {
 
     // Copy files to new folder
     for (const file of files) {
-      const newFileName = file.fileName.replace(oldPrefix, newPrefix);
-      await this.copyFileB2(file.fileId, newFileName);
+      const newFileName = file.name.replace(oldPrefix, newPrefix);
+      await this.copyFileB2(file.name, newFileName);
     }
 
     // Delete old files
     await Promise.all(
-      files.map((file) => this.b2.deleteFileVersion({ fileName: file.fileName, fileId: file.fileId }))
+      files.map((file) => this.b2.deleteFileVersion({ fileName: "/" + file.name, fileId: file.id }))
     );
-  }
-
-  public async createThumbnailFromB2File(
-    fileName: string
-  ): Promise<Buffer> {
-    await this.authorize()
-
-    let sharp = require("sharp")
-
-    // Download file via B2 API
-    const res = await this.b2.downloadFileByName({
-      bucketName: process.env.EXPRESS_B2_BUCKET_NAME!,
-      fileName,
-      responseType: "arraybuffer",
-    });
-
-
-    const buffer = Buffer.from(res.data as ArrayBuffer);
-
-    return await sharp(buffer)
-      .resize({
-        width: 1024,
-        height: 768,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .jpeg({ quality: 80 })
-      .withMetadata()
-      .toBuffer();
   }
 }
 

@@ -17,7 +17,7 @@ export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Re
   const { error, value } = createNoteSchema.validate(req.body);
   if (error) throw validationErrorHandler(error);
 
-  const { project_id, image_name, content, author } = value;
+  const { project_id, media_name, content, author } = value;
 
   if (!project_id || !content) {
     return res.status(400).json({ error: "project_id and content are required" });
@@ -29,7 +29,7 @@ export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Re
   const note: Note = {
     note_id: uuidv4(),
     project_id,
-    image_name,
+    media_name,
     user_id: req.user?.user_id || `anonymous-${uuidv4()}`,
     content,
     created_at: new Date().toISOString(),
@@ -73,7 +73,7 @@ export const getNotesByProject = asyncHandler(async (req: Request, res: Response
   }
 });
 
-// GET Notes by image_name
+// GET Notes by media_name
 export const getNotesByImage = asyncHandler(async (req: Request, res: Response) => {
   const { projectId, imageName } = req.params;
 
@@ -85,7 +85,7 @@ export const getNotesByImage = asyncHandler(async (req: Request, res: Response) 
     const response = await client.send(
       new ScanCommand({
         TableName: NOTES_TABLE,
-        FilterExpression: "project_id = :projectId AND image_name = :imageName",
+        FilterExpression: "project_id = :projectId AND media_name = :imageName",
         ExpressionAttributeValues: marshall({
           ":projectId": projectId,
           ":imageName": imageName,

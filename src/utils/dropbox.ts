@@ -119,74 +119,75 @@ export class DropboxService {
   }
 
   async listFiles(
-    folderPath: string
-  ): Promise<{ name: string; preview_url: string; thumbnail_url: string, thumbnail: any }[]> {
+    folderPath: string,
+  ): Promise<{
+    name: string;
+    preview_url: string;
+    thumbnail_url: string;
+    thumbnail: Buffer;
+  }[]> {
+    const imageRegex = /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i;
+    const videoRegex = /\.(mp4|mov|webm|mkv)$/i;
+
     try {
       const response = await this.dbx.filesListFolder({ path: folderPath });
 
-      const imageFiles = response.result.entries.filter(
-        (entry) =>
-          entry[".tag"] === "file" &&
-          /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i.test(entry.name)
-      );
-      const filesWithLinks = await Promise.all(
-        imageFiles.map(async (file) => {
-          const getThumbnailFormat = (filename: string): "jpeg" | "png" | null => {
-            const match = filename.match(/\.(\w+)$/);
-            if (!match) return null;
+      const files = response.result.entries.filter((entry) => entry[".tag"] === "file");
 
-            const ext = match[1].toLowerCase();
+      const filesWithLinks: {
+        name: string;
+        type: string,
+        preview_url: string;
+        thumbnail_url: string;
+        thumbnail: Buffer;
+      }[] = await Promise.all(
+        files.map(async (file) => {
+          const linkRes = await this.dbx.filesGetTemporaryLink({ path: file.path_lower! });
 
-            // Dropbox only supports JPEG or PNG thumbnails, so we map others to those
-            if (["jpg", "jpeg", "tiff", "tif", "gif", "webp", "bmp", "ppm"].includes(ext)) {
-              return "jpeg";
+          let thumbnailData: { thumbnail: Buffer; thumbnail_url: string };
+
+          if (imageRegex.test(file.name)) {
+            // If file is big (>20MB) generate manually using sharp
+            if (file.size > 20 * 1024 * 1024) {
+              const linkRes = await this.dbx.filesGetTemporaryLink({ path: file.path_lower! });
+              const thumbnail = await createThumbnailFromURL(linkRes.result.link);
+              thumbnailData = { thumbnail, thumbnail_url: "" };
+            } else {
+              // Use Dropbox native thumbnail API
+              const thumbnailRes = await this.dbx.filesGetThumbnailV2({
+                resource: { ".tag": "path", path: file.path_lower! },
+                format: { ".tag": "jpeg" },
+                size: { ".tag": "w2048h1536" },
+              });
+
+              const thumbnailUrl = thumbnailRes.result.link_metadata?.url || "";
+              const thumbnail = Buffer.from((thumbnailRes.result as any).fileBinary, "binary");
+              thumbnailData = { thumbnail, thumbnail_url: thumbnailUrl };
             }
-
-            if (ext === "png") return "png";
-
-            return null;
-          };
-
-          const format = getThumbnailFormat(file.name);
-
-          // Full preview link
-          const linkRes = await this.dbx.filesGetTemporaryLink({
-            path: file.path_lower!,
-          });
-
-          let thumbnailUrl: string = "";
-          let thumbnail = Buffer.from("");
-
-          if (linkRes.result.metadata.size > 20 * 1024 * 1024) {
-            thumbnail = await createThumbnailFromURL(linkRes.result.link) as typeof thumbnail
-          } else if (format) {
-            // Supported format → generate thumbnail
-            const thumbnailRes = await this.dbx.filesGetThumbnailV2({
-              resource: { ".tag": "path", path: file.path_lower! },
-              format: { ".tag": format },
-              size: { ".tag": "w2048h1536" },
-            });
-
-            if (thumbnailRes.result.link_metadata?.url) {
-              thumbnailUrl = thumbnailRes.result.link_metadata?.url
-            }
-
-            // Convert Dropbox binary to Buffer
-            thumbnail = Buffer.from((thumbnailRes.result as any).fileBinary, "binary");
+          } else if (videoRegex.test(file.name)) {
+            // Always generate via Lambda-compatible thumbnail generator
+            const linkRes = await this.dbx.filesGetTemporaryLink({ path: file.path_lower! });
+            const thumbnail = await createThumbnailFromURL(linkRes.result.link);
+            thumbnailData = { thumbnail, thumbnail_url: "" };
+          } else {
+            // Unsupported format → skip thumbnail
+            thumbnailData = { thumbnail: Buffer.from(""), thumbnail_url: "" };
           }
 
           return {
             name: file.name,
+            type: file[".tag"] || null,
             preview_url: linkRes.result.link,
-            thumbnail_url: thumbnailUrl,
-            thumbnail,
+            thumbnail_url: thumbnailData.thumbnail_url,
+            thumbnail: thumbnailData.thumbnail,
+            full_file_url: linkRes.result.link
           };
         })
       );
 
       return filesWithLinks;
-    } catch (error) {
-      throw error;
+    } catch (err) {
+      throw err;
     }
   }
 

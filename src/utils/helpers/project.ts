@@ -19,7 +19,7 @@ const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
 
 const BASE_SUBDOMAIN = "app"
 
-export const getProjectWithImages = async (
+export const getProjectWithMedia = async (
     project: Project,
     handle: string,
 ) => {
@@ -32,15 +32,15 @@ export const getProjectWithImages = async (
 
     // Prefer B2 if both exist
     if (isB2Project) {
-        return getB2ProjectWithImages(project, handle);
+        return getB2ProjectWithMedia(project, handle);
     }
 
     if (isDropboxProject) {
-        return getDropboxProjectWithImages(project, handle);
+        return getDropboxProjectWithMedia(project, handle);
     }
 };
 
-export const getDropboxProjectWithImages = async (project: Project, handle: string) => {
+export const getDropboxProjectWithMedia = async (project: Project, handle: string) => {
     // Fetch user from DynamoDB
     const userResponse = await client.send(
         new GetItemCommand({
@@ -114,21 +114,17 @@ export const getDropboxProjectWithImages = async (project: Project, handle: stri
         }
     }
 
-    const images = dropboxFiles.filter((file: any) =>
-        /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i.test(file.name)
-    );
-
     return {
         project: {
             ...project,
             share_url:
                 (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
         },
-        images,
+        media: dropboxFiles,
     };
 };
 
-export const getB2ProjectWithImages = async (project: Project, handle: string) => {
+export const getB2ProjectWithMedia = async (project: Project, handle: string) => {
     if (!project.b2_folder_path) {
         throw new Error("Backblaze folder path missing.");
     }
@@ -176,16 +172,12 @@ export const getB2ProjectWithImages = async (project: Project, handle: string) =
 
     b2Files = await resolveFiles(b2Files);
 
-    const images = b2Files.filter((file: any) =>
-        /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i.test(file.name)
-    );
-
     return {
         project: {
             ...project,
             share_url: (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
         },
-        images,
+        media: b2Files,
     };
 };
 
