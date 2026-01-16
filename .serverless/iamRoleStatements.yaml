@@ -96,13 +96,16 @@
     - s3:GetObject
     - s3:PutObject
     - s3:DeleteObject
+    - s3:ListBucket
   Resource: arn:aws:s3:::${env:EXPRESS_S3_TEMP_BUCKET}/*
 
-# permission for HeadObjectCommand
 - Effect: Allow
   Action:
+    - s3:GetObject
+    - s3:PutObject
+    - s3:DeleteObject
     - s3:ListBucket
-  Resource: arn:aws:s3:::${env:EXPRESS_S3_TEMP_BUCKET}
+  Resource: arn:aws:s3:::${env:EXPRESS_S3_THUMBNAILS_BUCKET}/*
 
 - Effect: Allow
   Action:
