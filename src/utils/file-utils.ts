@@ -1,15 +1,39 @@
 import fetch from "node-fetch";
 import sharp from "sharp";
-import fs from "fs/promises";
+import * as fs from "fs";
 import path from "path";
 import os from "os";
-import { execFile } from "child_process";
-import { promisify } from "util";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 
-ffmpeg.setFfmpegPath(ffmpegInstaller.path); // use static binary
-const execFileAsync = promisify(execFile);
+/**
+ * Returns the correct ffmpeg path depending on environment.
+ * Tries @ffmpeg-installer/ffmpeg first (local/dev),
+ * then falls back to Lambda layer path (/opt/bin/ffmpeg).
+ */
+export async function getFfmpegPath(): Promise<string> {
+  try {
+    if (fs.existsSync(ffmpegInstaller.path)) {
+      console.log('Using local ffmpeg installer:', ffmpegInstaller.path);
+      return ffmpegInstaller.path;
+    } else {
+      throw new Error('Local ffmpeg not found');
+    }
+  } catch (err) {
+    // Fallback for serverless / Lambda
+    const lambdaPath = '/opt/bin/ffmpeg';
+    console.log('Falling back to Lambda layer ffmpeg:', lambdaPath);
+    return lambdaPath;
+  }
+}
+
+/**
+ * Sets ffmpeg path for fluent-ffmpeg
+ */
+export async function configureFfmpeg() {
+  const ffmpegPath = await getFfmpegPath();
+  ffmpeg.setFfmpegPath(ffmpegPath);
+}; // use static binary
 
 const allowedImageTypes = [
   "image/jpeg",
@@ -32,13 +56,14 @@ const allowedVideoTypes = [
  * Create video thumbnail in Lambda using ffmpeg layer
  */
 export async function createVideoThumbnailFromBuffer(buffer: Buffer): Promise<Buffer> {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "thumb-"));
+  await configureFfmpeg()
+  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "thumb-"));
   const inputPath = path.join(tmpDir, "input.video");
   const outputPath = path.join(tmpDir, "thumb.jpg");
 
   try {
     // Save the video buffer to a temporary file
-    await fs.writeFile(inputPath, buffer);
+    await fs.promises.writeFile(inputPath, buffer);
 
     // Generate thumbnail using fluent-ffmpeg
     await new Promise<void>((resolve, reject) => {
@@ -61,7 +86,7 @@ export async function createVideoThumbnailFromBuffer(buffer: Buffer): Promise<Bu
     return thumbnailBuffer;;
   } finally {
     // Clean up temporary files
-    await fs.rm(tmpDir, { recursive: true, force: true });
+    await fs.promises.rm(tmpDir, { recursive: true, force: true });
   }
 }
 /**
@@ -73,13 +98,14 @@ export async function transcodeVideoToMp4(
   maxHeight = 768,
   bitrate = "1000k" // target bitrate
 ): Promise<Buffer> {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "video-"));
+  await configureFfmpeg()
+  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "video-"));
   const inputPath = path.join(tmpDir, "input.video");
   const outputPath = path.join(tmpDir, "output.mp4");
 
   try {
     // Write input video to disk
-    await fs.writeFile(inputPath, buffer);
+    await fs.promises.writeFile(inputPath, buffer);
 
     // Run fluent-ffmpeg
     await new Promise<void>((resolve, reject) => {
@@ -99,10 +125,10 @@ export async function transcodeVideoToMp4(
     });
 
     // Read output file into buffer
-    return await fs.readFile(outputPath);
+    return await fs.promises.readFile(outputPath);
   } finally {
     // Clean up temp folder
-    await fs.rm(tmpDir, { recursive: true, force: true });
+    await fs.promises.rm(tmpDir, { recursive: true, force: true });
   }
 }
 
@@ -114,7 +140,7 @@ export async function createThumbnailFromURL(url: string): Promise<Buffer> {
   if (!res.ok) throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
 
   const contentType = res.headers.get("content-type")?.toLowerCase();
-  
+
   console.log(contentType)
   if (!contentType) throw new Error("Missing content-type");
 
