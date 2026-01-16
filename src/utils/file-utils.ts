@@ -13,9 +13,9 @@ import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
  */
 export async function getFfmpegPath(): Promise<string> {
   try {
-    if (fs.existsSync(ffmpegInstaller.path)) {
-      console.log('Using local ffmpeg installer:', ffmpegInstaller.path);
-      return ffmpegInstaller.path;
+    if (fs.existsSync('/opt/bin/ffmpeg')) {
+      console.log('Using local ffmpeg installer:', '/opt/bin/ffmpeg');
+      return '/opt/bin/ffmpeg';
     } else {
       throw new Error('Local ffmpeg not found');
     }
