@@ -32,6 +32,7 @@ export async function getFfmpegPath(): Promise<string> {
  */
 export async function configureFfmpeg() {
   const ffmpegPath = await getFfmpegPath();
+  console.log("USING", ffmpegPath)
   ffmpeg.setFfmpegPath(ffmpegPath);
 }; // use static binary
 
