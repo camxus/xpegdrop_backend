@@ -4,7 +4,6 @@ import * as fs from "fs";
 import path from "path";
 import os from "os";
 import ffmpeg from "fluent-ffmpeg";
-import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 
 /**
  * Returns the correct ffmpeg path depending on environment.
@@ -13,6 +12,8 @@ import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
  */
 export async function getFfmpegPath(): Promise<string> {
   try {
+    const ffmpegInstaller = await import('@ffmpeg-installer/ffmpeg');
+    
     if (fs.existsSync(ffmpegInstaller.path)) {
       console.log('Using local ffmpeg installer:', ffmpegInstaller.path);
       return ffmpegInstaller.path;
@@ -32,7 +33,6 @@ export async function getFfmpegPath(): Promise<string> {
  */
 export async function configureFfmpeg() {
   const ffmpegPath = await getFfmpegPath();
-  console.log("USING", ffmpegPath)
   ffmpeg.setFfmpegPath(ffmpegPath);
 }; // use static binary
 
