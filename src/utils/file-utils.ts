@@ -5,7 +5,10 @@ import path from "path";
 import os from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import ffmpeg from "fluent-ffmpeg";
+import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 
+ffmpeg.setFfmpegPath(ffmpegInstaller.path); // use static binary
 const execFileAsync = promisify(execFile);
 
 const allowedImageTypes = [
@@ -28,32 +31,39 @@ const allowedVideoTypes = [
 /**
  * Create video thumbnail in Lambda using ffmpeg layer
  */
-async function createVideoThumbnailFromBuffer(buffer: Buffer): Promise<Buffer> {
+export async function createVideoThumbnailFromBuffer(buffer: Buffer): Promise<Buffer> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "thumb-"));
   const inputPath = path.join(tmpDir, "input.video");
   const outputPath = path.join(tmpDir, "thumb.jpg");
 
   try {
+    // Save the video buffer to a temporary file
     await fs.writeFile(inputPath, buffer);
 
-    // FFmpeg path in Lambda layer
-    const ffmpegPath = "/opt/bin/ffmpeg";
+    // Generate thumbnail using fluent-ffmpeg
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .screenshots({
+          timestamps: [0.1], // skip the first black frame (in seconds)
+          filename: path.basename(outputPath),
+          folder: tmpDir,
+        })
+        .on('end', () => resolve())
+        .on('error', (err) => reject(err));
+    });
 
-    await execFileAsync(ffmpegPath, [
-      "-y",
-      "-i", inputPath,
-      "-ss", "00:00:00.100", // skip black first frame
-      "-frames:v", "1",
-      "-vf", "scale='min(1024,iw)':'min(768,ih)':force_original_aspect_ratio=decrease",
-      outputPath,
-    ]);
+    // Read the extracted frame and resize with sharp
+    const thumbnailBuffer = await sharp(outputPath)
+      .resize({ width: 1024, height: 768, fit: "inside", withoutEnlargement: true })
+      .jpeg() // ensure output is JPEG
+      .toBuffer();
 
-    return await fs.readFile(outputPath);
+    return thumbnailBuffer;;
   } finally {
+    // Clean up temporary files
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
 }
-
 /**
  * Transcode video buffer to a smaller MP4
  */
@@ -68,28 +78,30 @@ export async function transcodeVideoToMp4(
   const outputPath = path.join(tmpDir, "output.mp4");
 
   try {
+    // Write input video to disk
     await fs.writeFile(inputPath, buffer);
 
-    const ffmpegPath = "/opt/bin/ffmpeg";
+    // Run fluent-ffmpeg
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .outputOptions([
+          "-c:v libx264",                        // H.264 codec
+          "-preset fast",                        // encoding preset
+          `-b:v ${bitrate}`,                     // target bitrate
+          `-vf scale='min(${maxWidth},iw)':'min(${maxHeight},ih)':force_original_aspect_ratio=decrease`, // scaling
+          "-movflags +faststart",                // streaming optimization
+          "-c:a aac",                            // audio codec
+          "-b:a 128k",                           // audio bitrate
+        ])
+        .save(outputPath)
+        .on("end", () => resolve())
+        .on("error", (err: any) => reject(err));
+    });
 
-    // Transcode command
-    const args = [
-      "-y",
-      "-i", inputPath,
-      "-c:v", "libx264",             // H.264 codec
-      "-preset", "fast",             // fast encoding
-      "-b:v", bitrate,               // target bitrate
-      "-vf", `scale='min(${maxWidth},iw)':'min(${maxHeight},ih)':force_original_aspect_ratio=decrease`,
-      "-movflags", "+faststart",     // optimize for streaming
-      "-c:a", "aac",                 // audio codec
-      "-b:a", "128k",                // audio bitrate
-      outputPath,
-    ];
-
-    await execFileAsync(ffmpegPath, args);
-
+    // Read output file into buffer
     return await fs.readFile(outputPath);
   } finally {
+    // Clean up temp folder
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
 }
@@ -102,6 +114,8 @@ export async function createThumbnailFromURL(url: string): Promise<Buffer> {
   if (!res.ok) throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
 
   const contentType = res.headers.get("content-type")?.toLowerCase();
+  
+  console.log(contentType)
   if (!contentType) throw new Error("Missing content-type");
 
   const buffer = Buffer.from(await res.arrayBuffer());

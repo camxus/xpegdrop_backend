@@ -4,23 +4,40 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { createThumbnailFromURL, transcodeVideoToMp4 } from "./file-utils";
 
 import dotenv from "dotenv"
-import { getSignedImage } from "./s3";
+import { getSignedImage, s3ObjectExists } from "./s3";
 import { S3Client } from "@aws-sdk/client-s3";
 
 dotenv.config()
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
-const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET_ID || "";
+const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET || "";
 
 const UPLOAD_BATCH_SIZE = 3;
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
-const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID!;
+const B2_BUCKET_NAME = process.env.EXPRESS_B2_BUCKET_NAME!;
 const B2_TRANSCODED_MEDIA_BUCKET_ID = process.env.EXPRESS_B2_TRANSCODED_MEDIA_BUCKET_ID!;
+const B2_TRANSCODED_MEDIA_BUCKET_NAME = process.env.EXPRESS_B2_TRANSCODED_MEDIA_BUCKET_NAME!;
 
 const client = new DynamoDBClient({
   region: process.env.AWS_REGION_CODE,
 });
 
+const imageRegex = /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i;
+const videoRegex = /\.(mp4|mov|webm|mkv|m4v)$/i;
+
+type B2File = {
+  fileId: string;
+  fileName: string;
+  accountId: string;
+  bucketId: string;
+  contentLength: number;
+  contentSha1: string;
+  contentType: string;
+  fileInfo: Record<string, string>;
+  uploadTimestamp: number;
+  action: string;
+  serverSideEncryption?: string;
+}
 export class BackblazeService {
   private b2: B2 & { authorizationToken?: string };
   private bucketId: string;
@@ -145,7 +162,7 @@ export class BackblazeService {
               this.tenantId
             );
 
-            const transcodedFileName = file.name.replace(/\.\w+$/, ".mp4");
+            const transcodedFileName = `${this.getPrefix(folderPath)}/${file.name.replace(/\.\w+$/, ".mp4")}`;
 
             await transcodedService.b2.authorize();
 
@@ -183,14 +200,27 @@ export class BackblazeService {
       await Promise.all(batch.map(uploadFile));
     }
 
-    const shareLink = `https://f003.backblazeb2.com/file/${process.env.EXPRESS_B2_BUCKET_NAME}/${this.getPrefix(folderPath)}`;
+    const shareLink = `https://f003.backblazeb2.com/file/${B2_BUCKET_NAME}/${this.getPrefix(folderPath)}`;
 
     return { folder_path: folderPath, share_link: shareLink };
   }
 
+  private async listFilesRaw(folderPath: string): Promise<B2File[]> {
+    await this.authorize();
+
+    const resp = await this.b2.listFileNames({
+      bucketId: this.bucketId,
+      prefix: this.getPrefix(folderPath) + "/",
+      maxFileCount: 1000,
+      startFileName: "",
+      delimiter: ""
+    });
+
+    return resp.data.files;
+  }
+
   async listFiles(folderPath: string) {
-    const imageRegex = /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i;
-    const videoRegex = /\.(mp4|mov|webm|mkv)$/i;
+
     await this.authorize(); // authorize B2
 
     const resp = await this.b2.listFileNames({
@@ -212,19 +242,7 @@ export class BackblazeService {
     };
 
     const filesWithLinks: FileWithLinks[] = await Promise.all(
-      resp.data.files.map(async (file: {
-        fileId: string;
-        fileName: string;
-        accountId: string;
-        bucketId: string;
-        contentLength: number;
-        contentSha1: string;
-        contentType: string;
-        fileInfo: Record<string, string>;
-        uploadTimestamp: number;
-        action: string;
-        serverSideEncryption?: string;
-      }) => {
+      resp.data.files.map(async (file: B2File) => {
         const fileName = file.fileName.split("/").pop()!;
 
         // Temporary auth token for main bucket
@@ -234,7 +252,7 @@ export class BackblazeService {
           validDurationInSeconds: 60 * 60, // 1 hour
         });
 
-        let fullFileUrl = `https://f003.backblazeb2.com/file/${B2_BUCKET_ID}/${file.fileName}` +
+        let fullFileUrl = `https://f003.backblazeb2.com/file/${B2_BUCKET_NAME}/${file.fileName}` +
           `?Authorization=${authResp.data.authorizationToken}`;
 
         let previewUrl: string;
@@ -256,19 +274,19 @@ export class BackblazeService {
             this.tenantId
           );
 
-          const transcodedFiles = await transcodedService.listFiles(folderPath);
+          const transcodedFiles = await transcodedService.listFilesRaw(folderPath);
           const transcodedFile = transcodedFiles.find(
-            (f) => f.name === fileName.replace(/\.\w+$/, ".mp4")
+            (f) => f.fileName.split("/").pop() === fileName.replace(/\.\w+$/, ".mp4")
           );
 
           if (transcodedFile) {
             const authTranscoded = await transcodedService.b2.getDownloadAuthorization({
               bucketId: transcodedService.bucketId,
-              fileNamePrefix: transcodedFile.name,
+              fileNamePrefix: transcodedFile.fileName,
               validDurationInSeconds: 60 * 60,
             });
 
-            previewUrl = `https://f003.backblazeb2.com/file/${B2_TRANSCODED_MEDIA_BUCKET_ID}/${transcodedFile.name}` +
+            previewUrl = `https://f003.backblazeb2.com/file/${B2_TRANSCODED_MEDIA_BUCKET_NAME}/${transcodedFile.fileName}` +
               `?Authorization=${authTranscoded.data.authorizationToken}`;
           } else {
             previewUrl = fullFileUrl;
@@ -315,7 +333,7 @@ export class BackblazeService {
     });
 
     await Promise.all(
-      resp.data.files.map(async (file: any) => {
+      resp.data.files.map(async (file: B2File) => {
         try {
           await this.b2.deleteFileVersion({
             fileName: file.fileName,
@@ -323,7 +341,6 @@ export class BackblazeService {
           });
 
           const fileName = file.fileName.split("/").pop()!;
-          const videoRegex = /\.(mp4|mov|webm|mkv)$/i;
 
           // If video → delete from transcoded bucket as well
           if (videoRegex.test(fileName) && this.userId) {
@@ -373,7 +390,6 @@ export class BackblazeService {
     });
 
     // If video → delete from transcoded bucket
-    const videoRegex = /\.(mp4|mov|webm|mkv)$/i;
     if (videoRegex.test(fileName) && this.userId) {
       const transcodedService = new BackblazeService(
         B2_TRANSCODED_MEDIA_BUCKET_ID!,

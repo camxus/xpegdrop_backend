@@ -70,6 +70,8 @@ export const getDropboxProjectWithMedia = async (project: Project, handle: strin
         Promise.all(
             files.map(async (file) => {
                 if (file.thumbnail_url) {
+                    delete file.thumbnail;
+
                     return file
                 }
 
@@ -145,9 +147,11 @@ export const getB2ProjectWithMedia = async (project: Project, handle: string) =>
         Promise.all(
             files.map(async (file) => {
                 if (file.thumbnail_url) {
+                    delete file.thumbnail;
+
                     return file
                 }
-                
+
                 const projectName = project.name.toLowerCase().replace(/\s+/g, "-");
                 const s3Key = `thumbnails/${handle}/${projectName}/${file.name}`;
                 const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;

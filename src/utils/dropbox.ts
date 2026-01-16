@@ -127,7 +127,7 @@ export class DropboxService {
     thumbnail: Buffer;
   }[]> {
     const imageRegex = /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i;
-    const videoRegex = /\.(mp4|mov|webm|mkv)$/i;
+    const videoRegex = /\.(mp4|mov|webm|mkv|m4v)$/i;
 
     try {
       const response = await this.dbx.filesListFolder({ path: folderPath });
@@ -148,7 +148,7 @@ export class DropboxService {
 
           if (imageRegex.test(file.name)) {
             // If file is big (>20MB) generate manually using sharp
-            if (file.size > 20 * 1024 * 1024) {
+            if (linkRes.result.metadata.size > 20 * 1024 * 1024) {
               const linkRes = await this.dbx.filesGetTemporaryLink({ path: file.path_lower! });
               const thumbnail = await createThumbnailFromURL(linkRes.result.link);
               thumbnailData = { thumbnail, thumbnail_url: "" };
