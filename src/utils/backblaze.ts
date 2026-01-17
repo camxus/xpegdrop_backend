@@ -407,15 +407,15 @@ export class BackblazeService {
         this.tenantId
       );
 
-      const transcodedFiles = await transcodedService.listFiles(folderPath);
+      const transcodedFiles = await transcodedService.listFilesRaw(folderPath);
       const transcodedFile = transcodedFiles.find(
-        (f) => f.name === fileName.replace(/\.\w+$/, ".mp4")
+        (f) => f.fileName.split("/").pop() === fileName.replace(/\.\w+$/, ".mp4")
       );
 
       if (transcodedFile) {
         await transcodedService.b2.deleteFileVersion({
-          fileName: transcodedFile.name,
-          fileId: transcodedFile.id,
+          fileName: transcodedFile.fileName,
+          fileId: transcodedFile.fileId,
         });
       }
     }
