@@ -56,20 +56,16 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
     const stripeCustomerId = session.customer as string
     const subscriptionId = session.subscription as string
 
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId,
-      {
-        expand: ['items.data.price.product'],
-      }
-    )
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
     const trialEnd = subscription.trial_end ?? null
     const now = Math.floor(Date.now() / 1000)
     const status = trialEnd && trialEnd > now ? "trialing" : "active"
 
-    const internalProductId = session.metadata?.product_id
-    const membershipType = resolveMembershipType(internalProductId)
+    const productId = subscription.metadata?.product_id
+    const membershipType = resolveMembershipType(productId)
 
 
-    console.log("subscription: ", subscription, "session: ", session, internalProductId, membershipType)
+    console.log("subscription: ", subscription, "session: ", session, productId, membershipType)
     if (!userId) {
       console.error("❌ Missing client_reference_id on Stripe session.")
       return res.status(400).json({ error: "Missing userId in checkout session" })
@@ -111,7 +107,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
         ExpressionAttributeValues: marshall({
           ":customer": stripeCustomerId,
           ":sub": subscriptionId,
-          ":product": internalProductId,
+          ":product": productId,
           ":memberType": membershipType,
           ":status": status,
         }),
@@ -127,21 +123,11 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
     const userId = subscription.metadata?.userId
     if (!userId) return
 
-    const subscriptionItem = subscription.items.data[0]
-    const stripeProductId = subscriptionItem?.price?.product || null
-
-    let internalProductId: string | null = null
-    if (stripeProductId) {
-      const product = await stripe.products.retrieve(stripeProductId as string,
-        {
-          expand: ['items.data.price.product'],
-        }
-      )
-      internalProductId = product.metadata?.product_id || null
-    }
+    const productId =
+      subscription.metadata?.product_id ?? null
 
     // Use your internal product ID to resolve membership
-    const membershipType = internalProductId ? resolveMembershipType(internalProductId) : null;
+    const membershipType = productId ? resolveMembershipType(productId) : null;
 
     if (userId) {
       await client.send(
@@ -160,7 +146,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
           },
           ExpressionAttributeValues: marshall({
             ":memberType": membershipType,
-            ":product": internalProductId,
+            ":product": productId,
             ":status": subscription.status,
             ":emptyMap": {},
           }),
