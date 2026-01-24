@@ -108,7 +108,6 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
           ":product": productId,
           ":memberType": membershipType,
           ":status": status,
-          ":emptyMap": {}, // initialize membership map if missing
         }),
       })
     );
