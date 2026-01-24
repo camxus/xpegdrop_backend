@@ -78,14 +78,16 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
         Key: marshall({ user_id: userId }),
         UpdateExpression: `
           SET 
+            stripe = if_not_exists(stripe, :emptyMap),
             stripe.customer_id = if_not_exists(stripe.customer_id, :customer),
             stripe.subscription_id = if_not_exists(stripe.subscription_id, :sub),
             stripe.product = if_not_exists(stripe.product, :product),
+            membership = if_not_exists(membership, :emptyMap),
             membership.membership_id = if_not_exists(membership.membership_id, :memberType),
             membership.#status = if_not_exists(membership.#status, :status)
         `,
         ExpressionAttributeNames: {
-          "#status": "status", // alias for reserved keyword
+          "#status": "status",
         },
         ExpressionAttributeValues: marshall({
           ":customer": stripeCustomerId,
@@ -93,6 +95,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
           ":memberType": membershipType,
           ":product": productId,
           ":status": status,
+          ":emptyMap": {}, // initialize parent object if missing
         }),
       })
     );
@@ -117,23 +120,27 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
         new UpdateItemCommand({
           TableName: USERS_TABLE,
           Key: marshall({ user_id: userId }),
-          UpdateExpression:
-            `SET 
+          UpdateExpression: `
+            SET 
+              stripe = if_not_exists(stripe, :emptyMap),
               stripe.product = :product,
+              membership = if_not_exists(membership, :emptyMap),
               membership.membership_id = :memberType,
               membership.#status = :status
-            `,
+          `,
           ExpressionAttributeNames: {
             "#status": "status",
           },
           ExpressionAttributeValues: marshall({
             ":memberType": membershipType,
             ":product": productId,
-            ":status": subscription.status, // active | past_due | canceled
+            ":status": subscription.status,
+            ":emptyMap": {},
           }),
         })
-      )
+      );
     }
+
   }
 
   res.json({ received: true })
