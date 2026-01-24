@@ -56,12 +56,16 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
     const stripeCustomerId = session.customer as string
     const subscriptionId = session.subscription as string
 
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId,
+      {
+        expand: ['items.data.price.product'],
+      }
+    )
     const trialEnd = subscription.trial_end ?? null
     const now = Math.floor(Date.now() / 1000)
     const status = trialEnd && trialEnd > now ? "trialing" : "active"
 
-    const internalProductId = subscription.metadata.product_id
+    const internalProductId = session.metadata?.product_id
     const membershipType = resolveMembershipType(internalProductId)
 
 
@@ -128,8 +132,12 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
 
     let internalProductId: string | null = null
     if (stripeProductId) {
-      const product = await stripe.products.retrieve(stripeProductId as string)
-      internalProductId = product.metadata.product_id || null
+      const product = await stripe.products.retrieve(stripeProductId as string,
+        {
+          expand: ['items.data.price.product'],
+        }
+      )
+      internalProductId = product.metadata?.product_id || null
     }
 
     // Use your internal product ID to resolve membership
