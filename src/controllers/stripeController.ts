@@ -76,14 +76,17 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
       new UpdateItemCommand({
         TableName: USERS_TABLE,
         Key: marshall({ user_id: userId }),
-        UpdateExpression:
-          `SET 
+        UpdateExpression: `
+          SET 
             stripe.customer_id = :customer,
             stripe.subscription_id = :sub,
             stripe.product = :product,
             membership.membership_id = :memberType,
             membership.#status = :status
-          `,
+        `,
+        ExpressionAttributeNames: {
+          "#status": "status", // alias for reserved keyword
+        },
         ExpressionAttributeValues: marshall({
           ":customer": stripeCustomerId,
           ":sub": subscriptionId,
@@ -92,7 +95,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
           ":status": status,
         }),
       })
-    )
+    );
   }
 
   // ------------------------------------------------------------
@@ -118,8 +121,11 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
             `SET 
               stripe.product = :product,
               membership.membership_id = :memberType,
-              membership.#status = :status,
+              membership.#status = :status
             `,
+          ExpressionAttributeNames: {
+            "#status": "status",
+          },
           ExpressionAttributeValues: marshall({
             ":memberType": membershipType,
             ":product": productId,
