@@ -60,6 +60,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
     const now = Math.floor(Date.now() / 1000) // current Unix timestamp in seconds
     const status = trialEnd && trialEnd > now ? "trialing" : "active"
     const priceId = subscription.items.data[0]?.price?.id || null
+    console.log(priceId, subscription.items.data)
     const productId = subscription.items.data[0]?.price?.product || null
 
     const membershipType = resolveMembershipType(priceId)
