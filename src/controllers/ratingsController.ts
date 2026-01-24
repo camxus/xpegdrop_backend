@@ -12,7 +12,6 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4, v4 } from "uuid";
 import { Request, Response } from "express";
 import { authenticate, AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
-import { User } from "../types";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const RATINGS_TABLE = process.env.DYNAMODB_RATINGS_TABLE || "Ratings";

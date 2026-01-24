@@ -142,7 +142,7 @@ export interface User {
 
   membership?: {
     membership_id?: string;
-    status?: "active" | "past_due" | "canceled" | "incomplete" | "trialing" | string;
+    membership_status?: "active" | "past_due" | "canceled" | "incomplete" | "trialing" | string;
   };
   created_at: string;
   updated_at?: string;
