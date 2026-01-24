@@ -15,7 +15,7 @@ router.post(
 router.use(express.json(), authenticate)
 
 // Billing portal
-router.post("/billing", getBillingInfo)
-router.post("/billing/portal", getBillingPortalSession)
+router.get("/billing", getBillingInfo)
+router.get("/billing/portal", getBillingPortalSession)
 
 export default router;

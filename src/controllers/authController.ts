@@ -40,6 +40,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import jwt from "jsonwebtoken"
+import { posthog } from "../utils/posthog";
 
 const upload = multer({
   storage: multer.memoryStorage(), // stores file in memory for direct upload to S3
@@ -191,6 +192,14 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
         }),
       })
     );
+
+    posthog.trackSignup(
+      createdUserSub,
+      {
+        first_name: userData.first_name,
+        last_name: userData.last_name
+      }
+    )
 
     res.status(201).json({
       user: {

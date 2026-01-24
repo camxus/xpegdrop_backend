@@ -240,11 +240,11 @@
 # Stripe routes
 - httpApi:
     path: /api/stripe/billing
-    method: POST
+    method: GET
     authorizer: jwtAuthorizer
 - httpApi:
     path: /api/stripe/billing/portal
-    method: POST
+    method: GET
     authorizer: jwtAuthorizer
 - httpApi:
     path: /api/stripe/webhook
