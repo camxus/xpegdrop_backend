@@ -65,6 +65,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
     // Map to membership type
     const membershipType = resolveMembershipType(internalProductId);
 
+    console.log(internalProductId, membershipType)
     if (!userId) {
       console.error("❌ Missing client_reference_id on Stripe session.")
       return res.status(400).json({ error: "Missing userId in checkout session" })
