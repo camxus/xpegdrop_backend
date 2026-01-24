@@ -27,6 +27,8 @@ const port = process.env.PORT || 3001;
 // Middleware
 app.use(cors(createCorsConfig()));
 
+app.use("/api/stripe", stripeRoutes);
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
@@ -43,7 +45,6 @@ app.use("/api/referrals", referralsRoutes);
 app.use("/api/metadata", metadataRoutes);
 app.use("/api/notifications", notificationsRoutes);
 
-app.use("/api/stripe", stripeRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
