@@ -79,14 +79,10 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
         UpdateExpression: `
           SET 
             stripe = if_not_exists(stripe, :emptyMap),
-            stripe.customer_id = if_not_exists(stripe.customer_id, :customer),
-            stripe.subscription_id = if_not_exists(stripe.subscription_id, :sub),
-            stripe.product = if_not_exists(stripe.product, :product)
+            membership = if_not_exists(membership, :emptyMap)
         `,
         ExpressionAttributeValues: marshall({
-          ":customer": stripeCustomerId,
-          ":sub": subscriptionId,
-          ":product": productId,
+
           ":emptyMap": {}, // initialize stripe map if missing
         }),
       })
@@ -99,12 +95,18 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
         Key: marshall({ user_id: userId }),
         UpdateExpression: `
           SET 
-            membership = if_not_exists(membership, :emptyMap),
-            membership.membership_id = if_not_exists(membership.membership_id, :memberType),
-            membership.#status = if_not_exists(membership.#status, :status)
+            stripe.customer_id = :customer,
+            stripe.subscription_id = :sub,
+            stripe.product = :product,
+            membership = :emptyMap,
+            membership.membership_id = :memberType,
+            membership.#status = :status
         `,
         ExpressionAttributeNames: { "#status": "status" },
         ExpressionAttributeValues: marshall({
+          ":customer": stripeCustomerId,
+          ":sub": subscriptionId,
+          ":product": productId,
           ":memberType": membershipType,
           ":status": status,
           ":emptyMap": {}, // initialize membership map if missing
