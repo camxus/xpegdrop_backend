@@ -12,17 +12,6 @@ const stripe = new Stripe(process.env.EXPRESS_STRIPE_SECRET_KEY!, {
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE })
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users"
 
-function resolveMembershipType(priceId: string | null | undefined) {
-  if (!priceId) return "unknown"
-
-  // Example pattern:
-  if (priceId.includes("pro")) return "pro"
-  if (priceId.includes("agency")) return "agency"
-  if (priceId.includes("artist")) return "artist"
-
-  return "unknown"
-}
-
 export const stripeWebhook = asyncHandler(async (req: Request, res: Response) => {
   const sig = req.headers["stripe-signature"]
 
@@ -62,10 +51,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
     const status = trialEnd && trialEnd > now ? "trialing" : "active"
 
     const productId = subscription.metadata?.product_id
-    const membershipType = resolveMembershipType(productId)
 
-
-    console.log("subscription: ", subscription, "session: ", session, productId, membershipType)
     if (!userId) {
       console.error("❌ Missing client_reference_id on Stripe session.")
       return res.status(400).json({ error: "Missing userId in checkout session" })
@@ -108,7 +94,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
           ":customer": stripeCustomerId,
           ":sub": subscriptionId,
           ":product": productId,
-          ":memberType": membershipType,
+          ":memberType": productId,
           ":status": status,
         }),
       })
@@ -126,9 +112,6 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
     const productId =
       subscription.metadata?.product_id ?? null
 
-    // Use your internal product ID to resolve membership
-    const membershipType = productId ? resolveMembershipType(productId) : null;
-
     if (userId) {
       await client.send(
         new UpdateItemCommand({
@@ -145,7 +128,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
             "#status": "status",
           },
           ExpressionAttributeValues: marshall({
-            ":memberType": membershipType,
+            ":memberType": productId,
             ":product": productId,
             ":status": subscription.status,
             ":emptyMap": {},
