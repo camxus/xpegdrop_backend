@@ -64,6 +64,9 @@ jobs:
 
           EXPRESS_PUBLIC_BACKEND_URL: ${{ vars.EXPRESS_PUBLIC_BACKEND_URL }}
           EXPRESS_PUBLIC_FRONTEND_URL: ${{ vars.EXPRESS_PUBLIC_FRONTEND_URL }}
+          
+          EXPRESS_POSTHOG_API_KEY: ${{ vars.EXPRESS_POSTHOG_API_KEY }}
+          EXPRESS_POSTHOG_HOST: ${{ vars.EXPRESS_POSTHOG_HOST }}
         run: yarn gen:env && yarn gen:serverless:env
 
       - name: Deploy to Serverless
