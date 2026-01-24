@@ -60,8 +60,6 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
     const now = Math.floor(Date.now() / 1000) // current Unix timestamp in seconds
     const status = trialEnd && trialEnd > now ? "trialing" : "active"
 
-    const productId = subscription.items.data[0]?.price?.product || null
-
     const internalProductId = subscription.metadata.productId;
 
     // Map to membership type
@@ -108,7 +106,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
         ExpressionAttributeValues: marshall({
           ":customer": stripeCustomerId,
           ":sub": subscriptionId,
-          ":product": productId,
+          ":product": internalProductId,
           ":memberType": membershipType,
           ":status": status,
         }),
@@ -124,11 +122,19 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
 
     const userId = subscription.metadata?.userId
 
+    const subscriptionItem = subscription.items.data[0];
 
-    const priceId = subscription.items.data[0]?.price?.id || null
-    const productId = subscription.items.data[0]?.price?.product || null
-    const membershipType = resolveMembershipType(priceId)
+    const stripeProductId = subscriptionItem?.price?.product || null;
 
+    // Retrieve the product from Stripe to access your internal metadata
+    let internalProductId: string | null = null;
+    if (stripeProductId) {
+      const product = await stripe.products.retrieve(stripeProductId as string);
+      internalProductId = product.metadata.productId || null;
+    }
+
+    // Use your internal product ID to resolve membership
+    const membershipType = internalProductId ? resolveMembershipType(internalProductId) : null;
 
     if (userId) {
       await client.send(
@@ -148,7 +154,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
           },
           ExpressionAttributeValues: marshall({
             ":memberType": membershipType,
-            ":product": productId,
+            ":product": internalProductId,
             ":status": subscription.status,
             ":emptyMap": {},
           }),
