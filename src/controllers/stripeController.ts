@@ -98,7 +98,6 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
             stripe.customer_id = :customer,
             stripe.subscription_id = :sub,
             stripe.product = :product,
-            membership = :emptyMap,
             membership.membership_id = :memberType,
             membership.#status = :status
         `,
