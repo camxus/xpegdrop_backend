@@ -12,13 +12,13 @@ const stripe = new Stripe(process.env.EXPRESS_STRIPE_SECRET_KEY!, {
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE })
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users"
 
-function resolveMembershipType(priceId: string | null | undefined) {
-  if (!priceId) return "unknown"
+function resolveMembershipType(productId: string | null | undefined) {
+  if (!productId) return "unknown"
 
   // Example pattern:
-  if (priceId.includes("pro")) return "pro"
-  if (priceId.includes("agency")) return "agency"
-  if (priceId.includes("artist")) return "artist"
+  if (productId.includes("pro")) return "pro"
+  if (productId.includes("agency")) return "agency"
+  if (productId.includes("artist")) return "artist"
 
   return "unknown"
 }
@@ -59,11 +59,10 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
 
     const now = Math.floor(Date.now() / 1000) // current Unix timestamp in seconds
     const status = trialEnd && trialEnd > now ? "trialing" : "active"
-    const priceId = subscription.items.data[0]?.price?.id || null
-    console.log(priceId, subscription.items.data)
-    const productId = subscription.items.data[0]?.price?.product || null
 
-    const membershipType = resolveMembershipType(priceId)
+    const productId = session.metadata?.productId || null;
+
+    const membershipType = resolveMembershipType(productId)
 
     if (!userId) {
       console.error("❌ Missing client_reference_id on Stripe session.")
