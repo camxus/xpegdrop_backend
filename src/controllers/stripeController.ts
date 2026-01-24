@@ -82,7 +82,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
             stripe.subscription_id = :sub,
             stripe.product = :product,
             membership.membership_id = :memberType,
-            membership.membership_status = :status
+            membership.#status = :status
           `,
         ExpressionAttributeValues: marshall({
           ":customer": stripeCustomerId,
@@ -118,7 +118,7 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
             `SET 
               stripe.product = :product,
               membership.membership_id = :memberType,
-              membership.membership_status = :status,
+              membership.#status = :status,
             `,
           ExpressionAttributeValues: marshall({
             ":memberType": membershipType,
