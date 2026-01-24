@@ -64,6 +64,10 @@ export const handler = serverless(app, {
   request: async (req: Request, event: APIGatewayProxyEvent) => {
     let body: any = event.body;
 
+    if (req.url?.includes("/api/stripe/webhook")) {
+      return
+    }
+
     if (body) {
       // Decode base64
       if (event.isBase64Encoded) {
