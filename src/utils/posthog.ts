@@ -1,4 +1,7 @@
 import { PostHog } from "posthog-node"
+import dotenv from "dotenv"
+
+dotenv.config()
 
 type Properties = Record<string, any>
 
