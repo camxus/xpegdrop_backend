@@ -78,13 +78,11 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
         Key: marshall({ user_id: userId }),
         UpdateExpression: `
           SET 
-            stripe = if_not_exists(stripe, :emptyMap),
-            membership = if_not_exists(membership, :emptyMap),
-            stripe.customer_id = :customer,
-            stripe.subscription_id = :sub,
-            stripe.product = :product,
-            membership.membership_id = :memberType,
-            membership.#status = :status
+            stripe.customer_id = if_not_exists(stripe.customer_id, :customer),
+            stripe.subscription_id = if_not_exists(stripe.subscription_id, :sub),
+            stripe.product = if_not_exists(stripe.product, :product),
+            membership.membership_id = if_not_exists(membership.membership_id, :memberType),
+            membership.#status = if_not_exists(membership.#status, :status)
         `,
         ExpressionAttributeNames: {
           "#status": "status", // alias for reserved keyword
@@ -121,8 +119,6 @@ export const stripeWebhook = asyncHandler(async (req: Request, res: Response) =>
           Key: marshall({ user_id: userId }),
           UpdateExpression:
             `SET 
-              stripe = if_not_exists(stripe, :emptyMap),
-              membership = if_not_exists(membership, :emptyMap),
               stripe.product = :product,
               membership.membership_id = :memberType,
               membership.#status = :status
