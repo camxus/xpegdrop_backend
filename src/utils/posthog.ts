@@ -5,7 +5,7 @@ dotenv.config()
 
 type Properties = Record<string, any>
 
-class PostHogClient {
+export class PostHogClient {
   private client: PostHog
 
   constructor() {
@@ -51,7 +51,7 @@ class PostHogClient {
   /**
    * Track signup event (semantic helper)
    */
-  trackSignup(
+  publictrackSignup(
     distinctId: string,
     properties?: Properties
   ) {
@@ -65,8 +65,3 @@ class PostHogClient {
     await this.client.shutdown()
   }
 }
-
-/**
- * Singleton export
- */
-export const posthog = new PostHogClient()
