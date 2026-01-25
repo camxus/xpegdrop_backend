@@ -157,7 +157,7 @@ export interface Project {
   share_url: string;
   is_public: boolean;
   approved_emails: string[];
-  approved_users: { user_id: string[] }[];
+  approved_users: { user_id: string, role: string}[];
   approved_tenant_users: { user_id: string, role: string }[]
   can_download: boolean,
   dropbox_folder_path?: string;
