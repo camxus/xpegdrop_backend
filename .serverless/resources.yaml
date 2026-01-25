@@ -220,22 +220,22 @@ Resources:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
 
-  # MetadataTable:
-  #   Type: AWS::DynamoDB::Table
-  #   DeletionPolicy: Retain
-  #   Properties:
-  #     TableName: Metadata
-  #     AttributeDefinitions:
-  #       - AttributeName: project_id
-  #         AttributeType: S
-  #       - AttributeName: media_name
-  #         AttributeType: S
-  #     KeySchema:
-  #       - AttributeName: project_id
-  #         KeyType: HASH
-  #       - AttributeName: media_name
-  #         KeyType: RANGE
-  #     BillingMode: PAY_PER_REQUEST
+  MetadataTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: Metadata
+      AttributeDefinitions:
+        - AttributeName: project_id
+          AttributeType: S
+        - AttributeName: media_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: project_id
+          KeyType: HASH
+        - AttributeName: media_name
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
 
   MetadataTempTable:
     Type: AWS::DynamoDB::Table
