@@ -449,9 +449,9 @@ export class BackblazeService {
       }
 
       // Set storage allocation based on membership
-      if (membershipId === "artist") {
+      if (membershipId?.includes("artist")) {
         allocated = 2 * 1024 ** 3; // 2 GB
-      } else if (membershipId === "pro") {
+      } else if (membershipId?.includes("pro")) {
         allocated = 500 * 1024 ** 3; // 500 GB
       }
     } else {
