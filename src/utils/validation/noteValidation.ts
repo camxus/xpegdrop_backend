@@ -3,7 +3,7 @@ import Joi from "joi";
 // Schema for creating a note
 export const createNoteSchema = Joi.object({
   project_id: Joi.string().required(),
-  image_name: Joi.string().optional().allow(''),
+  media_name: Joi.string().optional().allow(''),
   content: Joi.string().max(200).required(),
   author: Joi.object({ first_name: Joi.string(), last_name: Joi.string() }).optional()
 });

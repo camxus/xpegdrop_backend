@@ -24,16 +24,16 @@ const METADATA_TABLE =
  */
 export const createImageMetadata = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { project_id, image_name, exif_data, image_hash } = req.body as {
+    const { project_id, media_name, exif_data, image_hash } = req.body as {
       project_id: string;
-      image_name: string;
+      media_name: string;
       exif_data: EXIFData;
       image_hash?: string;
     };
 
-    if (!project_id || !image_name || !exif_data) {
+    if (!project_id || !media_name || !exif_data) {
       return res.status(400).json({
-        error: "project_id, image_name and exif_data are required",
+        error: "project_id, media_name and exif_data are required",
       });
     }
 
@@ -45,14 +45,14 @@ export const createImageMetadata = asyncHandler(
         Item: marshall({
           project_id,
           user_id: req.user?.user_id,
-          image_name,
+          media_name,
           exif_data,
           image_hash,
           created_at: now,
           updated_at: now,
         }),
         ConditionExpression:
-          "attribute_not_exists(project_id) AND attribute_not_exists(image_name)",
+          "attribute_not_exists(project_id) AND attribute_not_exists(media_name)",
       })
     );
 
@@ -81,12 +81,12 @@ export const batchCreateImageMetadata = asyncHandler(
     const now = new Date().toISOString();
 
     const requests = Object.entries(file_metadata).map(
-      ([image_name, exif_data]) => ({
+      ([media_name, exif_data]) => ({
         PutRequest: {
           Item: marshall({
             project_id,
             user_id: req.user?.user_id,
-            image_name,
+            media_name,
             exif_data,
             created_at: now,
             updated_at: now,
@@ -118,18 +118,18 @@ export const batchCreateImageMetadata = asyncHandler(
  */
 export const getImageMetadata = asyncHandler(
   async (req: Request, res: Response) => {
-    const { project_id, image_name } = req.params;
+    const { project_id, media_name } = req.params;
 
-    if (!project_id || !image_name) {
+    if (!project_id || !media_name) {
       return res.status(400).json({
-        error: "project_id and image_name are required",
+        error: "project_id and media_name are required",
       });
     }
 
     const response = await client.send(
       new GetItemCommand({
         TableName: METADATA_TABLE,
-        Key: marshall({ project_id, image_name }),
+        Key: marshall({ project_id, media_name }),
       })
     );
 
@@ -178,18 +178,18 @@ export const getProjectMetadata = asyncHandler(
  */
 export const deleteImageMetadata = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { project_id, image_name } = req.params;
+    const { project_id, media_name } = req.params;
 
-    if (!project_id || !image_name) {
+    if (!project_id || !media_name) {
       return res.status(400).json({
-        error: "project_id and image_name are required",
+        error: "project_id and media_name are required",
       });
     }
 
     await client.send(
       new DeleteItemCommand({
         TableName: METADATA_TABLE,
-        Key: marshall({ project_id, image_name }),
+        Key: marshall({ project_id, media_name }),
       })
     );
 

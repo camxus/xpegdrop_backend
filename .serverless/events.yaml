@@ -211,11 +211,11 @@
     method: GET
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/metadata/{project_id}/{image_name}
+    path: /api/metadata/{project_id}/{media_name}
     method: GET
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/metadata/{project_id}/{image_name}
+    path: /api/metadata/{project_id}/{media_name}
     method: DELETE
     authorizer: jwtAuthorizer
 

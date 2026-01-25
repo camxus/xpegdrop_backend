@@ -33,14 +33,14 @@ router.get("/:project_id", getProjectMetadata);
 
 /**
  * Get metadata for a single image
- * GET /metadata/:project_id/:image_name
+ * GET /metadata/:project_id/:media_name
  */
-router.get("/:project_id/:image_name", getImageMetadata);
+router.get("/:project_id/:media_name", getImageMetadata);
 
 /**
  * Delete metadata for a single image
- * DELETE /metadata/:project_id/:image_name
+ * DELETE /metadata/:project_id/:media_name
  */
-router.delete("/:project_id/:image_name", deleteImageMetadata);
+router.delete("/:project_id/:media_name", deleteImageMetadata);
 
 export default router;
