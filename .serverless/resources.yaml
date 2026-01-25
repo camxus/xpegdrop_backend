@@ -1,6 +1,7 @@
 Resources:
   UploadsBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: ${env:EXPRESS_S3_TEMP_BUCKET}
       LifecycleConfiguration:
@@ -30,6 +31,7 @@ Resources:
 
   ThumbnailsBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: ${env:EXPRESS_S3_THUMBNAILS_BUCKET}
       CorsConfiguration:
@@ -54,6 +56,7 @@ Resources:
 
   ProjectsTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
     Properties:
       TableName: Projects
       AttributeDefinitions:
@@ -83,6 +86,7 @@ Resources:
 
   UsersTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
     Properties:
       TableName: Users
       AttributeDefinitions:
@@ -104,6 +108,7 @@ Resources:
 
   RatingsTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
     Properties:
       TableName: Ratings
       AttributeDefinitions:
@@ -125,6 +130,7 @@ Resources:
 
   NotesTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
     Properties:
       TableName: Notes
       AttributeDefinitions:
@@ -156,6 +162,7 @@ Resources:
 
   TenantsTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
     Properties:
       TableName: Tenants
       AttributeDefinitions:
@@ -185,6 +192,7 @@ Resources:
 
   ReferralsTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
     Properties:
       TableName: Referrals
       AttributeDefinitions:
@@ -212,24 +220,26 @@ Resources:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
 
-  MetadataTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: Metadata
-      AttributeDefinitions:
-        - AttributeName: project_id
-          AttributeType: S
-        - AttributeName: media_name
-          AttributeType: S
-      KeySchema:
-        - AttributeName: project_id
-          KeyType: HASH
-        - AttributeName: media_name
-          KeyType: RANGE
-      BillingMode: PAY_PER_REQUEST
+  # MetadataTable:
+  #   Type: AWS::DynamoDB::Table
+  #   DeletionPolicy: Retain
+  #   Properties:
+  #     TableName: Metadata
+  #     AttributeDefinitions:
+  #       - AttributeName: project_id
+  #         AttributeType: S
+  #       - AttributeName: media_name
+  #         AttributeType: S
+  #     KeySchema:
+  #       - AttributeName: project_id
+  #         KeyType: HASH
+  #       - AttributeName: media_name
+  #         KeyType: RANGE
+  #     BillingMode: PAY_PER_REQUEST
 
   MetadataTempTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
     Properties:
       TableName: MetadataTemp
       AttributeDefinitions:
