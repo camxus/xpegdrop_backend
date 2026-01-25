@@ -44,6 +44,7 @@ export const createImageMetadata = asyncHandler(
         TableName: METADATA_TABLE,
         Item: marshall({
           project_id,
+          user_id: req.user?.user_id,
           image_name,
           exif_data,
           image_hash,
@@ -84,6 +85,7 @@ export const batchCreateImageMetadata = asyncHandler(
         PutRequest: {
           Item: marshall({
             project_id,
+            user_id: req.user?.user_id,
             image_name,
             exif_data,
             created_at: now,
