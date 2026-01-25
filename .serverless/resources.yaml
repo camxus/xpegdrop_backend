@@ -228,7 +228,7 @@ Resources:
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
 
-  MetadataTable:
+  MetadataTempTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: MetadataTemp
