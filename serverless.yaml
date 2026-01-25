@@ -10,30 +10,30 @@ provider:
   environment: ${file(./.serverless/env.yaml)}
   iamRoleStatements: ${file(./.serverless/iamRoleStatements.yaml)}
 
-  # httpApi:
-  #   cors:
-  #     allowedOrigins:
-  #       - ${env:EXPRESS_PUBLIC_FRONTEND_URL}
-  #       - http://localhost:3000
-  #     allowedHeaders:
-  #       - Content-Type
-  #       - Authorization
-  #     allowedMethods:
-  #       - GET
-  #       - POST
-  #       - PUT
-  #       - DELETE
-  #       - OPTIONS
-  #     allowCredentials: true
-  #   authorizers:
-  #     jwtAuthorizer:
-  #       type: request
-  #       functionName: authorizer
-  #       identitySource: $request.header.Authorization
+  httpApi:
+    cors:
+      allowedOrigins:
+        - ${env:EXPRESS_PUBLIC_FRONTEND_URL}
+        - http://localhost:3000
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowCredentials: true
+    authorizers:
+      jwtAuthorizer:
+        type: request
+        functionName: authorizer
+        identitySource: $request.header.Authorization
 
 resources: ${file(./.serverless/resources.yaml)}
 
-# functions: ${file(./.serverless/functions.yaml)}
+functions: ${file(./.serverless/functions.yaml)}
 
 plugins:
   - serverless-offline
