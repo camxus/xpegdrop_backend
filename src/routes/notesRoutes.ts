@@ -4,7 +4,7 @@ import {
   updateNote,
   deleteNote,
   getNotesByProject,
-  getNotesByImage,
+  getNotesByMediaName,
 } from "../controllers/notesController";
 import { authenticate } from "../middleware/auth";
 
@@ -17,7 +17,7 @@ router.post("/", createNote);
 router.get("/:projectId", getNotesByProject);
 
 // Get all notes for a project
-router.get("/:projectId/:imageName", getNotesByImage);
+router.get("/:projectId/:mediaName", getNotesByMediaName);
 
 // Update a note by ID
 router.put("/:noteId", updateNote);

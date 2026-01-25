@@ -74,21 +74,21 @@ export const getNotesByProject = asyncHandler(async (req: Request, res: Response
 });
 
 // GET Notes by media_name
-export const getNotesByImage = asyncHandler(async (req: Request, res: Response) => {
-  const { projectId, imageName } = req.params;
+export const getNotesByMediaName = asyncHandler(async (req: Request, res: Response) => {
+  const { projectId, mediaName } = req.params;
 
-  if (!projectId || !imageName) {
-    return res.status(400).json({ error: "projectId and imageName are required" });
+  if (!projectId || !mediaName) {
+    return res.status(400).json({ error: "projectId and mediaName are required" });
   }
 
   try {
     const response = await client.send(
       new ScanCommand({
         TableName: NOTES_TABLE,
-        FilterExpression: "project_id = :projectId AND media_name = :imageName",
+        FilterExpression: "project_id = :projectId AND media_name = :mediaName",
         ExpressionAttributeValues: marshall({
           ":projectId": projectId,
-          ":imageName": imageName,
+          ":mediaName": mediaName,
         }),
       })
     );

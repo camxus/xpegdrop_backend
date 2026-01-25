@@ -25,7 +25,7 @@ async function migrate() {
     await client.send(
       new BatchWriteItemCommand({
         RequestItems: {
-          MetadataV2: putRequests.slice(i, i + 25),
+          MetadataTemp: putRequests.slice(i, i + 25),
         },
       })
     );

@@ -125,7 +125,7 @@
     path: /api/notes/{projectId}
     method: GET
 - httpApi:
-    path: /api/notes/{projectId}/{imageName}
+    path: /api/notes/{projectId}/{media_name}
     method: GET
 - httpApi:
     path: /api/notes
