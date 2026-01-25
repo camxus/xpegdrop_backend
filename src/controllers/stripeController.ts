@@ -234,7 +234,7 @@ export const getBillingPortalSession = asyncHandler(async (req: AuthenticatedReq
   // Create portal session
   const portal = await stripe.billingPortal.sessions.create({
     customer: user.stripe.customer_id,
-    return_url: process.env.EXPRESS_PUBLIC_FRONTEND_URL + "/billing",
+    return_url: process.env.EXPRESS_PUBLIC_FRONTEND_URL + "/billing", // must be https://
   })
 
   res.json(portal.url)
