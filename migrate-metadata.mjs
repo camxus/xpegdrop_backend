@@ -1,4 +1,8 @@
-import { DynamoDBClient, ScanCommand, BatchWriteItemCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  ScanCommand,
+  BatchWriteItemCommand,
+} from "@aws-sdk/client-dynamodb";
 
 const client = new DynamoDBClient({ region: "eu-west-1" });
 
@@ -6,19 +10,24 @@ async function migrate() {
   const scan = await client.send(
     new ScanCommand({
       TableName: "Metadata",
-    })
+    }),
   );
 
   if (!scan.Items?.length) return;
 
-  const putRequests = scan.Items.map((item) => ({
-    PutRequest: {
-      Item: {
-        ...item,
-        media_name: item.image_name, // 👈 rename key
+  const putRequests = scan.Items.map((item) => {
+    // Destructure image_name out, keep the rest
+    const { image_name, ...rest } = item;
+
+    return {
+      PutRequest: {
+        Item: {
+          ...rest,
+          media_name: image_name, // new key
+        },
       },
-    },
-  }));
+    };
+  });
 
   // DynamoDB max 25 per batch
   for (let i = 0; i < putRequests.length; i += 25) {
@@ -27,7 +36,7 @@ async function migrate() {
         RequestItems: {
           MetadataTemp: putRequests.slice(i, i + 25),
         },
-      })
+      }),
     );
   }
 
