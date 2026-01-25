@@ -288,6 +288,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: create-project-queue
+      VisibilityTimeout: 60
 
   AddFilesQueue:
     Type: AWS::SQS::Queue
