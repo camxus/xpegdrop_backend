@@ -70,4 +70,4 @@ jobs:
         run: yarn gen:env && yarn gen:serverless:env
 
       - name: Deploy to Serverless
-        run: yarn deploy --stage prod
+        run: yarn deploy --stage prod --force
