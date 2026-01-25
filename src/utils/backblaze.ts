@@ -453,9 +453,9 @@ export class BackblazeService {
         allocated = 2 * 1024 ** 3; // 2 GB
       } else if (membershipId?.includes("pro")) {
         allocated = 500 * 1024 ** 3; // 500 GB
+      } else if (membershipId?.includes("agency")) {
+        allocated = 2000 * 1024 ** 3; // 2 TB
       }
-    } else {
-      allocated = 2000 * 1024 ** 3; // 2 TB
     }
 
     try {
