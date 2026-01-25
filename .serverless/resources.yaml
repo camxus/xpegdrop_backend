@@ -219,6 +219,22 @@ Resources:
       AttributeDefinitions:
         - AttributeName: project_id
           AttributeType: S
+        - AttributeName: image_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: project_id
+          KeyType: HASH
+        - AttributeName: image_name
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  MetadataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: MetadataTemp
+      AttributeDefinitions:
+        - AttributeName: project_id
+          AttributeType: S
         - AttributeName: media_name
           AttributeType: S
       KeySchema:
