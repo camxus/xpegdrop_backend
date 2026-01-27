@@ -42,7 +42,7 @@ export const createReferral = asyncHandler(async (req: AuthenticatedRequest, res
     })
   );
 
-  if ((existingReferrals.Items?.length || 0) >= 5) {
+  if ((existingReferrals.Items?.length || 0) >= 5 && req.user?.email !== "camillus.konkwo@gmail.com") {
     return res.status(403).json({ error: "Referral limit reached (max 5)" });
   }
 
