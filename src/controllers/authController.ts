@@ -40,7 +40,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import jwt from "jsonwebtoken"
-import { PostHogClient } from "../utils/posthog";
+import { PostHogClient } from "../lib/posthog";
 
 const upload = multer({
   storage: multer.memoryStorage(), // stores file in memory for direct upload to S3

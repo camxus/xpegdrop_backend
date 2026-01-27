@@ -3,8 +3,8 @@ import { S3Client, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
-import { DropboxService } from "../../../utils/dropbox";
-import { BackblazeService } from "../../../utils/backblaze";
+import { DropboxService } from "../../../lib/dropbox";
+import { BackblazeService } from "../../../lib/backblaze";
 import { copyItemImage, getItemFile } from "../../../utils/s3";
 
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";

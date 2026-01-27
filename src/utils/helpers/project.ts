@@ -1,10 +1,10 @@
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { Project, User } from "../../types";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { DropboxService } from "../dropbox";
+import { DropboxService } from "../../lib/dropbox";
 import { getSignedImage, s3ObjectExists, saveItemImage } from "../s3";
 import { S3Client } from "@aws-sdk/client-s3";
-import { BackblazeService } from "../backblaze";
+import { BackblazeService } from "../../lib/backblaze";
 import dotenv from "dotenv"
 
 dotenv.config()

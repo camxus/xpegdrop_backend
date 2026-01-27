@@ -132,6 +132,10 @@ export interface User {
   expo?: {
     push_token: string
   }
+  google?: {
+    access_token?: string;
+    refresh_token?: string;
+  };
   dropbox?: {
     access_token?: string;
     refresh_token?: string;

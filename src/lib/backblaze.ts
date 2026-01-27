@@ -1,10 +1,10 @@
 import B2 from "backblaze-b2";
 import { DynamoDBClient, GetItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { createThumbnailFromURL, transcodeVideoToMp4 } from "./file-utils";
+import { createThumbnailFromURL, transcodeVideoToMp4 } from "../utils/file-utils";
 
 import dotenv from "dotenv"
-import { getSignedImage, s3ObjectExists } from "./s3";
+import { getSignedImage, s3ObjectExists } from "../utils/s3";
 import { S3Client } from "@aws-sdk/client-s3";
 
 dotenv.config()

@@ -1,11 +1,11 @@
-import { Dropbox } from "../../sdk/dropbox";
-import type { sharing, files, users } from "../../sdk/dropbox";
+import { Dropbox } from "../../sdk/dropbox/types";
+import type { sharing, files, users } from "../../sdk/dropbox/types";
 import axios from "axios";
 import qs from "qs";
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { User } from "../types";
-import { createThumbnailFromURL } from "./file-utils";
+import { createThumbnailFromURL } from "../utils/file-utils";
 
 const UPLOAD_BATCH_SIZE = 3;
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";

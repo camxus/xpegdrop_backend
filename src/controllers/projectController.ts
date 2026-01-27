@@ -17,7 +17,7 @@ import {
 import axios from "axios";
 import { CreateProjectInput, UpdateProjectInput, Project, S3Location, User, Tenant } from "../types";
 import { v4 as uuidv4 } from "uuid";
-import { DropboxService } from "../utils/dropbox";
+import { DropboxService } from "../lib/dropbox";
 import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
 import { Request, RequestHandler, Response } from "express";
 import multer from "multer";
@@ -25,7 +25,7 @@ import { deleteItemImage, getItemFile, getSignedImage, moveFolder, s3ObjectExist
 import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { getProjectWithMedia, getHandleUrl } from "../utils/helpers/project";
-import { BackblazeService } from "../utils/backblaze";
+import { BackblazeService } from "../lib/backblaze";
 import { handler } from "../sqs/workers/project/create";
 import { Context, SQSEvent } from "aws-lambda";
 
