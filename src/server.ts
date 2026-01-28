@@ -12,6 +12,7 @@ import tenantsRoutes from "./routes/tenantsRoutes";
 import referralsRoutes from "./routes/referralsRoutes";
 import metadataRoutes from "./routes/metadataRoutes";
 import notificationsRoutes from "./routes/notificationsRoutes";
+import historyRoutes from "./routes/historyRoutes";
 import stripeRoutes from "./routes/stripeRoutes";
 import { createCorsConfig } from "./utils/cors";
 import { APIGatewayProxyEvent } from "aws-lambda";
@@ -44,6 +45,7 @@ app.use("/api/tenants", tenantsRoutes);
 app.use("/api/referrals", referralsRoutes);
 app.use("/api/metadata", metadataRoutes);
 app.use("/api/notifications", notificationsRoutes);
+app.use("/api/history", historyRoutes);
 
 
 // Health check

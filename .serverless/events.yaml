@@ -237,6 +237,24 @@
     method: DELETE
     authorizer: jwtAuthorizer
 
+# History routes
+- httpApi:
+    path: /api/history
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/history
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/history/{id}
+    method: PATCH
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/history/{id}
+    method: DELETE
+    authorizer: jwtAuthorizer
+
 # Stripe routes
 - httpApi:
     path: /api/stripe/billing

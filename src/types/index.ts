@@ -157,7 +157,7 @@ export interface Project {
   share_url: string;
   is_public: boolean;
   approved_emails: string[];
-  approved_users: { user_id: string, role: string}[];
+  approved_users: { user_id: string, role: string }[];
   approved_tenant_users: { user_id: string, role: string }[]
   can_download: boolean,
   dropbox_folder_path?: string;
@@ -249,3 +249,15 @@ export interface Notification {
   created_at: string;
   updated_at: string;
 }
+
+export type ProjectHistory = {
+  project_history_id: string;
+  project_id: string;
+  user_id: string;
+  actor_id: string;
+  type: string;
+  title: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+};
