@@ -228,10 +228,6 @@ Resources:
       AttributeDefinitions:
         - AttributeName: project_id
           AttributeType: S
-        - AttributeName: id
-          AttributeType: S
-        - AttributeName: user_id
-          AttributeType: S
         - AttributeName: actor_id
           AttributeType: S
         - AttributeName: type

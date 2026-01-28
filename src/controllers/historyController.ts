@@ -26,31 +26,26 @@ export const createProjectHistory = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const {
       project_id,
-      user_id,
-      actor_id,
       type,
       title,
       description,
     } = req.body as {
       project_id: string;
-      user_id: string;
-      actor_id: string;
       type: string;
       title: string;
       description?: string;
     };
 
-    if (!project_id || !user_id || !actor_id || !type || !title) {
+    if (!project_id || !type || !title) {
       return res.status(400).json({
-        error: "project_id, user_id, actor_id, type, and title are required",
+        error: "project_id, type, and title are required",
       });
     }
 
     const record = {
       project_history_id: v4(),
       project_id,
-      user_id,
-      actor_id,
+      actor_id: req.user?.user_id,
       type,
       title,
       description: description || "",

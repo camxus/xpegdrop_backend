@@ -253,7 +253,6 @@ export interface Notification {
 export type ProjectHistory = {
   project_history_id: string;
   project_id: string;
-  user_id: string;
   actor_id: string;
   type: string;
   title: string;
