@@ -250,6 +250,16 @@ export interface Notification {
   updated_at: string;
 }
 
+export enum ProjectHistoryType {
+  PROJECT_CREATED = "project_created",
+  PROJECT_UPDATED = "project_updated",
+  PROJECT_DELETED = "project_deleted",
+  FILES_ADDED = "files_added",
+  FILE_REMOVED = "file_removed",
+  NOTE = "note",
+  RATING = "rating",
+}
+
 export type ProjectHistory = {
   project_history_id: string;
   project_id: string;

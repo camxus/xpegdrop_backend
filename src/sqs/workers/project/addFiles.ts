@@ -6,6 +6,8 @@ import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { DropboxService } from "../../../utils/dropbox";
 import { BackblazeService } from "../../../utils/backblaze";
 import { copyItemImage, getItemFile } from "../../../utils/s3";
+import { createProjectHistoryItem } from "../../../controllers/historyController";
+import { ProjectHistoryType } from "../../../types";
 
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const REGION = process.env.AWS_REGION_CODE;
@@ -100,6 +102,15 @@ export const handler: SQSHandler = async (event) => {
       } else {
         throw new Error("No valid folder path found for upload");
       }
+
+      await createProjectHistoryItem<ProjectHistoryType.FILES_ADDED>({
+        project_id: projectId,
+        actor_id: user?.user_id,
+        type: ProjectHistoryType.FILES_ADDED,
+        context: {
+          fileNames: uploadedFiles.map(file=> file.name),
+        },
+      });
 
       console.log(`Files added successfully to project ${projectId}`, uploadedFiles);
     } catch (err) {

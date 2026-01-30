@@ -15,7 +15,7 @@ import {
   updateProjectSchema,
 } from "../utils/validation/projectValidation";
 import axios from "axios";
-import { CreateProjectInput, UpdateProjectInput, Project, S3Location, User, Tenant } from "../types";
+import { CreateProjectInput, UpdateProjectInput, Project, S3Location, User, Tenant, ProjectHistoryType } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { DropboxService } from "../utils/dropbox";
 import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
@@ -28,6 +28,7 @@ import { getProjectWithMedia, getHandleUrl } from "../utils/helpers/project";
 import { BackblazeService } from "../utils/backblaze";
 import { handler } from "../sqs/workers/project/create";
 import { Context, SQSEvent } from "aws-lambda";
+import { createProjectHistoryItem } from "./historyController";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
@@ -190,15 +191,14 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       })
     );
 
-    handler({ Records: [{ body: JSON.stringify(payload) }] } as SQSEvent, {} as Context, () => { })
+    // handler({ Records: [{ body: JSON.stringify(payload) }] } as SQSEvent, {} as Context, () => { })
 
-    // await sqs.send(
-    //   new SendMessageCommand({
-    //     QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
-    //     MessageBody: JSON.stringify(payload),
-    //   })
-    // );
-
+    await sqs.send(
+      new SendMessageCommand({
+        QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
+        MessageBody: JSON.stringify(payload),
+      })
+    );
 
     res.status(202).json({
       ...projectData, share_url: (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + projectData.share_url
@@ -536,6 +536,41 @@ export const updateProject = asyncHandler(
         tenant = unmarshall(response.Item) as Tenant;
       }
 
+      const FieldLabels: Record<string, string> = {
+        name: "Name",
+        share_url: "Share URL",
+        description: "Description",
+        is_public: "Visibility",
+        can_download: "Download Permission",
+        approved_emails: "Approved Emails",
+        approved_users: "Approved Users",
+        approved_tenant_users: "Approved Tenant Users",
+        dropbox_folder_path: "Dropbox Folder",
+        b2_folder_path: "Backblaze Folder",
+      };
+
+      const updatedFields = updateExpr
+        .map((expr) => {
+          const rawField = expr.split("=").shift()?.trim();
+          if (!rawField || rawField === "updated_at") return null;
+
+          const field = rawField.startsWith("#")
+            ? exprAttrNames[rawField]
+            : rawField;
+
+          return field ? FieldLabels[field] : null;
+        })
+        .filter(Boolean) as string[];
+
+      await createProjectHistoryItem<ProjectHistoryType.PROJECT_UPDATED>({
+        project_id: projectId,
+        actor_id: req.user?.user_id,
+        type: ProjectHistoryType.PROJECT_UPDATED,
+        context: {
+          fields: updatedFields,
+        },
+      });
+
       res.status(200).json({
         message: "Project updated successfully",
         ...(newShareUrl !== project.share_url ? { share_url: (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + newShareUrl } : {}),
@@ -599,6 +634,12 @@ export const deleteProject = asyncHandler(
           Key: marshall({ project_id: projectId }),
         })
       );
+
+      await createProjectHistoryItem<ProjectHistoryType.PROJECT_DELETED>({
+        project_id: projectId,
+        actor_id: req.user?.user_id,
+        type: ProjectHistoryType.PROJECT_DELETED,
+      });
 
       res.status(200).json({ message: "Project deleted successfully" });
     } catch (error: any) {
@@ -847,6 +888,15 @@ export const removeProjectFile = asyncHandler(
           return res.status(500).json({ error: "Failed to delete file" });
         }
       }
+
+      await createProjectHistoryItem<ProjectHistoryType.FILE_REMOVED>({
+        project_id: projectId,
+        actor_id: req.user?.user_id,
+        type: ProjectHistoryType.FILE_REMOVED,
+        context: {
+          fileName: fileName,
+        },
+      });
 
       res.status(200).json({ message: "File removed successfully" });
     } catch (error: any) {

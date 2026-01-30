@@ -25,10 +25,10 @@ router.post("/", createProjectHistory);
 router.get("/:project_id", getProjectHistory);
 
 /**
- * @route   PATCH /history/:project_id/:id
+ * @route   PATCH /history/:project_id/:project_history_id
  * @desc    Update a specific project history record
  */
-router.patch("/:project_id/:id", updateProjectHistory);
+router.patch("/:project_id/:project_history_id", updateProjectHistory);
 
 /**
  * @route   DELETE /history/:project_id/:id

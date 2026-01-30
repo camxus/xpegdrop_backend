@@ -7,6 +7,8 @@ import { getItemFile } from "../../../utils/s3";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import dotenv from "dotenv"
 import { createThumbnailFromFile } from "../../../utils/file-utils";
+import { createProjectHistoryItem } from "../../../controllers/historyController";
+import { ProjectHistoryType } from "../../../types";
 
 dotenv.config()
 
@@ -125,6 +127,13 @@ export const handler: SQSHandler = async (event) => {
           ":status": "created",
         }),
         ReturnValues: "ALL_NEW",
+      });
+
+
+      await createProjectHistoryItem<ProjectHistoryType.PROJECT_CREATED>({
+        project_id: project.project_id,
+        actor_id: user?.user_id,
+        type: ProjectHistoryType.PROJECT_CREATED,
       });
 
 

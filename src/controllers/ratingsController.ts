@@ -12,6 +12,8 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4, v4 } from "uuid";
 import { Request, Response } from "express";
 import { authenticate, AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
+import { createProjectHistoryItem } from "./historyController";
+import { ProjectHistoryType } from "../types";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const RATINGS_TABLE = process.env.DYNAMODB_RATINGS_TABLE || "Ratings";
@@ -53,6 +55,15 @@ export const createRating = asyncHandler(
           Item: marshall(rating),
         })
       );
+
+      await createProjectHistoryItem<ProjectHistoryType.RATING>({
+        project_id,
+        actor_id: req.user?.user_id,
+        type: ProjectHistoryType.RATING,
+        context: {
+          rating: value,
+        },
+      });
 
       res.status(201).json(rating);
     } catch (error: any) {
