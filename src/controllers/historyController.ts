@@ -141,6 +141,9 @@ const HISTORY_META: Record<
     description?: (ctx?: any) => string;
   }
 > = {
+  [ProjectHistoryType.PROJECT_INITIATED]: {
+    title: "Project added",
+  },
   [ProjectHistoryType.PROJECT_CREATED]: {
     title: "Project created",
   },
@@ -180,6 +183,8 @@ const HISTORY_META: Record<
 };
 
 export type ProjectHistoryContextMap = {
+  [ProjectHistoryType.PROJECT_INITIATED]: undefined;
+  
   [ProjectHistoryType.PROJECT_CREATED]: undefined;
 
   [ProjectHistoryType.PROJECT_UPDATED]: {

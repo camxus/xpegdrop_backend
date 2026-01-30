@@ -251,6 +251,7 @@ export interface Notification {
 }
 
 export enum ProjectHistoryType {
+  PROJECT_INITIATED = "project_initiated",
   PROJECT_CREATED = "project_created",
   PROJECT_UPDATED = "project_updated",
   PROJECT_DELETED = "project_deleted",
