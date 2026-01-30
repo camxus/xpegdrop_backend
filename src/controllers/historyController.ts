@@ -32,7 +32,7 @@ export const createProjectHistory = asyncHandler(
       context
     } = req.body as {
       project_id: string;
-      type: string;
+      type: ProjectHistoryType;
       title: string;
       description?: string;
       context: ProjectHistoryContext<any>
@@ -47,7 +47,7 @@ export const createProjectHistory = asyncHandler(
     const record = await createProjectHistoryItem({
       project_id,
       actor_id: req.user?.user_id,
-      type: ProjectHistoryType.FILES_ADDED,
+      type,
       context
     });
 
@@ -93,14 +93,40 @@ export const updateProjectHistory = asyncHandler(
       return res.status(400).json({ error: "project_id and project_history_id are required" });
     }
 
-    await updateProjectHistoryItem({
-      project_id,
-      project_history_id: project_history_id,
-      title: title,
-      type: type,
-      description: description,
-    });
+    const updates: string[] = [];
+    const values: Record<string, any> = {};
 
+    if (title) {
+      updates.push("title = :title");
+      values[":title"] = title;
+    }
+
+    if (description) {
+      updates.push("description = :description");
+      values[":description"] = description;
+    }
+
+    if (type) {
+      updates.push("type = :type");
+      values[":type"] = type;
+    }
+
+    if (!updates.length) {
+      throw new Error("No fields to update");
+    }
+
+    updates.push("updated_at = :updated_at");
+    values[":updated_at"] = new Date().toISOString();
+
+    await client.send(
+      new UpdateItemCommand({
+        TableName: PROJECTS_HISTORY_TABLE,
+        Key: marshall({ project_id, project_history_id }),
+        UpdateExpression: `SET ${updates.join(", ")}`,
+        ExpressionAttributeValues: marshall(values),
+      })
+    );
+    
     res.status(200).json({ message: "Project history updated" });
   }
 );
@@ -184,7 +210,7 @@ const HISTORY_META: Record<
 
 export type ProjectHistoryContextMap = {
   [ProjectHistoryType.PROJECT_INITIATED]: undefined;
-  
+
   [ProjectHistoryType.PROJECT_CREATED]: undefined;
 
   [ProjectHistoryType.PROJECT_UPDATED]: {
@@ -254,54 +280,4 @@ export const createProjectHistoryItem = async <
   );
 
   return item;
-};
-
-type UpdateHistoryParams = {
-  project_id: string;
-  project_history_id: string;
-  title?: string;
-  description?: string;
-  type?: ProjectHistoryType;
-};
-
-export const updateProjectHistoryItem = async ({
-  project_id,
-  project_history_id,
-  title,
-  description,
-  type,
-}: UpdateHistoryParams) => {
-  const updates: string[] = [];
-  const values: Record<string, any> = {};
-
-  if (title) {
-    updates.push("title = :title");
-    values[":title"] = title;
-  }
-
-  if (description) {
-    updates.push("description = :description");
-    values[":description"] = description;
-  }
-
-  if (type) {
-    updates.push("type = :type");
-    values[":type"] = type;
-  }
-
-  if (!updates.length) {
-    throw new Error("No fields to update");
-  }
-
-  updates.push("updated_at = :updated_at");
-  values[":updated_at"] = new Date().toISOString();
-
-  await client.send(
-    new UpdateItemCommand({
-      TableName: PROJECTS_HISTORY_TABLE,
-      Key: marshall({ project_id, project_history_id }),
-      UpdateExpression: `SET ${updates.join(", ")}`,
-      ExpressionAttributeValues: marshall(values),
-    })
-  );
 };
