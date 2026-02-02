@@ -2,7 +2,7 @@ import { Response } from "express";
 
 import { asyncHandler } from "../middleware/asyncHandler";
 import { AuthenticatedRequest } from "../middleware/auth";
-import { BackblazeService } from "../utils/backblaze";
+import { BackblazeService } from "../lib/backblaze";
 
 require("dotenv").config();
 

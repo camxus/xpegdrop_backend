@@ -1,8 +1,8 @@
 import { SQSHandler } from "aws-lambda";
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-import { DropboxService } from "../../../utils/dropbox";
-import { BackblazeService } from "../../../utils/backblaze"; // Your B2 wrapper
+import { DropboxService } from "../../../lib/dropbox";
+import { BackblazeService } from "../../../lib/backblaze"; // Your B2 wrapper
 import { getItemFile } from "../../../utils/s3";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import dotenv from "dotenv"
