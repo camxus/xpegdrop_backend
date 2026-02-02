@@ -32,6 +32,26 @@
     path: /api/dropbox/stats
     method: GET
 
+# Google routes
+- httpApi:
+    path: /api/google/auth-url
+    method: GET
+    authorizer: jwtAuthorizer
+
+- httpApi:
+    path: /api/google/callback
+    method: GET
+
+- httpApi:
+    path: /api/google/callback/link
+    method: GET
+    authorizer: jwtAuthorizer
+
+- httpApi:
+    path: /api/google/stats
+    method: GET
+    authorizer: jwtAuthorizer
+
 # Storage routes
 - httpApi:
     path: /api/storage/stats
