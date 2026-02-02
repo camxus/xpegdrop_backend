@@ -268,10 +268,14 @@ Resources:
       AttributeDefinitions:
         - AttributeName: project_id
           AttributeType: S
+        - AttributeName: project_history_id
+          AttributeType: S   # added
         - AttributeName: actor_id
           AttributeType: S
         - AttributeName: type
           AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S   # added for UserIndex
       KeySchema:
         - AttributeName: project_id
           KeyType: HASH # Partition key: project
