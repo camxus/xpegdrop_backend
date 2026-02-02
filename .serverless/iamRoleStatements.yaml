@@ -78,8 +78,8 @@
     - dynamodb:Query
     - dynamodb:Scan
   Resource:
-    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Notifiactions
-    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Notifiactions/index/*
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Notifications
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Notifications/index/*
 
 - Effect: Allow
   Action:

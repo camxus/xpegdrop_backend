@@ -224,9 +224,11 @@ Resources:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
     Properties:
-      TableName: Notifiactions
+      TableName: Notifications
       AttributeDefinitions:
         - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: notification_id
           AttributeType: S
         - AttributeName: actor_id
           AttributeType: S

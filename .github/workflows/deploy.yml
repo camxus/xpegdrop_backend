@@ -67,6 +67,10 @@ jobs:
           
           EXPRESS_POSTHOG_API_KEY: ${{ vars.EXPRESS_POSTHOG_API_KEY }}
           EXPRESS_POSTHOG_HOST: ${{ vars.EXPRESS_POSTHOG_HOST }}
+          
+          EXPRESS_GOOGLE_CLIENT_ID: ${{ vars.EXPRESS_GOOGLE_CLIENT_ID }}
+          EXPRESS_GOOGLE_CLIENT_SECRET: ${{ vars.EXPRESS_GOOGLE_CLIENT_SECRET }}
+          EXPRESS_GOOGLE_STATE_SECRET: ${{ vars.EXPRESS_GOOGLE_STATE_SECRET }}
         run: yarn gen:env && yarn gen:serverless:env
 
       - name: Deploy to Serverless
