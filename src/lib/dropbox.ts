@@ -1,5 +1,5 @@
-import { Dropbox } from "../../sdk/dropbox/types";
-import type { sharing, files, users } from "../../sdk/dropbox/types";
+import { Dropbox } from "../../sdk/dropbox";
+import type { sharing, files, users } from "../../sdk/dropbox";
 import axios from "axios";
 import qs from "qs";
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
