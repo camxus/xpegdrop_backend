@@ -220,6 +220,44 @@ Resources:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
 
+  NotificationsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: Notifiactions
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: actor_id
+          AttributeType: S
+        - AttributeName: type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH # Partition key: project
+        - AttributeName: notification_id
+          KeyType: RANGE # Sort key: unique event id / timestamp
+      GlobalSecondaryIndexes:
+        - IndexName: UserIndex
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: ActorIndex
+          KeySchema:
+            - AttributeName: actor_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: TypeIndex
+          KeySchema:
+            - AttributeName: type
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
   ProjectHistoryTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -235,7 +273,7 @@ Resources:
       KeySchema:
         - AttributeName: project_id
           KeyType: HASH # Partition key: project
-        - AttributeName: id
+        - AttributeName: project_history_id
           KeyType: RANGE # Sort key: unique event id / timestamp
       GlobalSecondaryIndexes:
         - IndexName: UserIndex
