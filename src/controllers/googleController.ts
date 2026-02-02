@@ -17,13 +17,11 @@ const GOOGLE_CLIENT_ID = process.env.EXPRESS_GOOGLE_CLIENT_ID!;
 const GOOGLE_CLIENT_SECRET = process.env.EXPRESS_GOOGLE_CLIENT_SECRET!;
 const REDIRECT_URI = `${process.env.EXPRESS_PUBLIC_BACKEND_URL}/api/google/callback`;
 
-const STATE_SECRET = process.env.EXPRESS_GOOGLE_STATE_SECRET!;
-
 // -----------------------------
 // Step 1: Generate Google Auth URL
 // -----------------------------
 export const getGoogleAuthUrl = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const state = jwt.sign({ ts: Date.now(), user_id: req.user?.user_id }, STATE_SECRET, { expiresIn: "10m" });
+  const state = jwt.sign({ ts: Date.now(), user_id: req.user?.user_id }, process.env.EXPRESS_JWT_SECRET!, { expiresIn: "10m" });
 
 
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
