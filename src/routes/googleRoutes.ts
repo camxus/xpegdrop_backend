@@ -1,47 +1,40 @@
 import express from "express";
 import {
-  createImageMetadata,
-  batchCreateImageMetadata,
-  getImageMetadata,
-  getProjectMetadata,
-  deleteImageMetadata,
-} from "../controllers/metadataController";
+  getGoogleAuthUrl,
+  handleGoogleCallback,
+  handleGoogleCallbackWithUpdateUser,
+  getGoogleStats,
+} from "../controllers/googleController";
 import { authenticate } from "../middleware/auth";
 
 const router = express.Router();
 
 /**
- * Get all metadata for a project
- * GET /metadata/:project_id
+ * Step 1: Generate Google OAuth URL
+ * GET /google/auth-url
+ * (requires auth – links Google to an existing user)
  */
-router.get("/:project_id", getProjectMetadata);
+router.get("/auth-url", authenticate, getGoogleAuthUrl);
 
 /**
- * Get metadata for a single image
- * GET /metadata/:project_id/:media_name
+ * Step 2: Google OAuth callback (no user update)
+ * GET /google/callback
+ * (public – Google redirects here)
  */
-router.get("/:project_id/:media_name", getImageMetadata);
-
-// Apply auth middleware to all routes
-router.use(authenticate);
+router.get("/callback", handleGoogleCallback);
 
 /**
- * Create metadata for a single image
- * POST /metadata
+ * Step 3: Google OAuth callback + store tokens in user
+ * GET /google/callback/link
+ * (requires auth – links Google account to logged-in user)
  */
-router.post("/", createImageMetadata);
+router.get("/callback/link", authenticate, handleGoogleCallbackWithUpdateUser);
 
 /**
- * Batch create metadata for a project (upload flow)
- * POST /metadata/batch
+ * Step 4: Get Google Drive storage stats
+ * GET /google/stats
+ * (requires auth)
  */
-router.post("/batch", batchCreateImageMetadata);
-
-
-/**
- * Delete metadata for a single image
- * DELETE /metadata/:project_id/:media_name
- */
-router.delete("/:project_id/:media_name", deleteImageMetadata);
+router.get("/stats", authenticate, getGoogleStats);
 
 export default router;
