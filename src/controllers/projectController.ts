@@ -26,11 +26,11 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { getProjectWithMedia, getHandleUrl } from "../utils/helpers/project";
 import { BackblazeService } from "../lib/backblaze";
-import { handler as create } from "../sqs/workers/project/create";
+// import { handler as create } from "../sqs/workers/project/create";
 import { Context, SQSEvent } from "aws-lambda";
 import { createProjectHistoryItem } from "./historyController";
 import { GoogleDriveService } from "../lib/google";
-import { handler as add } from "../sqs/workers/project/addFiles";
+// import { handler as add } from "../sqs/workers/project/addFiles";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
