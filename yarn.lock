@@ -4775,7 +4775,6 @@ __metadata:
     backblaze-b2: "npm:^1.7.1"
     cors: "npm:^2.8.5"
     dotenv: "npm:^17.2.1"
-    dropbox: "npm:^10.34.0"
     esbuild: "npm:^0.27.2"
     express: "npm:^5.1.0"
     ffmpeg: "npm:^0.0.4"
@@ -5320,17 +5319,6 @@ __metadata:
   version: 17.2.3
   resolution: "dotenv@npm:17.2.3"
   checksum: 10c0/c884403209f713214a1b64d4d1defa4934c2aa5b0002f5a670ae298a51e3c3ad3ba79dfee2f8df49f01ae74290fcd9acdb1ab1d09c7bfb42b539036108bb2ba0
-  languageName: node
-  linkType: hard
-
-"dropbox@npm:^10.34.0":
-  version: 10.34.0
-  resolution: "dropbox@npm:10.34.0"
-  dependencies:
-    node-fetch: "npm:^2.6.1"
-  peerDependencies:
-    "@types/node-fetch": ^2.5.7
-  checksum: 10c0/222d0f021a63719b2a449a6e9226a03cad4be9005808551e69eaba57f58c4d4f1689284ca7791e6f63be37feecde06d34a43b72c9ea3a0445c16528d4f7d95dc
   languageName: node
   linkType: hard
 
@@ -7248,20 +7236,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-fetch@npm:^2.6.1":
-  version: 2.7.0
-  resolution: "node-fetch@npm:2.7.0"
-  dependencies:
-    whatwg-url: "npm:^5.0.0"
-  peerDependencies:
-    encoding: ^0.1.0
-  peerDependenciesMeta:
-    encoding:
-      optional: true
-  checksum: 10c0/b55786b6028208e6fbe594ccccc213cab67a72899c9234eb59dba51062a299ea853210fcf526998eaa2867b0963ad72338824450905679ff0fa304b8c5093ae8
-  languageName: node
-  linkType: hard
-
 "node-fetch@npm:^3.3.2":
   version: 3.3.2
   resolution: "node-fetch@npm:3.3.2"
@@ -8392,13 +8366,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tr46@npm:~0.0.3":
-  version: 0.0.3
-  resolution: "tr46@npm:0.0.3"
-  checksum: 10c0/047cb209a6b60c742f05c9d3ace8fa510bff609995c129a37ace03476a9b12db4dbf975e74600830ef0796e18882b2381fb5fb1f6b4f96b832c374de3ab91a11
-  languageName: node
-  linkType: hard
-
 "tree-kill@npm:^1.2.2":
   version: 1.2.2
   resolution: "tree-kill@npm:1.2.2"
@@ -8663,23 +8630,6 @@ __metadata:
   version: 3.3.3
   resolution: "web-streams-polyfill@npm:3.3.3"
   checksum: 10c0/64e855c47f6c8330b5436147db1c75cb7e7474d924166800e8e2aab5eb6c76aac4981a84261dd2982b3e754490900b99791c80ae1407a9fa0dcff74f82ea3a7f
-  languageName: node
-  linkType: hard
-
-"webidl-conversions@npm:^3.0.0":
-  version: 3.0.1
-  resolution: "webidl-conversions@npm:3.0.1"
-  checksum: 10c0/5612d5f3e54760a797052eb4927f0ddc01383550f542ccd33d5238cfd65aeed392a45ad38364970d0a0f4fea32e1f4d231b3d8dac4a3bdd385e5cf802ae097db
-  languageName: node
-  linkType: hard
-
-"whatwg-url@npm:^5.0.0":
-  version: 5.0.0
-  resolution: "whatwg-url@npm:5.0.0"
-  dependencies:
-    tr46: "npm:~0.0.3"
-    webidl-conversions: "npm:^3.0.0"
-  checksum: 10c0/1588bed84d10b72d5eec1d0faa0722ba1962f1821e7539c535558fb5398d223b0c50d8acab950b8c488b4ba69043fd833cc2697056b167d8ad46fac3995a55d5
   languageName: node
   linkType: hard
 

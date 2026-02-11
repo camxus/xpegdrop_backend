@@ -30,7 +30,6 @@
     "backblaze-b2": "^1.7.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
-    "dropbox": "^10.34.0",
     "express": "^5.1.0",
     "ffmpeg": "^0.0.4",
     "fluent-ffmpeg": "^2.1.3",
