@@ -193,14 +193,14 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       })
     );
 
-    handler({ Records: [{ body: JSON.stringify(payload) }] } as SQSEvent, {} as Context, () => { })
+    // handler({ Records: [{ body: JSON.stringify(payload) }] } as SQSEvent, {} as Context, () => { })
 
-    // await sqs.send(
-    //   new SendMessageCommand({
-    //     QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
-    //     MessageBody: JSON.stringify(payload),
-    //   })
-    // );
+    await sqs.send(
+      new SendMessageCommand({
+        QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
+        MessageBody: JSON.stringify(payload),
+      })
+    );
 
     res.status(202).json({
       ...projectData, share_url: (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + projectData.share_url
