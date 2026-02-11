@@ -542,12 +542,12 @@ export class BackblazeService {
     // Copy files to new folder
     for (const file of files) {
       const newFileName = file.name.replace(oldPrefix, newPrefix);
-      await this.copyFileB2(file.id, newFileName);
+      await this.copyFileB2(file.id, newPrefix + newFileName);
     }
 
     // Delete old files
     await Promise.all(
-      files.map((file) => this.b2.deleteFileVersion({ fileName: "/" + file.name, fileId: file.id }))
+      files.map((file) => this.b2.deleteFileVersion({ fileName: oldPrefix + file.name, fileId: file.id }))
     );
   }
 }

@@ -449,8 +449,14 @@ export const updateProject = asyncHandler(
             const b2Service = new BackblazeService(B2_BUCKET_ID, req.user?.user_id!, project.tenant_id);
 
             const currentPath = project.b2_folder_path;
-            const parentFolder = currentPath.split("/").slice(0, -1).join("/") || "";
-            const newPath = `${parentFolder}/${name}`;
+            const parentFolder = currentPath
+              .split("/")
+              .slice(0, -1)
+              .join("/");
+
+            const newPath = parentFolder
+              ? `${parentFolder}/${name}`
+              : name;
 
             try {
               // Move folder in Backblaze
