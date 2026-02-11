@@ -182,27 +182,36 @@ export class GoogleDriveService {
   // -------------------------
   // Move a folder in Google Drive
   // -------------------------
-  async moveFolder(folderId: string, newParentId: string): Promise<void> {
+  async moveFolder(
+    folderId: string,
+    destinationPath: string
+  ): Promise<{ destinationFolderId: string }> {
     try {
-      // 1. Get current parents
+      // 1. Ensure destination path exists (fframess/...),
+      //    uniqueness only applies to final segment
+      const destinationFolder = await this.createUniqueFolder(destinationPath);
+
+      // 2. Get current parents
       const folder = await this.drive.files.get({
         fileId: folderId,
-        fields: "id, name, parents",
+        fields: "parents",
       });
 
       const currentParents = folder.data.parents || [];
 
-      // 2. Update parents: add new parent, remove old parents
+      // 3. Move folder
       await this.drive.files.update({
         fileId: folderId,
-        addParents: newParentId,
+        addParents: destinationFolder.id!,
         removeParents: currentParents.join(","),
         fields: "id, parents",
       });
+
+      return { destinationFolderId: destinationFolder.id! };
     } catch (err: any) {
       console.error("Error moving Google Drive folder:", err);
       const e = new Error("Failed to move Google Drive folder");
-      (e as any).status = err.status;
+      (e as any).status = err.status || err.code;
       throw e;
     }
   }

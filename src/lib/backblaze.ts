@@ -113,96 +113,91 @@ export class BackblazeService {
     }
   }
 
-  async upload(
-    files: File[],
-    folderName: string
-  ): Promise<{ folder_path: string; share_link: string }> {
+  // ----------------------
+  // Upload a single file
+  // ----------------------
+  public async uploadFile(file: File, folderPath: string): Promise<string> {
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const uploadFileName = `${this.getPrefix(folderPath)}/${file.name}`;
+
+    const videoTypes = ["video/mp4", "video/quicktime", "video/webm", "video/x-matroska"];
+
+    // ---- Original upload ----
+    const originalUpload = (async () => {
+      const uploadUrlResp = await this.b2.getUploadUrl({ bucketId: this.bucketId });
+      await this.b2.uploadFile({
+        uploadUrl: uploadUrlResp.data.uploadUrl,
+        uploadAuthToken: uploadUrlResp.data.authorizationToken,
+        fileName: uploadFileName,
+        data: fileBuffer,
+      });
+    })();
+
+    // ---- Transcode + upload (conditional) ----
+    const transcodeUpload =
+      videoTypes.includes(file.type.toLowerCase()) && this.userId
+        ? (async () => {
+          const transcodedService = new BackblazeService(
+            B2_TRANSCODED_MEDIA_BUCKET_ID!,
+            this.userId!,
+            this.tenantId
+          );
+
+          const transcodedFileName = `${this.getPrefix(folderPath)}/${file.name.replace(/\.\w+$/, ".mp4")}`;
+          await transcodedService.b2.authorize();
+
+          const existingFiles = await transcodedService.listFiles(folderPath);
+          const exists = existingFiles.some((f) => f.name === transcodedFileName);
+
+          if (exists) await transcodedService.deleteFile(folderPath, transcodedFileName);
+
+          const transcodedBuffer = await transcodeVideoToMp4(fileBuffer);
+
+          const uploadUrlResp = await transcodedService.b2.getUploadUrl({
+            bucketId: transcodedService.bucketId,
+          });
+
+          await transcodedService.b2.uploadFile({
+            uploadUrl: uploadUrlResp.data.uploadUrl,
+            uploadAuthToken: uploadUrlResp.data.authorizationToken,
+            fileName: transcodedFileName,
+            data: transcodedBuffer,
+          });
+        })()
+        : Promise.resolve();
+
+    await Promise.all([originalUpload, transcodeUpload]);
+
+    return uploadFileName; // return full path for this file
+  }
+
+  // ----------------------
+  // Upload multiple files
+  // ----------------------
+  public async upload(files: File[], folderName: string): Promise<{ folder_path: string; share_link: string; filePaths: string[] }> {
     await this.authorize();
 
     let folderPath = folderName;
     let count = 0;
 
+    // Ensure unique folder name
     while (await this.folderExists(folderPath)) {
       count++;
       folderPath = `${folderName}-${count}`;
     }
 
-    const uploadFile = async (file: File) => {
-      const fileBuffer = Buffer.from(await file.arrayBuffer());
-      const uploadFileName = `${this.getPrefix(folderPath)}/${file.name}`;
-
-      const videoTypes = [
-        "video/mp4",
-        "video/quicktime",
-        "video/webm",
-        "video/x-matroska",
-      ];
-
-      // ---- Original upload promise ----
-      const originalUploadPromise = (async () => {
-        const uploadUrlResp = await this.b2.getUploadUrl({
-          bucketId: this.bucketId,
-        });
-
-        await this.b2.uploadFile({
-          uploadUrl: uploadUrlResp.data.uploadUrl,
-          uploadAuthToken: uploadUrlResp.data.authorizationToken,
-          fileName: uploadFileName,
-          data: fileBuffer,
-        });
-      })();
-
-      // ---- Transcode + upload promise (conditional) ----
-      const transcodePromise =
-        videoTypes.includes(file.type.toLowerCase()) && this.userId
-          ? (async () => {
-            const transcodedService = new BackblazeService(
-              B2_TRANSCODED_MEDIA_BUCKET_ID!,
-              this.userId!,
-              this.tenantId
-            );
-
-            const transcodedFileName = `${this.getPrefix(folderPath)}/${file.name.replace(/\.\w+$/, ".mp4")}`;
-
-            await transcodedService.b2.authorize();
-
-            const existingFiles = await transcodedService.listFiles(folderPath);
-            const exists = existingFiles.some(
-              (f) => f.name === transcodedFileName
-            );
-
-            if (exists) {
-              await transcodedService.deleteFile(folderPath, transcodedFileName)
-            }
-
-            const transcodedBuffer = await transcodeVideoToMp4(fileBuffer);
-
-            const uploadUrlResp = await transcodedService.b2.getUploadUrl({
-              bucketId: transcodedService.bucketId,
-            });
-
-            await transcodedService.b2.uploadFile({
-              uploadUrl: uploadUrlResp.data.uploadUrl,
-              uploadAuthToken: uploadUrlResp.data.authorizationToken,
-              fileName: transcodedFileName,
-              data: transcodedBuffer,
-            });
-          })()
-          : Promise.resolve();
-
-      // ---- Run both in parallel ----
-      await Promise.all([originalUploadPromise, transcodePromise]);
-    };
-
+    const filePaths: string[] = [];
 
     for (let i = 0; i < files.length; i += UPLOAD_BATCH_SIZE) {
       const batch = files.slice(i, i + UPLOAD_BATCH_SIZE);
-      await Promise.all(batch.map(uploadFile));
+      const batchPaths = await Promise.all(batch.map((file) => this.uploadFile(file, folderPath)));
+      filePaths.push(...batchPaths);
     }
 
     const shareLink = `https://f003.backblazeb2.com/file/${B2_BUCKET_NAME}/${this.getPrefix(folderPath)}`;
+    console.log("Share link:", shareLink);
 
-    return { folder_path: folderPath, share_link: shareLink };
+    return { folder_path: folderPath, share_link: shareLink, filePaths };
   }
 
   private async listFilesRaw(folderPath: string): Promise<B2File[]> {

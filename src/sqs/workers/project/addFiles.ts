@@ -123,10 +123,11 @@ export const handler: SQSHandler = async (event) => {
             new DeleteObjectCommand({ Bucket: process.env.EXPRESS_S3_TEMP_BUCKET!, Key: file.key })
           );
 
-          await b2Service.upload([destination.file], project.b2_folder_path);
+          await b2Service.authorize()
+          await b2Service.uploadFile(destination.file, project.b2_folder_path);
 
           uploadedFiles.push({
-            name: file.name,
+            name: destination.file.name,
             path: project.b2_folder_path,
           });
         }

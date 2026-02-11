@@ -26,9 +26,11 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { getProjectWithMedia, getHandleUrl } from "../utils/helpers/project";
 import { BackblazeService } from "../lib/backblaze";
-import { handler } from "../sqs/workers/project/create";
+import { handler as create } from "../sqs/workers/project/create";
 import { Context, SQSEvent } from "aws-lambda";
 import { createProjectHistoryItem } from "./historyController";
+import { GoogleDriveService } from "../lib/google";
+import { handler as add } from "../sqs/workers/project/addFiles";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
@@ -193,7 +195,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       })
     );
 
-    // handler({ Records: [{ body: JSON.stringify(payload) }] } as SQSEvent, {} as Context, () => { })
+    // create({ Records: [{ body: JSON.stringify(payload) }] } as SQSEvent, {} as Context, () => { })
 
     await sqs.send(
       new SendMessageCommand({
@@ -443,6 +445,38 @@ export const updateProject = asyncHandler(
               } else {
                 console.error("Dropbox folder move failed", err);
                 return res.status(500).json({ error: "Failed to move Dropbox folder" });
+              }
+            }
+          } else if (project.google_folder_id && req.user?.google?.access_token) {
+            // Handle Dropbox rename
+            const googleDriveService = new GoogleDriveService(req.user.google.access_token);
+
+            const currentId = project.google_folder_id;
+            newPath = `${name}`;
+
+
+            const tryMoveFolder = async (targetPath: string) => {
+              const { destinationFolderId } = await googleDriveService.moveFolder(currentId, targetPath);
+              updateExpr.push("google_folder_id = :google_folder_id");
+              exprAttrValues[":google_folder_id"] = destinationFolderId;
+            };
+
+            try {
+              await tryMoveFolder(newPath);
+            } catch (err: any) {
+              const isUnauthorized = err.status === 401;
+
+              if (isUnauthorized && req.user.google.refresh_token) {
+                try {
+                  await googleDriveService.refreshGoogleToken(req.user);
+                  await tryMoveFolder(newPath);
+                } catch (refreshError) {
+                  console.error("Google token refresh failed", refreshError);
+                  return res.status(500).json({ error: "Failed to refresh Google token" });
+                }
+              } else {
+                console.error("Google Drive folder move failed", err);
+                return res.status(500).json({ error: "Failed to move Google Drive folder" });
               }
             }
           } else if (project.b2_folder_path) {
@@ -819,15 +853,29 @@ export const addProjectFiles = asyncHandler(
 
       const project = unmarshall(getRes.Item);
 
-      if (project.user_id !== req.user?.user_id) {
+      if (!req.user || project.user_id !== req.user?.user_id) {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      if (!req.user?.dropbox?.access_token) {
+      if (project.dropbox_folder_path && !req.user?.dropbox?.access_token) {
         return res.status(400).json({ error: "Dropbox access token missing" });
       }
 
-      // Enqueue job for SQS worker to handle Dropbox upload
+      if (project.google_folder_id && !req.user?.google?.access_token) {
+      return res.status(400).json({ error: "Google access token missing" });
+      }
+
+      // add({
+      //   Records: [{
+      //     body:
+      //       JSON.stringify({
+      //         projectId,
+      //         user: { user_id: req.user.user_id, dropbox: req.user.dropbox, google: req.user.google },
+      //         files: fileLocations,
+      //       }),
+      //   }]
+      // } as SQSEvent, {} as Context, () => { })      // Enqueue job for SQS worker to handle Dropbox upload
+
       await sqs.send(
         new SendMessageCommand({
           QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${ADD_FILES_QUEUE}`,
