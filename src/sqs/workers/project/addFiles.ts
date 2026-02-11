@@ -8,7 +8,7 @@ import { BackblazeService } from "../../../lib/backblaze";
 import { copyItemImage, getItemFile } from "../../../utils/s3";
 import { createProjectHistoryItem } from "../../../controllers/historyController";
 import { Project, ProjectHistoryType } from "../../../types";
-import { GoogleDriveService } from "../../../lib/google";
+// import { GoogleDriveService } from "../../../lib/google";
 
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const REGION = process.env.AWS_REGION_CODE;
@@ -91,28 +91,28 @@ export const handler: SQSHandler = async (event) => {
             id: uploadRes.id,
           });
         }
-      } else if (project.google_folder_id && user.google?.access_token) {
-        // Google path
-        const googleService = new GoogleDriveService(user.google.access_token);
+      // } else if (project.google_folder_id && user.google?.access_token) {
+      //   // Google path
+      //   const googleService = new GoogleDriveService(user.google.access_token);
 
-        for (const file of files) {
-          const destination = await getItemFile(s3Client, { bucket: file.bucket, key: file.key });
-          await s3Client.send(
-            new DeleteObjectCommand({ Bucket: process.env.EXPRESS_S3_TEMP_BUCKET!, Key: file.key })
-          );
+      //   for (const file of files) {
+      //     const destination = await getItemFile(s3Client, { bucket: file.bucket, key: file.key });
+      //     await s3Client.send(
+      //       new DeleteObjectCommand({ Bucket: process.env.EXPRESS_S3_TEMP_BUCKET!, Key: file.key })
+      //     );
 
-          const uploadRes = await googleService.uploadFile(
-            project.google_folder_id,
-            destination.file.name,
-            destination.buffer
-          );
+      //     const uploadRes = await googleService.uploadFile(
+      //       project.google_folder_id,
+      //       destination.file.name,
+      //       destination.buffer
+      //     );
 
-          uploadedFiles.push({
-            name: file.name,
-            path: project.google_folder_id,
-            id: uploadRes.fileId,
-          });
-        }
+      //     uploadedFiles.push({
+      //       name: file.name,
+      //       path: project.google_folder_id,
+      //       id: uploadRes.fileId,
+      //     });
+      //   }
       } else if (project.b2_folder_path && user.user_id) {
         // Backblaze B2 path
         const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, project.tenant_id);

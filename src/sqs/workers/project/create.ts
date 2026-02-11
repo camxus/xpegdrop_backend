@@ -9,7 +9,7 @@ import dotenv from "dotenv"
 import { createThumbnailFromFile } from "../../../utils/file-utils";
 import { createProjectHistoryItem } from "../../../controllers/historyController";
 import { ProjectHistoryType } from "../../../types";
-import { GoogleDriveService } from "../../../lib/google";
+// import { GoogleDriveService } from "../../../lib/google";
 
 dotenv.config()
 
@@ -72,24 +72,24 @@ export const handler: SQSHandler = async (event) => {
             throw err;
           }
         }
-      } else if (storageProvider === "google") {
-        if (!user.google?.access_token) throw new Error("Google access token missing");
-        const googleService = new GoogleDriveService(user.google.access_token);
+      // } else if (storageProvider === "google") {
+      //   if (!user.google?.access_token) throw new Error("Google access token missing");
+      //   const googleService = new GoogleDriveService(user.google.access_token);
 
-        try {
-          const response = await googleService.upload(uploadFiles, folderName);
-          folderPath = response.folder_id;
-          shareLink = response.share_link;
-        } catch (err: any) {
-          if (err?.status === 401 && user.google.refresh_token) {
-            await googleService.refreshGoogleToken(user);
-            const response = await googleService.upload(uploadFiles, folderName);
-            folderPath = response.folder_id;
-            shareLink = response.share_link;
-          } else {
-            throw err;
-          }
-        }
+      //   try {
+      //     const response = await googleService.upload(uploadFiles, folderName);
+      //     folderPath = response.folder_id;
+      //     shareLink = response.share_link;
+      //   } catch (err: any) {
+      //     if (err?.status === 401 && user.google.refresh_token) {
+      //       await googleService.refreshGoogleToken(user);
+      //       const response = await googleService.upload(uploadFiles, folderName);
+      //       folderPath = response.folder_id;
+      //       shareLink = response.share_link;
+      //     } else {
+      //       throw err;
+      //     }
+      //   }
       } else if (storageProvider === "b2") {
         const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, tenant?.tenant_id);
 
@@ -197,9 +197,9 @@ export const handler: SQSHandler = async (event) => {
             const dropboxService = new DropboxService(user.dropbox.access_token);
             await dropboxService.deleteFolder(folderPath);
             console.log(`🗑️ Deleted Dropbox folder ${folderPath} after failure.`);
-          } else if (storageProvider === "google" && user.google?.access_token) {
-            const googleService = new GoogleDriveService(user.google.access_token);
-            await googleService.deleteFolder(folderPath);
+          // } else if (storageProvider === "google" && user.google?.access_token) {
+          //   const googleService = new GoogleDriveService(user.google.access_token);
+          //   await googleService.deleteFolder(folderPath);
             console.log(`🗑️ Deleted Google Drive folder ${folderPath} after failure.`);
           } else if (storageProvider === "b2") {
             const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, tenant?.tenant_id);
