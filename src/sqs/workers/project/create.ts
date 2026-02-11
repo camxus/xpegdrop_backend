@@ -9,6 +9,7 @@ import dotenv from "dotenv"
 import { createThumbnailFromFile } from "../../../utils/file-utils";
 import { createProjectHistoryItem } from "../../../controllers/historyController";
 import { ProjectHistoryType } from "../../../types";
+import { GoogleDriveService } from "../../../lib/google";
 
 dotenv.config()
 
@@ -71,6 +72,24 @@ export const handler: SQSHandler = async (event) => {
             throw err;
           }
         }
+      } else if (storageProvider === "google") {
+        if (!user.google?.access_token) throw new Error("Google access token missing");
+        const googleService = new GoogleDriveService(user.google.access_token);
+
+        try {
+          const response = await googleService.upload(uploadFiles, folderName);
+          folderPath = response.folder_id;
+          shareLink = response.share_link;
+        } catch (err: any) {
+          if (err?.status === 401 && user.google.refresh_token) {
+            await googleService.refreshGoogleToken(user);
+            const response = await googleService.upload(uploadFiles, folderName);
+            folderPath = response.folder_id;
+            shareLink = response.share_link;
+          } else {
+            throw err;
+          }
+        }
       } else if (storageProvider === "b2") {
         const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, tenant?.tenant_id);
 
@@ -111,8 +130,23 @@ export const handler: SQSHandler = async (event) => {
       }
 
       // Determine provider-specific attributes
-      const folderAttr = storageProvider === "dropbox" ? "dropbox_folder_path" : "b2_folder_path";
-      const linkAttr = storageProvider === "dropbox" ? "dropbox_shared_link" : "b2_shared_link";
+      const folderAttr =
+        storageProvider === "dropbox"
+          ? "dropbox_folder_path"
+          : storageProvider === "b2"
+            ? "b2_folder_path"
+            : storageProvider === "google"
+              ? "google_folder_id"
+              : null;
+
+      const linkAttr =
+        storageProvider === "dropbox"
+          ? "dropbox_shared_link"
+          : storageProvider === "b2"
+            ? "b2_shared_link"
+            : storageProvider === "google"
+              ? "google_shared_link"
+              : null;
 
       // Update DynamoDB with provider-specific folder path and share link
       const updateExpr = `SET ${folderAttr} = :folder, ${linkAttr} = :link, #st = :status`;
@@ -163,6 +197,10 @@ export const handler: SQSHandler = async (event) => {
             const dropboxService = new DropboxService(user.dropbox.access_token);
             await dropboxService.deleteFolder(folderPath);
             console.log(`🗑️ Deleted Dropbox folder ${folderPath} after failure.`);
+          } else if (storageProvider === "google" && user.google?.access_token) {
+            const googleService = new GoogleDriveService(user.google.access_token);
+            await googleService.deleteFolder(folderPath);
+            console.log(`🗑️ Deleted Google Drive folder ${folderPath} after failure.`);
           } else if (storageProvider === "b2") {
             const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, tenant?.tenant_id);
             await b2Service.deleteFolder(folderPath);

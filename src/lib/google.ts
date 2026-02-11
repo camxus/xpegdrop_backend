@@ -256,6 +256,69 @@ export class GoogleDriveService {
   }
 
   // -------------------------
+  // Upload a single file
+  // -------------------------
+  async uploadFile(
+    folderId: string,
+    fileName: string,
+    buffer: Buffer | Uint8Array,
+    makePublic: boolean = false
+  ): Promise<{ fileId: string; webViewLink: string }> {
+    let uploaded = false;
+    let result: drive_v3.Schema$File | null = null;
+
+    while (!uploaded) {
+      try {
+        const res = await this.drive.files.create({
+          requestBody: {
+            name: fileName,
+            parents: [folderId],
+          },
+          media: {
+            body: buffer,
+          },
+          fields: "id, webViewLink",
+        });
+
+        result = res.data;
+        uploaded = true;
+      } catch (err: any) {
+        // Rate limit / retry
+        if (err.code === 429) {
+          const waitMs = 1000; // simple fixed retry delay; could be exponential
+          console.warn(`Rate limit hit, retrying upload of ${fileName} in ${waitMs}ms`);
+          await new Promise((r) => setTimeout(r, waitMs));
+        } else {
+          console.error("Google Drive uploadFile error:", err);
+          const e = new Error("Failed to upload file to Google Drive");
+          (e as any).status = err.code;
+          throw e;
+        }
+      }
+    }
+
+    // Optionally make the file public
+    if (makePublic && result?.id) {
+      try {
+        await this.drive.permissions.create({
+          fileId: result.id,
+          requestBody: {
+            role: "reader",
+            type: "anyone",
+          },
+        });
+      } catch (err: any) {
+        console.error("Failed to make Google Drive file public:", err);
+      }
+    }
+
+    return {
+      fileId: result!.id!,
+      webViewLink: result!.webViewLink!,
+    };
+  }
+
+  // -------------------------
   // Delete file
   // -------------------------
 

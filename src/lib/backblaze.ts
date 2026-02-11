@@ -498,23 +498,27 @@ export class BackblazeService {
   // ----------------------
   // Copy a file via B2 API
   // ----------------------
-  private async copyFileB2(sourceFileId: string, destinationFileName: string) {
+  private async copyFileB2(sourceFileId: string, newFileName: string) {
     if (!this.b2.authorizationToken) {
       throw new Error("B2 client not authorized");
     }
 
-    const res = await fetch("https://api.backblazeb2.com/b2api/v2/b2_copy_file", {
-      method: "POST",
-      headers: {
-        Authorization: this.b2.authorizationToken,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        sourceFileId,
-        destinationBucketId: this.bucketId,
-        destinationFileName,
-      }),
-    });
+    const res = await fetch(
+      "https://api003.backblazeb2.com/b2api/v4/b2_copy_file",
+      {
+        method: "POST",
+        headers: {
+          Authorization: this.b2.authorizationToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sourceFileId,
+          destinationBucketId: this.bucketId,
+          fileName: newFileName,
+          metadataDirective: "COPY",
+        }),
+      }
+    );
 
     if (!res.ok) {
       const text = await res.text();
@@ -538,7 +542,7 @@ export class BackblazeService {
     // Copy files to new folder
     for (const file of files) {
       const newFileName = file.name.replace(oldPrefix, newPrefix);
-      await this.copyFileB2(file.name, newFileName);
+      await this.copyFileB2(file.id, newFileName);
     }
 
     // Delete old files

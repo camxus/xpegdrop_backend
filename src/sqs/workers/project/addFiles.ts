@@ -7,7 +7,8 @@ import { DropboxService } from "../../../lib/dropbox";
 import { BackblazeService } from "../../../lib/backblaze";
 import { copyItemImage, getItemFile } from "../../../utils/s3";
 import { createProjectHistoryItem } from "../../../controllers/historyController";
-import { ProjectHistoryType } from "../../../types";
+import { Project, ProjectHistoryType } from "../../../types";
+import { GoogleDriveService } from "../../../lib/google";
 
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const REGION = process.env.AWS_REGION_CODE;
@@ -56,9 +57,17 @@ export const handler: SQSHandler = async (event) => {
       );
 
       if (!getRes.Item) throw new Error(`Project not found: ${projectId}`);
-      const project = unmarshall(getRes.Item);
+      const project = unmarshall(getRes.Item) as Project;
 
-      // if (project.user_id !== user.user_id) throw new Error("Unauthorized: user mismatch");
+      const approvedList = [...(project.approved_users || []), ...(project.approved_tenant_users || [])];
+
+      const isOwner = project.user_id === user.user_id;
+
+      const approvedEntry = approvedList.find(u => u.user_id === user.user_id && u.role === "editor");
+
+      if (!isOwner && !approvedEntry) {
+        throw new Error("Unauthorized: user mismatch or insufficient role");
+      }
 
       if (project.dropbox_folder_path && user.dropbox?.access_token) {
         // Dropbox path
@@ -80,6 +89,28 @@ export const handler: SQSHandler = async (event) => {
             name: file.name,
             path: project.dropbox_folder_path,
             id: uploadRes.id,
+          });
+        }
+      } else if (project.google_folder_id && user.google?.access_token) {
+        // Google path
+        const googleService = new GoogleDriveService(user.google.access_token);
+
+        for (const file of files) {
+          const destination = await getItemFile(s3Client, { bucket: file.bucket, key: file.key });
+          await s3Client.send(
+            new DeleteObjectCommand({ Bucket: process.env.EXPRESS_S3_TEMP_BUCKET!, Key: file.key })
+          );
+
+          const uploadRes = await googleService.uploadFile(
+            project.google_folder_id,
+            destination.file.name,
+            destination.buffer
+          );
+
+          uploadedFiles.push({
+            name: file.name,
+            path: project.google_folder_id,
+            id: uploadRes.fileId,
           });
         }
       } else if (project.b2_folder_path && user.user_id) {
@@ -108,7 +139,7 @@ export const handler: SQSHandler = async (event) => {
         actor_id: user?.user_id,
         type: ProjectHistoryType.FILES_ADDED,
         context: {
-          fileNames: uploadedFiles.map(file=> file.name),
+          fileNames: uploadedFiles.map(file => file.name),
         },
       });
 

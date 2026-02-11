@@ -25,10 +25,10 @@ router.get("/callback", handleGoogleCallback);
 
 /**
  * Step 3: Google OAuth callback + store tokens in user
- * GET /google/callback/link
- * (requires auth – links Google account to logged-in user)
+ * GET /google/callback/update-user
+ * (requires auth – updates Google account to logged-in user)
  */
-router.get("/callback/link", authenticate, handleGoogleCallbackWithUpdateUser);
+router.get("/callback/update-user", authenticate, handleGoogleCallbackWithUpdateUser);
 
 /**
  * Step 4: Get Google Drive storage stats

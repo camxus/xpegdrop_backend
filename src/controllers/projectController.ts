@@ -59,7 +59,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     const { error, value } = createProjectSchema.validate(req.body);
     if (error) throw validationErrorHandler(error);
 
-    const { name, description, tenant_id: tenantId, storage_provider: storageProvider = "dropbox" } = value;
+    const { name, description, tenant_id: tenantId, storage_provider: storageProvider = "b2" } = value;
     let fileLocations =
       typeof value.file_locations === "string"
         ? JSON.parse(value.file_locations as string || "[]")
@@ -174,6 +174,8 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       approved_emails: [],
       approved_users: [],
       approved_tenant_users: [],
+      google_folder_id: "",
+      google_shared_link: "",
       dropbox_folder_path: "",
       dropbox_shared_link: "",
       b2_folder_path: "",
@@ -191,14 +193,14 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       })
     );
 
-    // handler({ Records: [{ body: JSON.stringify(payload) }] } as SQSEvent, {} as Context, () => { })
+    handler({ Records: [{ body: JSON.stringify(payload) }] } as SQSEvent, {} as Context, () => { })
 
-    await sqs.send(
-      new SendMessageCommand({
-        QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
-        MessageBody: JSON.stringify(payload),
-      })
-    );
+    // await sqs.send(
+    //   new SendMessageCommand({
+    //     QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${CREATE_PROJECT_QUEUE}`,
+    //     MessageBody: JSON.stringify(payload),
+    //   })
+    // );
 
     res.status(202).json({
       ...projectData, share_url: (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + projectData.share_url

@@ -142,7 +142,6 @@ export async function createThumbnailFromURL(url: string): Promise<Buffer> {
 
   const contentType = res.headers.get("content-type")?.toLowerCase();
 
-  console.log(contentType)
   if (!contentType) throw new Error("Missing content-type");
 
   const buffer = Buffer.from(await res.arrayBuffer());

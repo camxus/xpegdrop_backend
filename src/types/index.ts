@@ -164,6 +164,8 @@ export interface Project {
   approved_users: { user_id: string, role: string }[];
   approved_tenant_users: { user_id: string, role: string }[]
   can_download: boolean,
+  google_folder_id?: string;
+  google_shared_link?: string;
   dropbox_folder_path?: string;
   dropbox_shared_link?: string;
   b2_folder_path?: string;
