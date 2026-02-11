@@ -4,7 +4,7 @@ api:
   layers:
     - arn:aws:lambda:eu-west-1:439125467255:layer:sharp-lambda-x64:1
     - arn:aws:lambda:eu-west-1:439125467255:layer:ffmpeg:1
-    - arn:aws:lambda:eu-west-1:439125467255:layer:googleapis-layer:1
+    # - arn:aws:lambda:eu-west-1:439125467255:layer:googleapis-layer:1
 signup:
   handler: src/sqs/workers/signup/create.handler
   events:
@@ -27,7 +27,7 @@ createProject:
   layers:
     - arn:aws:lambda:eu-west-1:439125467255:layer:sharp-lambda-x64:1
     - arn:aws:lambda:eu-west-1:439125467255:layer:ffmpeg:1
-    - arn:aws:lambda:eu-west-1:439125467255:layer:googleapis-layer:1
+    # - arn:aws:lambda:eu-west-1:439125467255:layer:googleapis-layer:1
   events:
     - sqs:
         arn:
@@ -39,7 +39,7 @@ createProject:
 addFiles:
   handler: src/sqs/workers/project/addFiles.handler
   layers:
-    - arn:aws:lambda:eu-west-1:439125467255:layer:googleapis-layer:1
+    # - arn:aws:lambda:eu-west-1:439125467255:layer:googleapis-layer:1
   events:
     - sqs:
         arn: !GetAtt AddFilesQueue.Arn
