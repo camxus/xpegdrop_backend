@@ -29,7 +29,7 @@ import { BackblazeService } from "../lib/backblaze";
 // import { handler as create } from "../sqs/workers/project/create";
 import { Context, SQSEvent } from "aws-lambda";
 import { createProjectHistoryItem } from "./historyController";
-import { GoogleDriveService } from "../lib/google";
+// import { GoogleDriveService } from "../lib/drive";
 // import { handler as add } from "../sqs/workers/project/addFiles";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
@@ -447,38 +447,38 @@ export const updateProject = asyncHandler(
                 return res.status(500).json({ error: "Failed to move Dropbox folder" });
               }
             }
-          } else if (project.google_folder_id && req.user?.google?.access_token) {
-            // Handle Dropbox rename
-            const googleDriveService = new GoogleDriveService(req.user.google.access_token);
+          // } else if (project.google_folder_id && req.user?.google?.access_token) {
+          //   // Handle Dropbox rename
+          //   const googleDriveService = new GoogleDriveService(req.user.google.access_token);
 
-            const currentId = project.google_folder_id;
-            newPath = `${name}`;
+          //   const currentId = project.google_folder_id;
+          //   newPath = `${name}`;
 
 
-            const tryMoveFolder = async (targetPath: string) => {
-              const { destinationFolderId } = await googleDriveService.moveFolder(currentId, targetPath);
-              updateExpr.push("google_folder_id = :google_folder_id");
-              exprAttrValues[":google_folder_id"] = destinationFolderId;
-            };
+          //   const tryMoveFolder = async (targetPath: string) => {
+          //     const { destinationFolderId } = await googleDriveService.moveFolder(currentId, targetPath);
+          //     updateExpr.push("google_folder_id = :google_folder_id");
+          //     exprAttrValues[":google_folder_id"] = destinationFolderId;
+          //   };
 
-            try {
-              await tryMoveFolder(newPath);
-            } catch (err: any) {
-              const isUnauthorized = err.status === 401;
+          //   try {
+          //     await tryMoveFolder(newPath);
+          //   } catch (err: any) {
+          //     const isUnauthorized = err.status === 401;
 
-              if (isUnauthorized && req.user.google.refresh_token) {
-                try {
-                  await googleDriveService.refreshGoogleToken(req.user);
-                  await tryMoveFolder(newPath);
-                } catch (refreshError) {
-                  console.error("Google token refresh failed", refreshError);
-                  return res.status(500).json({ error: "Failed to refresh Google token" });
-                }
-              } else {
-                console.error("Google Drive folder move failed", err);
-                return res.status(500).json({ error: "Failed to move Google Drive folder" });
-              }
-            }
+          //     if (isUnauthorized && req.user.google.refresh_token) {
+          //       try {
+          //         await googleDriveService.refreshGoogleToken(req.user);
+          //         await tryMoveFolder(newPath);
+          //       } catch (refreshError) {
+          //         console.error("Google token refresh failed", refreshError);
+          //         return res.status(500).json({ error: "Failed to refresh Google token" });
+          //       }
+          //     } else {
+          //       console.error("Google Drive folder move failed", err);
+          //       return res.status(500).json({ error: "Failed to move Google Drive folder" });
+          //     }
+          //   }
           } else if (project.b2_folder_path) {
             const b2Service = new BackblazeService(B2_BUCKET_ID, req.user?.user_id!, project.tenant_id);
 

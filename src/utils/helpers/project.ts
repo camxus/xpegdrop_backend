@@ -6,7 +6,7 @@ import { getSignedImage, s3ObjectExists, saveItemImage } from "../s3";
 import { S3Client } from "@aws-sdk/client-s3";
 import { BackblazeService } from "../../lib/backblaze";
 import dotenv from "dotenv"
-import { GoogleDriveService } from "../../lib/google";
+// import { GoogleDriveService } from "../../lib/drive";
 
 dotenv.config()
 
@@ -46,91 +46,91 @@ export const getProjectWithMedia = async (
     }
 };
 
-export const getGoogleDriveProjectWithMedia = async (project: Project, handle: string) => {
-    // Fetch user from DynamoDB
-    const userResponse = await client.send(
-        new GetItemCommand({
-            TableName: USERS_TABLE,
-            Key: { user_id: { S: project.user_id } },
-        })
-    );
+// export const getGoogleDriveProjectWithMedia = async (project: Project, handle: string) => {
+//     // Fetch user from DynamoDB
+//     const userResponse = await client.send(
+//         new GetItemCommand({
+//             TableName: USERS_TABLE,
+//             Key: { user_id: { S: project.user_id } },
+//         })
+//     );
 
-    if (!userResponse.Item) {
-        throw new Error("User not found");
-    }
+//     if (!userResponse.Item) {
+//         throw new Error("User not found");
+//     }
 
-    const user = unmarshall(userResponse.Item) as User;
+//     const user = unmarshall(userResponse.Item) as User;
 
-    if (!user.google?.access_token || !user.google?.refresh_token) {
-        throw new Error("User Google tokens missing.");
-    }
+//     if (!user.google?.access_token || !user.google?.refresh_token) {
+//         throw new Error("User Google tokens missing.");
+//     }
 
-    if (!project.google_folder_id) {
-        if (!project.google_folder_id) throw new Error("Google folder path missing.");
-    }
+//     if (!project.google_folder_id) {
+//         if (!project.google_folder_id) throw new Error("Google folder path missing.");
+//     }
 
-    let googleAccessToken = user.google.access_token;
-    const googleService = new GoogleDriveService(googleAccessToken);
+//     let googleAccessToken = user.google.access_token;
+//     const googleService = new GoogleDriveService(googleAccessToken);
 
-    const resolveFiles = async (files: any[]) =>
-        Promise.all(
-            files.map(async (file) => {
-                if (file.thumbnail_url) {
-                    delete file.thumbnail;
+//     const resolveFiles = async (files: any[]) =>
+//         Promise.all(
+//             files.map(async (file) => {
+//                 if (file.thumbnail_url) {
+//                     delete file.thumbnail;
 
-                    return file
-                }
+//                     return file
+//                 }
 
-                const projectName = project.name.toLowerCase().replace(/\s+/g, "-");
-                const s3Key = `thumbnails/${handle}/${projectName}/${file.name}`;
-                const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
+//                 const projectName = project.name.toLowerCase().replace(/\s+/g, "-");
+//                 const s3Key = `thumbnails/${handle}/${projectName}/${file.name}`;
+//                 const bucketName = process.env.EXPRESS_S3_TEMP_BUCKET!;
 
-                await saveItemImage(
-                    s3Client,
-                    bucketName,
-                    s3Key,
-                    file.thumbnail,
-                    false
-                );
+//                 await saveItemImage(
+//                     s3Client,
+//                     bucketName,
+//                     s3Key,
+//                     file.thumbnail,
+//                     false
+//                 );
 
-                const thumbnailUrl = await getSignedImage(s3Client, {
-                    bucket: bucketName,
-                    key: s3Key,
-                });
+//                 const thumbnailUrl = await getSignedImage(s3Client, {
+//                     bucket: bucketName,
+//                     key: s3Key,
+//                 });
 
 
-                delete file.thumbnail;
-                return { ...file, thumbnail_url: thumbnailUrl };
-            })
-        );
+//                 delete file.thumbnail;
+//                 return { ...file, thumbnail_url: thumbnailUrl };
+//             })
+//         );
 
-    let googleDriveFiles: any[] = [];
+//     let googleDriveFiles: any[] = [];
 
-    try {
-        googleDriveFiles = await googleService.listFiles(project.google_folder_id);
-        googleDriveFiles = await resolveFiles(googleDriveFiles);
-    } catch (err: any) {
-        const isUnauthorized = err.status === 401;
+//     try {
+//         googleDriveFiles = await googleService.listFiles(project.google_folder_id);
+//         googleDriveFiles = await resolveFiles(googleDriveFiles);
+//     } catch (err: any) {
+//         const isUnauthorized = err.status === 401;
 
-        if (isUnauthorized && user.google.refresh_token) {
-            await googleService.refreshGoogleToken(user);
-            googleDriveFiles = await googleService.listFiles(project.google_folder_id);
-            googleDriveFiles = await resolveFiles(googleDriveFiles);
-        } else {
-            console.error("Google access failed:", err);
-            throw new Error("Failed to access Google Drive files");
-        }
-    }
+//         if (isUnauthorized && user.google.refresh_token) {
+//             await googleService.refreshGoogleToken(user);
+//             googleDriveFiles = await googleService.listFiles(project.google_folder_id);
+//             googleDriveFiles = await resolveFiles(googleDriveFiles);
+//         } else {
+//             console.error("Google access failed:", err);
+//             throw new Error("Failed to access Google Drive files");
+//         }
+//     }
 
-    return {
-        project: {
-            ...project,
-            share_url:
-                (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
-        },
-        media: googleDriveFiles,
-    };
-};
+//     return {
+//         project: {
+//             ...project,
+//             share_url:
+//                 (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
+//         },
+//         media: googleDriveFiles,
+//     };
+// };
 
 export const getDropboxProjectWithMedia = async (project: Project, handle: string) => {
     // Fetch user from DynamoDB
