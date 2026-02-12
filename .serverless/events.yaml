@@ -221,7 +221,7 @@
 - httpApi:
     path: /api/metadata
     method: POST
-    authorizer: jwtAuthorizer
+    # authorizer: jwtAuthorizer
 - httpApi:
     path: /api/metadata/batch
     method: POST
@@ -229,7 +229,7 @@
 - httpApi:
     path: /api/metadata/{project_id}
     method: GET
-    authorizer: jwtAuthorizer
+    # authorizer: jwtAuthorizer
 - httpApi:
     path: /api/metadata/{project_id}/{media_name}
     method: GET
