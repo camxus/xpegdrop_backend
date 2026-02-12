@@ -245,7 +245,7 @@ export const getB2ProjectWithMedia = async (project: Project, handle: string) =>
                 }
 
                 const s3Key = file.path;
-                const bucketName = process.env.THUMBNAILS_BUCKET!;
+                const bucketName = process.env.EXPRESS_S3_THUMBNAILS_BUCKET!;
 
                 await saveItemImage(
                     s3Client,
