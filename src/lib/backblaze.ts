@@ -287,30 +287,33 @@ export class BackblazeService {
             previewUrl = fullFileUrl;
           }
 
-          thumbnail = await createThumbnailFromURL(previewUrl);
-          if (await s3ObjectExists(s3Client, THUMBNAILS_BUCKET, file.fileName)) {
-            thumbnailUrl = await getSignedImage(s3Client, {
-              bucket: THUMBNAILS_BUCKET,
-              key: file.fileName,
-            });
-          }
+         if (await s3ObjectExists(s3Client, THUMBNAILS_BUCKET, file.fileName)) {
+              thumbnailUrl = await getSignedImage(s3Client, {
+                bucket: THUMBNAILS_BUCKET,
+                key: file.fileName,
+              });
+            } else {
+              thumbnail = await createThumbnailFromURL(previewUrl);
+            }
         } else {
           // Image / other → preview & download are the same
           previewUrl = fullFileUrl;
 
           if (type === "image") {
-            thumbnail = await createThumbnailFromURL(previewUrl);
             if (await s3ObjectExists(s3Client, THUMBNAILS_BUCKET, file.fileName)) {
               thumbnailUrl = await getSignedImage(s3Client, {
                 bucket: THUMBNAILS_BUCKET,
                 key: file.fileName,
               });
+            } else {
+              thumbnail = await createThumbnailFromURL(previewUrl);
             }
           }
         }
 
         return {
           id: file.fileId,
+          path: file.fileName,
           name: fileName,
           type,
           preview_url: previewUrl,
@@ -320,7 +323,6 @@ export class BackblazeService {
         };
       })
     );
-
 
     return filesWithLinks;
   }
