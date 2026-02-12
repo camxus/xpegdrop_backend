@@ -53,7 +53,7 @@ export const getUser = asyncHandler(
         user.avatar = await getSignedImage(s3Client, (user.avatar as S3Location));
       }
 
-      const { email, dropbox, ...cleanUser } = user;
+      const { email, dropbox, google, stripe, ...cleanUser } = user;
 
       res.status(200).json(req.user?.user_id === user.user_id ? user : cleanUser);
     } catch (error: any) {
@@ -312,7 +312,7 @@ export const searchByUsername = asyncHandler(async (req: Request, res: Response)
             user.avatar as S3Location
           );
         }
-        const { email, dropbox, ...cleanUser } = user;
+        const { email, dropbox, google, stripe, ...cleanUser } = user;
         return cleanUser;
       })
     );

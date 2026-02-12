@@ -14,7 +14,7 @@ const router = express.Router();
  * GET /google/auth-url
  * (requires auth – links Google to an existing user)
  */
-router.get("/auth-url", authenticate, getGoogleAuthUrl);
+router.get("/auth-url", getGoogleAuthUrl);
 
 /**
  * Step 2: Google OAuth callback (no user update)
@@ -28,7 +28,7 @@ router.get("/callback", handleGoogleCallback);
  * GET /google/callback/update-user
  * (requires auth – updates Google account to logged-in user)
  */
-router.get("/callback/update-user", authenticate, handleGoogleCallbackWithUpdateUser);
+router.get("/callback/update-user", handleGoogleCallbackWithUpdateUser);
 
 /**
  * Step 4: Get Google Drive storage stats
