@@ -30,7 +30,8 @@ import { BackblazeService } from "../lib/backblaze";
 import { Context, SQSEvent } from "aws-lambda";
 import { createProjectHistoryItem } from "./historyController";
 // import { GoogleDriveService } from "../lib/drive";
-// import { handler as add } from "../sqs/workers/project/addFiles";
+import { handler as add } from "../sqs/workers/project/addFiles";
+import { deleteImageMetadata } from "./metadataController";
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
@@ -41,6 +42,7 @@ const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET!;
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const TENANTS_TABLE = process.env.DYNAMODB_TENANTS_TABLE || "Tenants";
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
+const METADATA_TABLE = process.env.DYNAMODB_IMAGE_METADATA_TABLE || "Metadata";
 const CREATE_PROJECT_QUEUE = "create-project-queue"
 const ADD_FILES_QUEUE = "add-files-queue"
 
@@ -447,38 +449,38 @@ export const updateProject = asyncHandler(
                 return res.status(500).json({ error: "Failed to move Dropbox folder" });
               }
             }
-          // } else if (project.google_folder_id && req.user?.google?.access_token) {
-          //   // Handle Dropbox rename
-          //   const googleDriveService = new GoogleDriveService(req.user.google.access_token);
+            // } else if (project.google_folder_id && req.user?.google?.access_token) {
+            //   // Handle Dropbox rename
+            //   const googleDriveService = new GoogleDriveService(req.user.google.access_token);
 
-          //   const currentId = project.google_folder_id;
-          //   newPath = `${name}`;
+            //   const currentId = project.google_folder_id;
+            //   newPath = `${name}`;
 
 
-          //   const tryMoveFolder = async (targetPath: string) => {
-          //     const { destinationFolderId } = await googleDriveService.moveFolder(currentId, targetPath);
-          //     updateExpr.push("google_folder_id = :google_folder_id");
-          //     exprAttrValues[":google_folder_id"] = destinationFolderId;
-          //   };
+            //   const tryMoveFolder = async (targetPath: string) => {
+            //     const { destinationFolderId } = await googleDriveService.moveFolder(currentId, targetPath);
+            //     updateExpr.push("google_folder_id = :google_folder_id");
+            //     exprAttrValues[":google_folder_id"] = destinationFolderId;
+            //   };
 
-          //   try {
-          //     await tryMoveFolder(newPath);
-          //   } catch (err: any) {
-          //     const isUnauthorized = err.status === 401;
+            //   try {
+            //     await tryMoveFolder(newPath);
+            //   } catch (err: any) {
+            //     const isUnauthorized = err.status === 401;
 
-          //     if (isUnauthorized && req.user.google.refresh_token) {
-          //       try {
-          //         await googleDriveService.refreshGoogleToken(req.user);
-          //         await tryMoveFolder(newPath);
-          //       } catch (refreshError) {
-          //         console.error("Google token refresh failed", refreshError);
-          //         return res.status(500).json({ error: "Failed to refresh Google token" });
-          //       }
-          //     } else {
-          //       console.error("Google Drive folder move failed", err);
-          //       return res.status(500).json({ error: "Failed to move Google Drive folder" });
-          //     }
-          //   }
+            //     if (isUnauthorized && req.user.google.refresh_token) {
+            //       try {
+            //         await googleDriveService.refreshGoogleToken(req.user);
+            //         await tryMoveFolder(newPath);
+            //       } catch (refreshError) {
+            //         console.error("Google token refresh failed", refreshError);
+            //         return res.status(500).json({ error: "Failed to refresh Google token" });
+            //       }
+            //     } else {
+            //       console.error("Google Drive folder move failed", err);
+            //       return res.status(500).json({ error: "Failed to move Google Drive folder" });
+            //     }
+            //   }
           } else if (project.b2_folder_path) {
             const b2Service = new BackblazeService(B2_BUCKET_ID, req.user?.user_id!, project.tenant_id);
 
@@ -862,30 +864,30 @@ export const addProjectFiles = asyncHandler(
       }
 
       if (project.google_folder_id && !req.user?.google?.access_token) {
-      return res.status(400).json({ error: "Google access token missing" });
+        return res.status(400).json({ error: "Google access token missing" });
       }
 
-      // add({
-      //   Records: [{
-      //     body:
-      //       JSON.stringify({
-      //         projectId,
-      //         user: { user_id: req.user.user_id, dropbox: req.user.dropbox, google: req.user.google },
-      //         files: fileLocations,
-      //       }),
-      //   }]
-      // } as SQSEvent, {} as Context, () => { })      // Enqueue job for SQS worker to handle Dropbox upload
+      add({
+        Records: [{
+          body:
+            JSON.stringify({
+              projectId,
+              user: { user_id: req.user.user_id, dropbox: req.user.dropbox, google: req.user.google },
+              files: fileLocations,
+            }),
+        }]
+      } as SQSEvent, {} as Context, () => { })      // Enqueue job for SQS worker to handle Dropbox upload
 
-      await sqs.send(
-        new SendMessageCommand({
-          QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${ADD_FILES_QUEUE}`,
-          MessageBody: JSON.stringify({
-            projectId,
-            user: { user_id: req.user.user_id, dropbox: req.user.dropbox },
-            files: fileLocations,
-          }),
-        })
-      );
+      // await sqs.send(
+      //   new SendMessageCommand({
+      //     QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${ADD_FILES_QUEUE}`,
+      //     MessageBody: JSON.stringify({
+      //       projectId,
+      //       user: { user_id: req.user.user_id, dropbox: req.user.dropbox },
+      //       files: fileLocations,
+      //     }),
+      //   })
+      // );
 
       res.status(202).json({
         message: "Files queued for upload",
@@ -930,6 +932,22 @@ export const removeProjectFile = asyncHandler(
 
         try {
           await dropboxService.deleteFile(project.dropbox_folder_path, fileName);
+
+          const { project_id, media_name } = req.params;
+
+          if (!project_id || !media_name) {
+            return res.status(400).json({
+              error: "project_id and media_name are required",
+            });
+          }
+
+          await client.send(
+            new DeleteItemCommand({
+              TableName: METADATA_TABLE,
+              Key: marshall({ project_id, media_name }),
+            })
+          );
+
         } catch (err: any) {
           console.error("Dropbox file delete failed", err);
           return res.status(500).json({ error: "Failed to delete file" });
