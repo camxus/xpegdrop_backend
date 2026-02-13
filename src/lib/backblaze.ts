@@ -116,59 +116,28 @@ export class BackblazeService {
   // ----------------------
   // Upload a single file
   // ----------------------
-  public async uploadFile(file: File, folderPath: string): Promise<string> {
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const uploadFileName = `${this.getPrefix(folderPath)}/${file.name}`;
-
-    const videoTypes = ["video/mp4", "video/quicktime", "video/webm", "video/x-matroska"];
+  public async uploadBuffer(
+    buffer: Buffer,
+    folderPath: string,
+  ): Promise<string> {
 
     // ---- Original upload ----
     const originalUpload = (async () => {
-      const uploadUrlResp = await this.b2.getUploadUrl({ bucketId: this.bucketId });
+      const uploadUrlResp = await this.b2.getUploadUrl({
+        bucketId: this.bucketId,
+      });
+
       await this.b2.uploadFile({
         uploadUrl: uploadUrlResp.data.uploadUrl,
         uploadAuthToken: uploadUrlResp.data.authorizationToken,
-        fileName: uploadFileName,
-        data: fileBuffer,
+        fileName: folderPath,
+        data: buffer,
       });
     })();
 
-    // ---- Transcode + upload (conditional) ----
-    const transcodeUpload =
-      videoTypes.includes(file.type.toLowerCase()) && this.userId
-        ? (async () => {
-          const transcodedService = new BackblazeService(
-            B2_TRANSCODED_MEDIA_BUCKET_ID!,
-            this.userId!,
-            this.tenantId
-          );
+    await Promise.all([originalUpload]);
 
-          const transcodedFileName = `${this.getPrefix(folderPath)}/${file.name.replace(/\.\w+$/, ".mp4")}`;
-          await transcodedService.b2.authorize();
-
-          const existingFiles = await transcodedService.listFiles(folderPath);
-          const exists = existingFiles.some((f) => f.name === transcodedFileName);
-
-          if (exists) await transcodedService.deleteFile(folderPath, transcodedFileName);
-
-          const transcodedBuffer = await transcodeVideoToMp4(fileBuffer);
-
-          const uploadUrlResp = await transcodedService.b2.getUploadUrl({
-            bucketId: transcodedService.bucketId,
-          });
-
-          await transcodedService.b2.uploadFile({
-            uploadUrl: uploadUrlResp.data.uploadUrl,
-            uploadAuthToken: uploadUrlResp.data.authorizationToken,
-            fileName: transcodedFileName,
-            data: transcodedBuffer,
-          });
-        })()
-        : Promise.resolve();
-
-    await Promise.all([originalUpload, transcodeUpload]);
-
-    return uploadFileName; // return full path for this file
+    return folderPath;
   }
 
   // ----------------------
@@ -190,11 +159,11 @@ export class BackblazeService {
 
     for (let i = 0; i < files.length; i += UPLOAD_BATCH_SIZE) {
       const batch = files.slice(i, i + UPLOAD_BATCH_SIZE);
-      const batchPaths = await Promise.all(batch.map((file) => this.uploadFile(file, folderPath)));
+      const batchPaths = await Promise.all(batch.map(async (file) => this.uploadBuffer(Buffer.from(await file.arrayBuffer()), folderPath)));
       filePaths.push(...batchPaths);
     }
 
-    const shareLink = `https://f003.backblazeb2.com/file/${B2_BUCKET_NAME}/${this.getPrefix(folderPath)}`;
+    const shareLink = `https://f003.backblazeb2.com/file/${B2_BUCKET_NAME}/${folderPath}`;
     console.log("Share link:", shareLink);
 
     return { folder_path: folderPath, share_link: shareLink, filePaths };
@@ -205,7 +174,7 @@ export class BackblazeService {
 
     const resp = await this.b2.listFileNames({
       bucketId: this.bucketId,
-      prefix: this.getPrefix(folderPath) + "/",
+      prefix: folderPath + "/",
       maxFileCount: 1000,
       startFileName: "",
       delimiter: ""
@@ -220,7 +189,7 @@ export class BackblazeService {
 
     const resp = await this.b2.listFileNames({
       bucketId: this.bucketId,
-      prefix: this.getPrefix(folderPath) + "/",
+      prefix: folderPath + "/",
       maxFileCount: 1000,
       startFileName: "",
       delimiter: "",
@@ -287,14 +256,14 @@ export class BackblazeService {
             previewUrl = fullFileUrl;
           }
 
-         if (await s3ObjectExists(s3Client, THUMBNAILS_BUCKET, file.fileName)) {
-              thumbnailUrl = await getSignedImage(s3Client, {
-                bucket: THUMBNAILS_BUCKET,
-                key: file.fileName,
-              });
-            } else {
-              thumbnail = await createThumbnailFromURL(previewUrl);
-            }
+          if (await s3ObjectExists(s3Client, THUMBNAILS_BUCKET, file.fileName)) {
+            thumbnailUrl = await getSignedImage(s3Client, {
+              bucket: THUMBNAILS_BUCKET,
+              key: file.fileName,
+            });
+          } else {
+            thumbnail = await createThumbnailFromURL(previewUrl);
+          }
         } else {
           // Image / other → preview & download are the same
           previewUrl = fullFileUrl;
@@ -333,7 +302,7 @@ export class BackblazeService {
     // Delete from main bucket
     const resp = await this.b2.listFileNames({
       bucketId: this.bucketId,
-      prefix: this.getPrefix(folderPath) + "/",
+      prefix: folderPath + "/",
       maxFileCount: 1000,
       startFileName: "",
       delimiter: "",
@@ -382,7 +351,7 @@ export class BackblazeService {
     const filePath = `${folderPath}/${fileName}`;
     const resp = await this.b2.listFileNames({
       bucketId: this.bucketId,
-      prefix: this.getPrefix(filePath),
+      prefix: filePath,
       maxFileCount: 1,
       startFileName: "",
       delimiter: "/",
@@ -531,8 +500,8 @@ export class BackblazeService {
   public async moveFolder(oldFolderPath: string, newFolderPath: string) {
     await this.authorize();
 
-    const oldPrefix = this.getStoragePrefix(oldFolderPath) + "/";
-    const newPrefix = this.getStoragePrefix(newFolderPath) + "/";
+    const oldPrefix = oldFolderPath + "/";
+    const newPrefix = newFolderPath + "/";
 
     const files = await this.listFiles(oldFolderPath);
 
