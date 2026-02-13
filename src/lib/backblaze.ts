@@ -146,13 +146,13 @@ export class BackblazeService {
   public async upload(files: File[], folderName: string): Promise<{ folder_path: string; share_link: string; filePaths: string[] }> {
     await this.authorize();
 
-    let folderPath = folderName;
+    let folderPath = this.getPrefix(folderName);
     let count = 0;
 
     // Ensure unique folder name
     while (await this.folderExists(folderPath)) {
       count++;
-      folderPath = `${folderName}-${count}`;
+      folderPath = `${folderPath}-${count}`;
     }
 
     const filePaths: string[] = [];

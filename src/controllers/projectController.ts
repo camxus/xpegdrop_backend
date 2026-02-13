@@ -26,7 +26,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { getProjectWithMedia, getHandleUrl } from "../utils/helpers/project";
 import { BackblazeService } from "../lib/backblaze";
-// import { handler as create } from "../sqs/workers/project/create";
+import { handler as create } from "../sqs/workers/project/create";
 import { Context, SQSEvent } from "aws-lambda";
 import { createProjectHistoryItem } from "./historyController";
 // import { GoogleDriveService } from "../lib/drive";
@@ -983,6 +983,30 @@ export const removeProjectFile = asyncHandler(
           console.error("Dropbox file delete failed", err);
           return res.status(500).json({ error: "Failed to delete file" });
         }
+      // } else if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
+      //   const googleDriveService = new GoogleDriveService(req.user.dropbox.access_token);
+
+      //   try {
+      //     await googleDriveService.deleteFile(project.google_folder_id, fileName);
+
+      //     const { project_id, media_name } = req.params;
+
+      //     if (!project_id || !media_name) {
+      //       return res.status(400).json({
+      //         error: "project_id and media_name are required",
+      //       });
+      //     }
+
+      //     await client.send(
+      //       new DeleteItemCommand({
+      //         TableName: METADATA_TABLE,
+      //         Key: marshall({ project_id, media_name }),
+      //       })
+      //     );
+      //   } catch (err: any) {
+      //     console.error("Dropbox file delete failed", err);
+      //     return res.status(500).json({ error: "Failed to delete file" });
+      //   }
       } else if (project.b2_folder_path && req.user?.user_id) {
         const b2Service = new BackblazeService(B2_BUCKET_ID, req.user.user_id, project.tenant_id);
 
