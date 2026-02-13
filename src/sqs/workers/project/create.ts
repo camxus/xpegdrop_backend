@@ -6,7 +6,7 @@ import { BackblazeService } from "../../../lib/backblaze"; // Your B2 wrapper
 import { getItemFile } from "../../../utils/s3";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import dotenv from "dotenv"
-import { createThumbnailFromFile } from "../../../utils/file-utils";
+import { allowedVideoTypes, createThumbnailFromFile, transcodeVideoToMp4 } from "../../../utils/file-utils";
 import { createProjectHistoryItem } from "../../../controllers/historyController";
 import { ProjectHistoryType } from "../../../types";
 // import { GoogleDriveService } from "../../../lib/google";
@@ -19,6 +19,7 @@ const s3Client = new S3Client({ region: process.env.AWS_REGION_CODE });
 const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID || "";
 
 const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET || "";
+const B2_TRANSCODED_MEDIA_BUCKET_ID = process.env.EXPRESS_B2_TRANSCODED_MEDIA_BUCKET_ID!;
 
 export const handler: SQSHandler = async (event) => {
   for (const record of event.Records) {
@@ -30,7 +31,7 @@ export const handler: SQSHandler = async (event) => {
 
     try {
       // Helper to fetch files from S3 or reconstruct from buffers
-      const getFiles = async () => {
+      const getFiles = async (): Promise<File[]> => {
         if (files.length) {
           return files.map((f: any) => {
             const buf = Buffer.from(f.buffer, "base64");
@@ -52,11 +53,11 @@ export const handler: SQSHandler = async (event) => {
       };
 
       const uploadFiles = await getFiles();
-      const folderName = tenant?.name ? `${tenant.name}/${project.name}` : project.name;
+      const folderName = project.name;
 
       if (storageProvider === "dropbox") {
         if (!user.dropbox?.access_token) throw new Error("Dropbox access token missing");
-        const dropboxService = new DropboxService(user.dropbox.access_token);
+        const dropboxService = new DropboxService(user.dropbox.access_token, tenant?.tenant_id);
 
         try {
           const response = await dropboxService.upload(uploadFiles, folderName);
@@ -72,24 +73,24 @@ export const handler: SQSHandler = async (event) => {
             throw err;
           }
         }
-      // } else if (storageProvider === "google") {
-      //   if (!user.google?.access_token) throw new Error("Google access token missing");
-      //   const googleService = new GoogleDriveService(user.google.access_token);
+        // } else if (storageProvider === "google") {
+        //   if (!user.google?.access_token) throw new Error("Google access token missing");
+        //   const googleService = new GoogleDriveService(user.google.access_token);
 
-      //   try {
-      //     const response = await googleService.upload(uploadFiles, folderName);
-      //     folderPath = response.folder_id;
-      //     shareLink = response.share_link;
-      //   } catch (err: any) {
-      //     if (err?.status === 401 && user.google.refresh_token) {
-      //       await googleService.refreshGoogleToken(user);
-      //       const response = await googleService.upload(uploadFiles, folderName);
-      //       folderPath = response.folder_id;
-      //       shareLink = response.share_link;
-      //     } else {
-      //       throw err;
-      //     }
-      //   }
+        //   try {
+        //     const response = await googleService.upload(uploadFiles, folderName);
+        //     folderPath = response.folder_id;
+        //     shareLink = response.share_link;
+        //   } catch (err: any) {
+        //     if (err?.status === 401 && user.google.refresh_token) {
+        //       await googleService.refreshGoogleToken(user);
+        //       const response = await googleService.upload(uploadFiles, folderName);
+        //       folderPath = response.folder_id;
+        //       shareLink = response.share_link;
+        //     } else {
+        //       throw err;
+        //     }
+        //   }
       } else if (storageProvider === "b2") {
         const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, tenant?.tenant_id);
 
@@ -108,6 +109,26 @@ export const handler: SQSHandler = async (event) => {
 
         // --- CREATE THUMBNAILS AND UPLOAD TO S3 ---
         for (const file of uploadFiles) {
+          if (allowedVideoTypes.includes(file.type)) {
+            const transcodedService = new BackblazeService(
+              B2_TRANSCODED_MEDIA_BUCKET_ID!,
+              user.user_id!,
+              tenant?.tenant_id
+            );
+
+            const transcodedFileName = `${folderPath}/${file.name.replace(/\.\w+$/, ".mp4")}`;
+            await transcodedService.authorize();
+
+            const existingFiles = await transcodedService.listFiles(folderPath);
+            const exists = existingFiles.some((f) => f.name === transcodedFileName);
+
+            if (exists) await transcodedService.deleteFile(folderPath, transcodedFileName);
+
+            const transcodedBuffer = await transcodeVideoToMp4(Buffer.from(await file.arrayBuffer()));
+
+            await transcodedService.uploadBuffer(transcodedBuffer, folderPath)
+          }
+
           try {
             const thumbnailBuffer = await createThumbnailFromFile(file);
             const thumbnailKey = `${b2Service.getPrefix(folderName)}/${file.name}`;
@@ -197,9 +218,9 @@ export const handler: SQSHandler = async (event) => {
             const dropboxService = new DropboxService(user.dropbox.access_token);
             await dropboxService.deleteFolder(folderPath);
             console.log(`🗑️ Deleted Dropbox folder ${folderPath} after failure.`);
-          // } else if (storageProvider === "google" && user.google?.access_token) {
-          //   const googleService = new GoogleDriveService(user.google.access_token);
-          //   await googleService.deleteFolder(folderPath);
+            // } else if (storageProvider === "google" && user.google?.access_token) {
+            //   const googleService = new GoogleDriveService(user.google.access_token);
+            //   await googleService.deleteFolder(folderPath);
             console.log(`🗑️ Deleted Google Drive folder ${folderPath} after failure.`);
           } else if (storageProvider === "b2") {
             const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, tenant?.tenant_id);

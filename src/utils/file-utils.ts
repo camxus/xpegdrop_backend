@@ -36,7 +36,7 @@ export async function configureFfmpeg() {
   ffmpeg.setFfmpegPath(ffmpegPath);
 }; // use static binary
 
-const allowedImageTypes = [
+export const allowedImageTypes = [
   "image/jpeg",
   "image/png",
   "image/gif",
@@ -46,7 +46,7 @@ const allowedImageTypes = [
   "image/heif",
 ];
 
-const allowedVideoTypes = [
+export const allowedVideoTypes = [
   "video/mp4",
   "video/quicktime",
   "video/webm",

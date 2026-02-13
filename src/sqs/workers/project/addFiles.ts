@@ -8,6 +8,7 @@ import { BackblazeService } from "../../../lib/backblaze";
 import { copyItemImage, getItemFile } from "../../../utils/s3";
 import { createProjectHistoryItem } from "../../../controllers/historyController";
 import { Project, ProjectHistoryType } from "../../../types";
+import { allowedVideoTypes, transcodeVideoToMp4 } from "../../../utils/file-utils";
 // import { GoogleDriveService } from "../../../lib/google";
 
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
@@ -15,6 +16,7 @@ const REGION = process.env.AWS_REGION_CODE;
 const ACCOUNT_ID = process.env.AWS_ACCOUNT_ID;
 const ADD_FILES_CLEANUP_QUEUE = "add-files-cleanup-queue";
 const B2_BUCKET_ID = process.env.EXPRESS_B2_BUCKET_ID!;
+const B2_TRANSCODED_MEDIA_BUCKET_ID = process.env.EXPRESS_B2_TRANSCODED_MEDIA_BUCKET_ID!;
 
 const client = new DynamoDBClient({ region: REGION });
 const s3Client = new S3Client({ region: REGION });
@@ -44,7 +46,7 @@ export const handler: SQSHandler = async (event) => {
       data = await readS3Json(data.bucket, data.key);
     }
 
-    const { projectId, files, user } = data;
+    const { projectId, files, user, tenant } = data;
     let uploadedFiles: any[] = [];
 
     try {
@@ -91,28 +93,28 @@ export const handler: SQSHandler = async (event) => {
             id: uploadRes.id,
           });
         }
-      // } else if (project.google_folder_id && user.google?.access_token) {
-      //   // Google path
-      //   const googleService = new GoogleDriveService(user.google.access_token);
+        // } else if (project.google_folder_id && user.google?.access_token) {
+        //   // Google path
+        //   const googleService = new GoogleDriveService(user.google.access_token);
 
-      //   for (const file of files) {
-      //     const destination = await getItemFile(s3Client, { bucket: file.bucket, key: file.key });
-      //     await s3Client.send(
-      //       new DeleteObjectCommand({ Bucket: process.env.EXPRESS_S3_TEMP_BUCKET!, Key: file.key })
-      //     );
+        //   for (const file of files) {
+        //     const destination = await getItemFile(s3Client, { bucket: file.bucket, key: file.key });
+        //     await s3Client.send(
+        //       new DeleteObjectCommand({ Bucket: process.env.EXPRESS_S3_TEMP_BUCKET!, Key: file.key })
+        //     );
 
-      //     const uploadRes = await googleService.uploadFile(
-      //       project.google_folder_id,
-      //       destination.file.name,
-      //       destination.buffer
-      //     );
+        //     const uploadRes = await googleService.uploadFile(
+        //       project.google_folder_id,
+        //       destination.file.name,
+        //       destination.buffer
+        //     );
 
-      //     uploadedFiles.push({
-      //       name: file.name,
-      //       path: project.google_folder_id,
-      //       id: uploadRes.fileId,
-      //     });
-      //   }
+        //     uploadedFiles.push({
+        //       name: file.name,
+        //       path: project.google_folder_id,
+        //       id: uploadRes.fileId,
+        //     });
+        //   }
       } else if (project.b2_folder_path && user.user_id) {
         // Backblaze B2 path
         const b2Service = new BackblazeService(B2_BUCKET_ID, user.user_id, project.tenant_id);
@@ -124,7 +126,27 @@ export const handler: SQSHandler = async (event) => {
           );
 
           await b2Service.authorize()
-          await b2Service.uploadFile(destination.file, project.b2_folder_path);
+          const folderPath = await b2Service.uploadBuffer(destination.buffer, project.b2_folder_path);
+
+          if (allowedVideoTypes.includes(file.type)) {
+            const transcodedService = new BackblazeService(
+              B2_TRANSCODED_MEDIA_BUCKET_ID!,
+              user.user_id!,
+              tenant?.tenant_id
+            );
+
+            const transcodedFileName = `${transcodedService.getPrefix(folderPath)}/${file.name.replace(/\.\w+$/, ".mp4")}`;
+            await transcodedService.authorize();
+
+            const existingFiles = await transcodedService.listFiles(folderPath);
+            const exists = existingFiles.some((f) => f.name === transcodedFileName);
+
+            if (exists) await transcodedService.deleteFile(folderPath, transcodedFileName);
+
+            const transcodedBuffer = await transcodeVideoToMp4(Buffer.from(await file.arrayBuffer()));
+
+            await transcodedService.uploadBuffer(transcodedBuffer, folderPath)
+          }
 
           uploadedFiles.push({
             name: destination.file.name,
