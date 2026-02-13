@@ -827,6 +827,35 @@ export const getTenantProjectByShareUrl = asyncHandler(async (req: Request, res:
 export const addProjectFiles = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     const { projectId } = req.params;
+    const { tenant_id: tenantId } = req.body;
+
+    let tenant: Tenant | undefined = undefined;
+
+    if (tenantId) {
+      const { Item } = await client.send(
+        new GetItemCommand({
+          TableName: "Tenants",
+          Key: {
+            tenant_id: { S: tenantId },
+          },
+        })
+      );
+
+
+      if (Item) {
+        tenant = unmarshall(Item) as Tenant;
+        const isMember = tenant.members?.some(
+          member => member.user_id === req.user?.user_id
+        );
+
+        if (!isMember) {
+          return res.status(403).json({ message: "User not in team" });
+        }
+
+      } else {
+        throw new Error(`Tenant with ID ${tenantId} not found`);
+      }
+    }
 
     let fileLocations =
       typeof req.body.file_locations === "string"
@@ -867,27 +896,29 @@ export const addProjectFiles = asyncHandler(
         return res.status(400).json({ error: "Google access token missing" });
       }
 
-      add({
-        Records: [{
-          body:
-            JSON.stringify({
-              projectId,
-              user: { user_id: req.user.user_id, dropbox: req.user.dropbox, google: req.user.google },
-              files: fileLocations,
-            }),
-        }]
-      } as SQSEvent, {} as Context, () => { })      // Enqueue job for SQS worker to handle Dropbox upload
+      // add({
+      //   Records: [{
+      //     body:
+      //       JSON.stringify({
+      //         projectId,
+      //         user: { user_id: req.user.user_id, dropbox: req.user.dropbox, google: req.user.google },
+      //         tenant: { tenant_id: tenant?.tenant_id, name: tenant?.name },
+      //         files: fileLocations,
+      //       }),
+      //   }]
+      // } as SQSEvent, {} as Context, () => { })      // Enqueue job for SQS worker to handle Dropbox upload
 
-      // await sqs.send(
-      //   new SendMessageCommand({
-      //     QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${ADD_FILES_QUEUE}`,
-      //     MessageBody: JSON.stringify({
-      //       projectId,
-      //       user: { user_id: req.user.user_id, dropbox: req.user.dropbox },
-      //       files: fileLocations,
-      //     }),
-      //   })
-      // );
+      await sqs.send(
+        new SendMessageCommand({
+          QueueUrl: `https://sqs.${process.env.AWS_REGION_CODE}.amazonaws.com/${process.env.AWS_ACCOUNT_ID}/${ADD_FILES_QUEUE}`,
+          MessageBody: JSON.stringify({
+            projectId,
+            user: { user_id: req.user.user_id, dropbox: req.user.dropbox, google: req.user.google },
+            tenant: { tenant_id: tenant?.tenant_id, name: tenant?.name },
+            files: fileLocations,
+          }),
+        })
+      );
 
       res.status(202).json({
         message: "Files queued for upload",

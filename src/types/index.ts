@@ -203,6 +203,7 @@ export interface Note {
   user_id: string;
   content: string;
   created_at: string;
+  timestamp?: number;
   updated_at?: string;
   author: { first_name: string, last_name: string }
 }
