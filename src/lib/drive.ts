@@ -330,9 +330,37 @@ export class GoogleDriveService {
   // -------------------------
   // Delete file
   // -------------------------
+  async deleteFile(folderId: string, fileName: string) {
+    const safeName = fileName.replace(/'/g, "\\'");
 
-  async deleteFile(fileId: string) {
-    await this.drive.files.delete({ fileId });
+    // 1. Find matching files in the folder
+    const res = await this.drive.files.list({
+      q: `'${folderId}' in parents and name = '${safeName}' and trashed = false`,
+      fields: 'files(id, name)',
+      // uncomment if you use Shared Drives
+      // supportsAllDrives: true,
+      // includeItemsFromAllDrives: true,
+    });
+
+    const files = res.data.files ?? [];
+
+    if (!files.length) {
+      throw new Error(
+        `No file named "${fileName}" found in folder ${folderId}`
+      );
+    }
+
+    // 2. Delete all matches
+    await Promise.all(
+      files.map((file) =>
+        this.drive.files.delete({
+          fileId: file.id!,
+          // supportsAllDrives: true,
+        })
+      )
+    );
+
+    return files.map((f) => f.id);
   }
 
   // -------------------------

@@ -1,5 +1,5 @@
-import { Dropbox } from "../../sdk/dropbox";
-import type { sharing, files, users } from "../../sdk/dropbox";
+import { Dropbox } from "../sdk/dropbox";
+import type { sharing, files, users } from "../sdk/dropbox";
 import axios from "axios";
 import qs from "qs";
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
@@ -16,12 +16,23 @@ const client = new DynamoDBClient({
 
 export class DropboxService {
   private dbx: Dropbox;
+  private tenantId: string | undefined;
 
-  constructor(accessToken: string) {
+  constructor(accessToken: string, tenantId?: string) {
     this.dbx = new Dropbox({
       accessToken,
       fetch: fetch,
     });
+
+    this.tenantId = tenantId;
+  }
+
+  public getPrefix(folderPath: string = ""): string {
+    if (this.tenantId) {
+      return `/fframess/tenant/${this.tenantId}/${folderPath}`.replace(/\/+$/, ""); // remove trailing slash
+    } else {
+      return `/fframess/${folderPath}`.replace(/\/+$/, "");
+    }
   }
 
   async folderExists(folderName: string): Promise<boolean> {
@@ -58,13 +69,13 @@ export class DropboxService {
 
   async upload(files: File[], folderName: string): Promise<{ folder_path: string, share_link: string }> {
     try {
-      let folderPath = `/fframess/${folderName}`;
+      let folderPath = this.getPrefix(folderName);
       let count = 0;
 
       // Try to create a unique folder if it already exists
       while (await this.folderExists(folderPath)) {
         count++;
-        folderPath = `/fframess/${folderName}-${count}`;
+        folderPath = `${folderPath}-${count}`;
       }
 
       // Create the folder

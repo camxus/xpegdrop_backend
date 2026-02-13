@@ -118,6 +118,7 @@ export class BackblazeService {
   // ----------------------
   public async uploadBuffer(
     buffer: Buffer,
+    fileName: string,
     folderPath: string,
   ): Promise<string> {
 
@@ -130,7 +131,7 @@ export class BackblazeService {
       await this.b2.uploadFile({
         uploadUrl: uploadUrlResp.data.uploadUrl,
         uploadAuthToken: uploadUrlResp.data.authorizationToken,
-        fileName: folderPath,
+        fileName: `${folderPath}/${fileName}`,
         data: buffer,
       });
     })();
@@ -159,7 +160,7 @@ export class BackblazeService {
 
     for (let i = 0; i < files.length; i += UPLOAD_BATCH_SIZE) {
       const batch = files.slice(i, i + UPLOAD_BATCH_SIZE);
-      const batchPaths = await Promise.all(batch.map(async (file) => this.uploadBuffer(Buffer.from(await file.arrayBuffer()), folderPath)));
+      const batchPaths = await Promise.all(batch.map(async (file) => this.uploadBuffer(Buffer.from(await file.arrayBuffer()), file.name, folderPath)));
       filePaths.push(...batchPaths);
     }
 

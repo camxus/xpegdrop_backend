@@ -126,7 +126,7 @@ export const handler: SQSHandler = async (event) => {
           );
 
           await b2Service.authorize()
-          const folderPath = await b2Service.uploadBuffer(destination.buffer, project.b2_folder_path);
+          const folderPath = await b2Service.uploadBuffer(destination.buffer, file.key.split("/").pop(), project.b2_folder_path);
 
           if (allowedVideoTypes.includes(file.type)) {
             const transcodedService = new BackblazeService(
@@ -145,7 +145,7 @@ export const handler: SQSHandler = async (event) => {
 
             const transcodedBuffer = await transcodeVideoToMp4(Buffer.from(await file.arrayBuffer()));
 
-            await transcodedService.uploadBuffer(transcodedBuffer, folderPath)
+            await transcodedService.uploadBuffer(transcodedBuffer, file.name, folderPath)
           }
 
           uploadedFiles.push({

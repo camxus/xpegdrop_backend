@@ -126,7 +126,7 @@ export const handler: SQSHandler = async (event) => {
 
             const transcodedBuffer = await transcodeVideoToMp4(Buffer.from(await file.arrayBuffer()));
 
-            await transcodedService.uploadBuffer(transcodedBuffer, folderPath)
+            await transcodedService.uploadBuffer(transcodedBuffer, transcodedFileName, folderPath)
           }
 
           try {
