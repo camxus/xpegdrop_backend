@@ -136,16 +136,16 @@ export const updateProjectHistory = asyncHandler(
  */
 export const deleteProjectHistory = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
-    const { project_id, id } = req.params;
+    const { project_id, project_history_id } = req.params;
 
-    if (!project_id || !id) {
-      return res.status(400).json({ error: "project_id and id are required" });
+    if (!project_id || !project_history_id) {
+      return res.status(400).json({ error: "project_id and project_history_id are required" });
     }
 
     await client.send(
       new DeleteItemCommand({
         TableName: PROJECTS_HISTORY_TABLE,
-        Key: marshall({ project_id, id }),
+        Key: marshall({ project_id, project_history_id }),
       })
     );
 

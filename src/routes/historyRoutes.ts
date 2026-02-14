@@ -34,6 +34,6 @@ router.patch("/:project_id/:project_history_id", updateProjectHistory);
  * @route   DELETE /history/:project_id/:id
  * @desc    Delete a specific project history record
  */
-router.delete("/:project_id/:id", deleteProjectHistory);
+router.delete("/:project_id/:project_history_id", deleteProjectHistory);
 
 export default router;
