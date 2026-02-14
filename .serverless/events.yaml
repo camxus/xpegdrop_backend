@@ -267,13 +267,14 @@
     method: GET
     authorizer: jwtAuthorizer
 - httpApi:
-    path: /api/history/{id}
-    method: PATCH
-    authorizer: jwtAuthorizer
+    path: /api/history/{project_id}
+    method: GET
 - httpApi:
-    path: /api/history/{id}
+    path: /api/history/{project_id}/{project_history_id}
+    method: PATCH
+- httpApi:
+    path: /api/history/{project_id}/{project_history_id}
     method: DELETE
-    authorizer: jwtAuthorizer
 
 # Stripe routes
 - httpApi:
