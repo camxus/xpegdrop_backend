@@ -125,8 +125,8 @@ export const getProjectWithMedia = async (
 //     return {
 //         project: {
 //             ...project,
-//             share_url:
-//                 (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
+//             project_url:
+//                 (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.project_url,
 //         },
 //         media: googleDriveFiles,
 //     };
@@ -211,8 +211,8 @@ export const getDropboxProjectWithMedia = async (project: Project, handle: strin
     return {
         project: {
             ...project,
-            share_url:
-                (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
+            project_url:
+                (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.project_url,
         },
         media: dropboxFiles,
     };
@@ -270,7 +270,7 @@ export const getB2ProjectWithMedia = async (project: Project, handle: string) =>
     return {
         project: {
             ...project,
-            share_url: (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.share_url,
+            project_url: (process.env.EXPRESS_PUBLIC_FRONTEND_URL || "") + project.project_url,
         },
         media: b2Files,
     };

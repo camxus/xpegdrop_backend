@@ -158,12 +158,8 @@ export interface Project {
   user_id: string;
   name: string;
   description?: string | null;
-  share_url: string;
-  is_public: boolean;
-  approved_emails: string[];
-  approved_users: { user_id: string, role: string }[];
+  project_url: string
   approved_tenant_users: { user_id: string, role: string }[]
-  can_download: boolean,
   google_folder_id?: string;
   google_shared_link?: string;
   dropbox_folder_path?: string;
@@ -199,6 +195,7 @@ export interface UpdateUserInput {
 export interface Note {
   note_id: string;
   project_id: string;
+  share_id?: string;
   media_name: string;
   user_id: string;
   content: string;
@@ -278,3 +275,32 @@ export type ProjectHistory = {
   created_at: string;
   updated_at: string;
 };
+
+export type ShareMode = "collaborative" | "presentation";
+
+export interface Share {
+  share_id: string;
+  project_id: string;
+  user_id: string;
+
+  name: string,
+  
+  mode: ShareMode; // "collaborative" | "presentation"
+
+  // Access control
+  is_public: boolean;
+  approved_emails?: { value: string; role: "editor" | "viewer" }[];
+  approved_users?: { user_id: string; role: "editor" | "viewer" }[];
+
+  // Link
+  expires_at?: string;
+
+  // Permissions
+  can_rate?: boolean;
+  can_download?: boolean;
+  can_note?: boolean;
+  can_upload?: boolean;
+
+  created_at: string;
+  updated_at?: string;
+}

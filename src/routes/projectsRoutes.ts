@@ -5,23 +5,25 @@ import {
   getProject,
   updateProject,
   deleteProject,
-  getProjectByShareUrl,
+  getProjectByProjectUrl,
   uploadMiddleware,
   addProjectFiles,
   removeProjectFile,
-  getTenantProjectByShareUrl,
+  getTenantProjectByProjectUrl,
   getTenantProjects,
-} from '../controllers/projectController';
+  getProjectByShareId,
+} from '../controllers/projectsController';
 import { authenticate } from '../middleware/auth';
 
 const router: Router = express.Router();
 
-// Public route for share URLs
-router.get('/share/:username/:projectName', getProjectByShareUrl);
-router.get('/share/tenant/:tenantHandle/:username/:projectName', getTenantProjectByShareUrl);
+// Public route for project URLs
+router.get('/share/:username/:mode/:projectName', getProjectByShareId);
 
 // Protected routes (require authentication)
 router.use(authenticate);
+router.get('/project/:username/:projectName', getProjectByProjectUrl);
+router.get('/project/tenant/:tenantHandle/:username/:projectName', getTenantProjectByProjectUrl);
 router.post('/', uploadMiddleware, createProject);
 router.get('/', getProjects);
 router.get('/:projectId', getProject);

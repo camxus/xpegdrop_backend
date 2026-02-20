@@ -2,7 +2,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes";
-import projectRoutes from "./routes/projectRoutes";
+import projectsRoutes from "./routes/projectsRoutes";
+import sharesRoutes from "./routes/sharesRoutes";
 import dropboxRoutes from "./routes/dropboxRoutes";
 import googleRoutes from "./routes/googleRoutes";
 import storageRoutes from "./routes/storageRoutes";
@@ -36,7 +37,8 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/projects", projectRoutes);
+app.use("/api/projects", projectsRoutes);
+app.use("/api/shares", sharesRoutes);
 app.use("/api/dropbox", dropboxRoutes);
 app.use("/api/google", googleRoutes);
 app.use("/api/storage", storageRoutes);

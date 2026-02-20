@@ -15,7 +15,7 @@ import {
   updateProjectSchema,
 } from "../utils/validation/projectValidation";
 import axios from "axios";
-import { CreateProjectInput, UpdateProjectInput, Project, S3Location, User, Tenant, ProjectHistoryType } from "../types";
+import { CreateProjectInput, UpdateProjectInput, Project, S3Location, User, Tenant, ProjectHistoryType, Share } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { DropboxService } from "../lib/dropbox";
 import { AuthenticatedRequest, getUserFromToken } from "../middleware/auth";
@@ -42,6 +42,7 @@ const THUMBNAILS_BUCKET = process.env.EXPRESS_S3_THUMBNAILS_BUCKET!;
 const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const TENANTS_TABLE = process.env.DYNAMODB_TENANTS_TABLE || "Tenants";
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
+const SHARES_TABLE = process.env.DYNAMODB_SHARES_TABLE || "Shares";
 const METADATA_TABLE = process.env.DYNAMODB_IMAGE_METADATA_TABLE || "Metadata";
 const CREATE_PROJECT_QUEUE = "create-project-queue"
 const ADD_FILES_QUEUE = "add-files-queue"
@@ -112,17 +113,17 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     // Build initial share URL
     const slug = encodeURIComponent(name.trim().toLowerCase().replace(/\s+/g, "-"));
     const base = `/${req.user.username}`;
-    const shareUrl = `${base}/${slug}`;
-    let uniqueShareUrl = shareUrl
+    const projectUrl = `${base}/${slug}`;
+    let uniqueProjectUrl = projectUrl
     let count = 0;
 
     while (true) {
       const existingProjectsResponse = await client.send(
         new QueryCommand({
           TableName: PROJECTS_TABLE,
-          IndexName: "ShareUrlIndex",
-          KeyConditionExpression: "share_url = :shareUrlPart",
-          ExpressionAttributeValues: marshall({ ":shareUrlPart": uniqueShareUrl }),
+          IndexName: "ProjectUrlIndex",
+          KeyConditionExpression: "project_url = :projectUrlPart",
+          ExpressionAttributeValues: marshall({ ":projectUrlPart": uniqueProjectUrl }),
         })
       );
 
@@ -131,7 +132,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       }
 
       count += 1;
-      uniqueShareUrl = `${shareUrl}-${count}`;
+      uniqueProjectUrl = `${projectUrl}-${count}`;
     }
 
     // Prepare job payload
@@ -166,17 +167,13 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       }
     }
 
-    // Then use uniqueShareUrl in projectData
+    // Then use uniqueProjectUrl in projectData
     const projectData: Project = {
       project_id: projectId,
       user_id: req.user.user_id,
       name: projectName,
       description: description || null,
-      share_url: uniqueShareUrl,
-      is_public: false,
-      can_download: false,
-      approved_emails: [],
-      approved_users: [],
+      project_url: uniqueProjectUrl,
       approved_tenant_users: [],
       google_folder_id: "",
       google_shared_link: "",
@@ -207,7 +204,7 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
     );
 
     res.status(202).json({
-      ...projectData, share_url: (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + projectData.share_url
+      ...projectData, project_url: (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + projectData.project_url
     });
   } catch (error: any) {
     console.error("Create project error:", error);
@@ -375,7 +372,7 @@ export const updateProject = asyncHandler(
       let name = initName
       let newDropboxPath: string | undefined;
 
-      let newShareUrl = project.share_url;
+      let newProjectUrl = project.project_url;
       let count = 0;
 
       if (name && name !== project.name) {
@@ -385,7 +382,7 @@ export const updateProject = asyncHandler(
 
         while (true) {
           name = `${name}${!!count ? "-" + count : ""}`;
-          newShareUrl = `/${req.user?.username}/${encodeURI(name
+          newProjectUrl = `/${req.user?.username}/${encodeURI(name
             .toLowerCase()
             .replace(/\s+/g, "-"))
             }`;
@@ -393,9 +390,9 @@ export const updateProject = asyncHandler(
           const existingProjectsResponse = await client.send(
             new QueryCommand({
               TableName: PROJECTS_TABLE,
-              IndexName: "ShareUrlIndex",
-              KeyConditionExpression: "share_url = :shareUrlPart",
-              ExpressionAttributeValues: marshall({ ":shareUrlPart": `${newShareUrl}${!!count ? "-" + count : ""}` }),
+              IndexName: "ProjectUrlIndex",
+              KeyConditionExpression: "project_url = :projectUrlPart",
+              ExpressionAttributeValues: marshall({ ":projectUrlPart": `${newProjectUrl}${!!count ? "-" + count : ""}` }),
             })
           );
 
@@ -408,8 +405,8 @@ export const updateProject = asyncHandler(
           count += 1;
         }
 
-        updateExpr.push("share_url = :share_url");
-        exprAttrValues[":share_url"] = newShareUrl;
+        updateExpr.push("project_url = :project_url");
+        exprAttrValues[":project_url"] = newProjectUrl;
 
 
 
@@ -516,26 +513,6 @@ export const updateProject = asyncHandler(
         exprAttrValues[":description"] = value.description;
       }
 
-      if (value.is_public !== undefined) {
-        updateExpr.push("is_public = :is_public");
-        exprAttrValues[":is_public"] = value.is_public;
-      }
-
-      if (value.can_download !== undefined) {
-        updateExpr.push("can_download = :can_download");
-        exprAttrValues[":can_download"] = value.can_download;
-      }
-
-      if (value.approved_emails?.length) {
-        updateExpr.push("approved_emails = :approved_emails");
-        exprAttrValues[":approved_emails"] = value.approved_emails;
-      }
-
-      if (value.approved_users !== undefined) {
-        updateExpr.push("approved_users = :approved_users");
-        exprAttrValues[":approved_users"] = value.approved_users;
-      }
-
       if (value.approved_tenant_users !== undefined) {
         updateExpr.push("approved_tenant_users = :approved_tenant_users");
         exprAttrValues[":approved_tenant_users"] = value.approved_tenant_users;
@@ -582,12 +559,10 @@ export const updateProject = asyncHandler(
 
       const FieldLabels: Record<string, string> = {
         name: "Name",
-        share_url: "Share URL",
         description: "Description",
         is_public: "Visibility",
         can_download: "Download Permission",
         approved_emails: "Approved Emails",
-        approved_users: "Approved Users",
         approved_tenant_users: "Approved Tenant Users",
         dropbox_folder_path: "Dropbox Folder",
         b2_folder_path: "Backblaze Folder",
@@ -617,7 +592,7 @@ export const updateProject = asyncHandler(
 
       res.status(200).json({
         message: "Project updated successfully",
-        ...(newShareUrl !== project.share_url ? { share_url: (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + newShareUrl } : {}),
+        ...(newProjectUrl !== project.project_url ? { project_url: (getHandleUrl(process.env.EXPRESS_PUBLIC_FRONTEND_URL, tenant?.handle)) + newProjectUrl } : {}),
         ...(newDropboxPath !== project.dropbox_folder_path ? { dropbox_folder_path: newDropboxPath } : {}),
       });
     } catch (error: any) {
@@ -695,7 +670,155 @@ export const deleteProject = asyncHandler(
   }
 );
 
-export const getProjectByShareUrl = asyncHandler(
+export const getProjectByShareId = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+
+      if (authHeader) {
+        const user = await getUserFromToken(authHeader.substring(7));
+        req.user = user;
+      }
+      const { handle, mode, shareId } = req.params;
+      const emailParam = (req.query.email as string | undefined)?.toLowerCase();
+
+      if (mode !== "s" && mode !== "p") {
+        return res.status(400).json({ error: "INVALID_SHARE_TYPE" });
+      }
+
+      const m = mode === "s" ? "collaborative" : "presentation";
+
+      /* =========================
+         Get Share by ID + Mode
+      ========================= */
+
+      const shareResult = await client.send(
+        new GetItemCommand({
+          TableName: SHARES_TABLE,
+          Key: marshall({
+            share_id: shareId,
+            mode: m,
+          }),
+        })
+      );
+
+      if (!shareResult.Item) {
+        return res.status(404).json({ error: "Share not found" });
+      }
+
+      const share = unmarshall(shareResult.Item) as Share;
+
+      /* =========================
+         2️⃣ Validate Access
+      ========================== */
+
+      const isOwner = req.user?.user_id === share.user_id;
+
+      if (!share.is_public && !isOwner) {
+        if (!emailParam) {
+          return res.status(400).json({ error: "EMAIL_REQUIRED" });
+        }
+
+        const approvedEmails = (share.approved_emails || []).map((e) =>
+          e.value.toLowerCase()
+        );
+
+        if (!approvedEmails.includes(emailParam)) {
+          return res.status(403).json({ error: "EMAIL_INVALID" });
+        }
+      }
+
+      let hasAccess = isOwner || share.is_public;
+
+      // 1️⃣ Check logged-in user
+      if (!hasAccess && req.user) {
+        const approvedUserIds = (share.approved_users || []).map(u => u.user_id);
+        hasAccess = approvedUserIds.includes(req.user.user_id);
+      }
+
+      // 2️⃣ Check email param for non-logged-in users
+      if (!hasAccess && emailParam) {
+        const approvedEmails = (share.approved_emails || []).map(e => e.value.toLowerCase());
+        hasAccess = approvedEmails.includes(emailParam);
+      }
+
+      // 3️⃣ Deny if still no access
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Acces Denied" });
+      }
+
+      /* =========================
+         3️⃣ Get Project
+      ========================== */
+
+      const projectResult = await client.send(
+        new GetItemCommand({
+          TableName: PROJECTS_TABLE,
+          Key: marshall({
+            project_id: share.project_id,
+          }),
+        })
+      );
+
+      if (!projectResult.Item) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const project = unmarshall(projectResult.Item) as Project;
+
+      /* =========================
+         4️⃣ Apply Share Mode Rules
+      ========================== */
+
+      const canDownload =
+        share.mode === "collaborative"
+          ? true
+          : share.can_download ?? false;
+
+
+      const projectWithMedia = await getProjectWithMedia(project, handle);
+
+      const clearProject: Partial<Project> = {
+        project_id: project.project_id,
+        user_id: project.user_id,
+        name: project.name,
+        description: project.description,
+        google_folder_id: project.google_folder_id,
+        dropbox_folder_path: project.dropbox_folder_path,
+        b2_folder_path: project.b2_folder_path,
+        created_at: project.created_at,
+        updated_at: project.updated_at,
+      };
+
+      const cleanShare: Partial<Share> = {
+        share_id: share.share_id,
+        project_id: share.project_id,
+        user_id: share.user_id,
+        name: share.name,
+        mode: share.mode,
+        is_public: share.is_public,
+        can_download: share.can_download,
+        created_at: share.created_at,
+      };
+
+
+      res.status(200).json({
+        project: clearProject,
+        media: projectWithMedia?.media,
+        share: cleanShare
+      });
+
+    } catch (error: any) {
+      console.error("Get project by share ID error:", error);
+      res.status(500).json({
+        error: error.message || "Failed to fetch project",
+      });
+    }
+  }
+);
+
+
+export const getProjectByProjectUrl = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const authHeader = req.headers.authorization;
@@ -704,15 +827,14 @@ export const getProjectByShareUrl = asyncHandler(
         await getUserFromToken(authHeader.substring(7)).then((user) => req.user = user)
 
       const { username, projectName } = req.params;
-      const emailParam = (req.query.email as string | undefined)?.toLowerCase();
 
       const response = await client.send(
         new QueryCommand({
           TableName: PROJECTS_TABLE,
-          IndexName: "ShareUrlIndex", // 👈 use the GSI
-          KeyConditionExpression: "share_url = :shareUrlPart",
+          IndexName: "ProjectUrlIndex",
+          KeyConditionExpression: "project_url = :projectUrlPart",
           ExpressionAttributeValues: marshall({
-            ":shareUrlPart": `/${username}/${(projectName)}`,
+            ":projectUrlPart": `/${username}/${(projectName)}`,
           }),
         })
       );
@@ -722,43 +844,17 @@ export const getProjectByShareUrl = asyncHandler(
       }
 
       const project = unmarshall(response.Items[0]) as Project;
-      const isPublic = project.is_public === true;
-      const approvedEmails = (project.approved_emails || []).map((e: string) =>
-        e.toLowerCase()
-      );
+
 
       // Handle private project email validation
-      if (!isPublic && req.user?.username !== username) {
-        if (!emailParam) {
-          return res.status(400).json({ error: "EMAIL_REQUIRED" });
-        }
-
-        if (!approvedEmails.includes(emailParam)) {
-          return res.status(403).json({ error: "EMAIL_INVALID" });
-        }
-      }
-
-      const publicProject: Partial<Project> = {
-        project_id: project.project_id,
-        user_id: project.user_id,
-        name: project.name,
-        description: project.description,
-        share_url: project.share_url,
-        dropbox_shared_link: project.dropbox_shared_link,
-        can_download: project.can_download,
-        created_at: project.created_at,
-        updated_at: project.updated_at,
-      };
-
-      if (req.user?.user_id === project.user_id) {
-        publicProject.approved_emails = project.approved_emails
-        publicProject.is_public = project.is_public
+      if (req.user?.username !== username) {
+        return res.status(403).json({ error: "Unauthorized" });
       }
 
       const projectWithMedia = await getProjectWithMedia(project, username)
       res.status(200).json(projectWithMedia);
     } catch (error: any) {
-      console.error("Get project by share URL error:", error);
+      console.error("Get project by project URL error:", error);
       res
         .status(500)
         .json({ error: error.message || "Failed to fetch project" });
@@ -767,62 +863,88 @@ export const getProjectByShareUrl = asyncHandler(
 );
 
 /**
- * Fetch a public or authorized tenant project by share URL
+ * Fetch a public or authorized tenant project by project URL
  */
-export const getTenantProjectByShareUrl = asyncHandler(async (req: Request, res: Response) => {
-  const { tenantHandle, projectName } = req.params;
+export const getTenantProjectByProjectUrl = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { tenantHandle, username, projectName } = req.params;
 
-  // Build share URL in same format as stored
-  const shareUrl = `tenant/${tenantHandle}/${projectName}`;
+      const projectUrl = `${username}/${projectName}`;
 
-  // Query by share_url (requires a GSI with share_url as key)
-  const response = await client.send(
-    new QueryCommand({
-      TableName: PROJECTS_TABLE,
-      IndexName: "ShareUrlIndex",
-      KeyConditionExpression: "share_url = :shareUrl",
-      ExpressionAttributeValues: marshall({ ":shareUrl": shareUrl }),
-      Limit: 1,
-    })
-  );
+      const tenantResponse = await client.send(
+        new GetItemCommand({
+          TableName: TENANTS_TABLE,
+          Key: marshall({
+            handle: tenantHandle,
+          }),
+        })
+      );
 
-  const { Item } = await client.send(
-    new GetItemCommand({
-      TableName: "Tenants",
-      Key: {
-        handle: { S: tenantHandle },
-      },
-    })
-  );
+      if (!tenantResponse.Item) {
+        return res.status(404).json({ error: "TENANT_NOT_FOUND" });
+      }
 
-  const tenant = Item as unknown as Tenant
+      const tenant = unmarshall(tenantResponse.Item) as Tenant;
 
-  if (!tenant) { throw new Error(`Tenant for ${tenantHandle} not found`) }
+      const projectResponse = await client.send(
+        new QueryCommand({
+          TableName: PROJECTS_TABLE,
+          IndexName: "TenantProjectIndex",
+          KeyConditionExpression: "tenant_id = :tenantId AND project_url = :projectUrl",
+          ExpressionAttributeValues: marshall({
+            ":tenantId": tenant.tenant_id,
+            ":projectUrl": projectUrl,
+          }),
+          Limit: 1,
+        })
+      );
+
+      if (!projectResponse.Items || projectResponse.Items.length === 0) {
+        return res.status(404).json({ error: "PROJECT_NOT_FOUND" });
+      }
+
+      const project = unmarshall(projectResponse.Items[0]) as Project;
 
 
-  if (!response.Items || response.Items.length === 0) {
-    return res.status(404).json({ error: "Project not found" });
-  }
+      /* =========================
+         3️⃣ Authorization
+      ========================== */
 
-  const project = unmarshall(response.Items[0]) as Project;
+      const userId = req.user?.user_id;
 
-  const emailParam = (req.query.email as string | undefined)?.toLowerCase();
+      if (!userId) {
+        return res.status(401).json({ error: "UNAUTHORIZED" });
+      }
 
+      const isMember = tenant.members?.some(
+        (member) => member.user_id === userId
+      );
 
-  // Handle private project email validation
-  if (!project.is_public && !tenant.members?.some((m) => m.user_id === (req as any).user?.user_id)) {
-    if (!emailParam) {
-      return res.status(400).json({ error: "EMAIL_REQUIRED" });
+      if (!isMember) {
+        return res.status(403).json({ error: "USER_NOT_IN_TENANT" });
+      }
+
+      /* =========================
+         4️⃣ Return Project
+      ========================== */
+
+      const projectWithMedia = await getProjectWithMedia(
+        project,
+        tenantHandle
+      );
+
+      return res.status(200).json(projectWithMedia);
+
+    } catch (error: any) {
+      console.error("Get tenant project by project URL error:", error);
+
+      return res.status(500).json({
+        error: error.message || "FAILED_TO_FETCH_PROJECT",
+      });
     }
-
-    if (!project.approved_emails?.includes((req as any).user?.email)) {
-      return res.status(403).json({ error: "EMAIL_INVALID" });
-    }
   }
-
-  const projectWithMedia = await getProjectWithMedia(project, tenantHandle)
-  res.status(200).json(projectWithMedia);
-});
+);
 
 export const addProjectFiles = asyncHandler(
   async (req: AuthenticatedRequest, res: Response) => {
@@ -983,30 +1105,30 @@ export const removeProjectFile = asyncHandler(
           console.error("Dropbox file delete failed", err);
           return res.status(500).json({ error: "Failed to delete file" });
         }
-      // } else if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
-      //   const googleDriveService = new GoogleDriveService(req.user.dropbox.access_token);
+        // } else if (project.dropbox_folder_path && req.user?.dropbox?.access_token) {
+        //   const googleDriveService = new GoogleDriveService(req.user.dropbox.access_token);
 
-      //   try {
-      //     await googleDriveService.deleteFile(project.google_folder_id, fileName);
+        //   try {
+        //     await googleDriveService.deleteFile(project.google_folder_id, fileName);
 
-      //     const { project_id, media_name } = req.params;
+        //     const { project_id, media_name } = req.params;
 
-      //     if (!project_id || !media_name) {
-      //       return res.status(400).json({
-      //         error: "project_id and media_name are required",
-      //       });
-      //     }
+        //     if (!project_id || !media_name) {
+        //       return res.status(400).json({
+        //         error: "project_id and media_name are required",
+        //       });
+        //     }
 
-      //     await client.send(
-      //       new DeleteItemCommand({
-      //         TableName: METADATA_TABLE,
-      //         Key: marshall({ project_id, media_name }),
-      //       })
-      //     );
-      //   } catch (err: any) {
-      //     console.error("Dropbox file delete failed", err);
-      //     return res.status(500).json({ error: "Failed to delete file" });
-      //   }
+        //     await client.send(
+        //       new DeleteItemCommand({
+        //         TableName: METADATA_TABLE,
+        //         Key: marshall({ project_id, media_name }),
+        //       })
+        //     );
+        //   } catch (err: any) {
+        //     console.error("Dropbox file delete failed", err);
+        //     return res.status(500).json({ error: "Failed to delete file" });
+        //   }
       } else if (project.b2_folder_path && req.user?.user_id) {
         const b2Service = new BackblazeService(B2_BUCKET_ID, req.user.user_id, project.tenant_id);
 

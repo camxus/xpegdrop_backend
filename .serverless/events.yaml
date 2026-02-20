@@ -60,10 +60,10 @@
 
 # Projects routes
 - httpApi:
-    path: /api/projects/share/{username}/{projectName}
+    path: /api/projects/project/{username}/{projectName}
     method: GET
 - httpApi:
-    path: /api/projects/share/tenant/{tenantName}/{username}/{projectName}
+    path: /api/projects/project/tenant/{tenantName}/{username}/{projectName}
     method: GET
 - httpApi:
     path: /api/projects

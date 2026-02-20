@@ -17,7 +17,7 @@ export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Re
   const { error, value } = createNoteSchema.validate(req.body);
   if (error) throw validationErrorHandler(error);
 
-  const { project_id, media_name, content, author, timestamp } = value;
+  const { project_id, share_id, media_name, content, author, timestamp } = value;
 
   if (!project_id || !content) {
     return res.status(400).json({ error: "project_id and content are required" });
@@ -29,6 +29,7 @@ export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Re
   const note: Note = {
     note_id: uuidv4(),
     project_id,
+    share_id,
     media_name,
     user_id: req.user?.user_id || `anonymous-${uuidv4()}`,
     content,
@@ -51,18 +52,28 @@ export const createNote = asyncHandler(async (req: AuthenticatedRequest, res: Re
   }
 });
 
-// GET Notes by projectId
+// GET Notes by projectId or share_id
 export const getNotesByProject = asyncHandler(async (req: Request, res: Response) => {
   const { projectId } = req.params;
+  const { share_id } = req.query;
 
   if (!projectId) return res.status(400).json({ error: "projectId is required" });
 
   try {
+    // Build filter expression dynamically
+    let FilterExpression = "project_id = :projectId";
+    const ExpressionAttributeValues: any = { ":projectId": projectId };
+
+    if (share_id) {
+      FilterExpression += " AND share_id = :shareId";
+      ExpressionAttributeValues[":shareId"] = share_id;
+    }
+
     const response = await client.send(
       new ScanCommand({
         TableName: NOTES_TABLE,
-        FilterExpression: "project_id = :projectId",
-        ExpressionAttributeValues: marshall({ ":projectId": projectId }),
+        FilterExpression,
+        ExpressionAttributeValues: marshall(ExpressionAttributeValues),
       })
     );
 
@@ -73,24 +84,34 @@ export const getNotesByProject = asyncHandler(async (req: Request, res: Response
     res.status(500).json({ error: error.message || "Failed to fetch notes" });
   }
 });
-
-// GET Notes by media_name
+// GET Notes by media_name (optional share_id filter)
 export const getNotesByMediaName = asyncHandler(async (req: Request, res: Response) => {
   const { projectId, mediaName } = req.params;
+  const { share_id } = req.query;
 
   if (!projectId || !mediaName) {
     return res.status(400).json({ error: "projectId and mediaName are required" });
   }
 
   try {
+    // Base filter expression
+    let FilterExpression = "project_id = :projectId AND media_name = :mediaName";
+    const ExpressionAttributeValues: any = {
+      ":projectId": projectId,
+      ":mediaName": mediaName,
+    };
+
+    // Add optional share_id filter
+    if (share_id) {
+      FilterExpression += " AND share_id = :shareId";
+      ExpressionAttributeValues[":shareId"] = share_id;
+    }
+
     const response = await client.send(
       new ScanCommand({
         TableName: NOTES_TABLE,
-        FilterExpression: "project_id = :projectId AND media_name = :mediaName",
-        ExpressionAttributeValues: marshall({
-          ":projectId": projectId,
-          ":mediaName": mediaName,
-        }),
+        FilterExpression,
+        ExpressionAttributeValues: marshall(ExpressionAttributeValues),
       })
     );
 
