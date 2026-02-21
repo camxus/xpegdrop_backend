@@ -68,6 +68,8 @@ Resources:
           AttributeType: S
         - AttributeName: share_url
           AttributeType: S
+        - AttributeName: project_url
+          AttributeType: S
       KeySchema:
         - AttributeName: project_id
           KeyType: HASH
