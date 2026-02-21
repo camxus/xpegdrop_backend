@@ -697,7 +697,6 @@ export const getProjectByShareId = asyncHandler(
           TableName: SHARES_TABLE,
           Key: marshall({
             share_id: shareId,
-            mode: m,
           }),
         })
       );
@@ -770,10 +769,6 @@ export const getProjectByShareId = asyncHandler(
          4️⃣ Apply Share Mode Rules
       ========================== */
 
-      const canDownload =
-        share.mode === "collaborative"
-          ? true
-          : share.can_download ?? false;
 
 
       const projectWithMedia = await getProjectWithMedia(project, handle);
@@ -796,16 +791,45 @@ export const getProjectByShareId = asyncHandler(
         user_id: share.user_id,
         name: share.name,
         mode: share.mode,
+        share_url: share.share_url,
+        expires_at: share.expires_at,
+        can_note: share.can_note,
+        can_rate: share.can_rate,
+        can_upload: share.can_upload,
         is_public: share.is_public,
         can_download: share.can_download,
         created_at: share.created_at,
       };
 
+      const canEdit = share.mode === "collaborative" &&
+        share?.approved_users?.some(
+          (u) =>
+            u.user_id === req.user?.user_id &&
+            u.role === "editor"
+        ) ||
+        project?.approved_tenant_users?.some(
+          (u) =>
+            u.user_id === req.user?.user_id &&
+            (u.role === "admin" || u.role === "editor")
+        );
+
+      const isAdmin = project?.approved_tenant_users?.some(
+        (u) =>
+          u.user_id === req.user?.user_id &&
+          (u.role === "admin")
+      ) || project.user_id === req.user?.user_id;
 
       res.status(200).json({
         project: clearProject,
         media: projectWithMedia?.media,
-        share: cleanShare
+        share: cleanShare,
+        permissions: {
+          is_admin: isAdmin,
+          can_note: canEdit && share.can_note,
+          can_rate: canEdit && share.can_rate,
+          can_upload: canEdit && share.can_upload,
+          can_download: canEdit && share.can_download,
+        }
       });
 
     } catch (error: any) {
@@ -852,7 +876,30 @@ export const getProjectByProjectUrl = asyncHandler(
       }
 
       const projectWithMedia = await getProjectWithMedia(project, username)
-      res.status(200).json(projectWithMedia);
+
+      const canEdit =
+        project?.approved_tenant_users?.some(
+          (u) =>
+            u.user_id === req.user?.user_id &&
+            (u.role === "admin" || u.role === "editor")
+        );
+
+      const isAdmin = project?.approved_tenant_users?.some(
+        (u) =>
+          u.user_id === req.user?.user_id &&
+          (u.role === "admin")
+      ) || project.user_id === req.user?.user_id;
+
+      return res.status(200).json({
+        ...projectWithMedia,
+        permissions: {
+          is_admin: isAdmin,
+          can_note: canEdit,
+          can_rate: canEdit,
+          can_upload: canEdit,
+          can_download: canEdit,
+        }
+      });
     } catch (error: any) {
       console.error("Get project by project URL error:", error);
       res
@@ -934,7 +981,29 @@ export const getTenantProjectByProjectUrl = asyncHandler(
         tenantHandle
       );
 
-      return res.status(200).json(projectWithMedia);
+      const canEdit =
+        project?.approved_tenant_users?.some(
+          (u) =>
+            u.user_id === req.user?.user_id &&
+            (u.role === "admin" || u.role === "editor")
+        );
+
+      const isAdmin = project?.approved_tenant_users?.some(
+        (u) =>
+          u.user_id === req.user?.user_id &&
+          (u.role === "admin")
+      ) || project.user_id === req.user?.user_id;
+
+      return res.status(200).json({
+        ...projectWithMedia,
+        permissions: {
+          is_admin: isAdmin,
+          can_note: canEdit,
+          can_rate: canEdit,
+          can_upload: canEdit,
+          can_download: canEdit,
+        }
+      });
 
     } catch (error: any) {
       console.error("Get tenant project by project URL error:", error);

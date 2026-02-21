@@ -287,13 +287,15 @@ export interface Share {
   
   mode: ShareMode; // "collaborative" | "presentation"
 
+  share_url: string;
+
   // Access control
   is_public: boolean;
   approved_emails?: { value: string; role: "editor" | "viewer" }[];
   approved_users?: { user_id: string; role: "editor" | "viewer" }[];
 
   // Link
-  expires_at?: string;
+  expires_at?: string | null;
 
   // Permissions
   can_rate?: boolean;

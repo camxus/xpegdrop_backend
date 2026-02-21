@@ -3,8 +3,10 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { GetItemCommand, PutItemCommand, UpdateItemCommand, DeleteItemCommand, QueryCommand, DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { asyncHandler } from "../middleware/asyncHandler";
-import { Project, Share } from "../types";
+import { Project, Share, ShareMode } from "../types";
 
+const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || "Users";
+const PROJECTS_TABLE = process.env.DYNAMODB_PROJECTS_TABLE || "Projects";
 const SHARES_TABLE = process.env.DYNAMODB_SHARES_TABLE || "Shares";
 const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 
@@ -24,7 +26,7 @@ export const createShare = asyncHandler(async (req: AuthenticatedRequest, res: R
     // Fetch the project (assuming you have a projects table / service)
     const projectResult = await client.send(
       new GetItemCommand({
-        TableName: process.env.DYNAMODB_PROJECTS_TABLE!,
+        TableName: PROJECTS_TABLE!,
         Key: marshall({ project_id }),
       })
     );
@@ -46,17 +48,26 @@ export const createShare = asyncHandler(async (req: AuthenticatedRequest, res: R
       return res.status(403).json({ error: "ONLY_OWNER_OR_TENANT_ADMIN_CAN_SHARE" });
     }
 
+    function getShareUrl(username: string, id: string, mode: ShareMode) {
+      if (mode === "collaborative") return `/${username}/s/${id}`;
+      if (mode === "presentation") return `/${username}/p/${id}`;
+      throw new Error("INVALID_MODE");
+    }
+
+    const shareId = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(36).padStart(2, '0')).join('')
+
     const share: Share = {
-      share_id: crypto.randomUUID(),
+      share_id: shareId,
       project_id,
       user_id: req.user.user_id,
       name,
       mode,
+      share_url: getShareUrl(req.user.username, shareId, mode),
       approved_users: approved_users || [],
       approved_emails: approved_emails || [],
       is_public: !!is_public,
       can_download: !!can_download,
-      expires_at: expires_at ? new Date(expires_at).toISOString() : undefined,
+      expires_at: expires_at ? new Date(expires_at).toISOString() : null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -199,7 +210,7 @@ export const listSharesByProject = asyncHandler(async (req: AuthenticatedRequest
     const result = await client.send(
       new QueryCommand({
         TableName: SHARES_TABLE,
-        IndexName: "ProjectIdIndex", // GSI on project_id
+        IndexName: "ProjectIndex", // GSI on project_id
         KeyConditionExpression: "project_id = :projectId",
         ExpressionAttributeValues: marshall({ ":projectId": projectId }),
       })

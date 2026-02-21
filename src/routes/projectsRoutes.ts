@@ -18,7 +18,7 @@ import { authenticate } from '../middleware/auth';
 const router: Router = express.Router();
 
 // Public route for project URLs
-router.get('/share/:username/:mode/:projectName', getProjectByShareId);
+router.get('/share/:username/:mode/:shareId', getProjectByShareId);
 
 // Protected routes (require authentication)
 router.use(authenticate);

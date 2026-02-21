@@ -19,6 +19,9 @@ router.use(authenticate)
 // 1️⃣ Create a Share
 router.post("/", createShare);
 
+// 5️⃣ List all Shares for a Project
+router.get("/project/:projectId", listSharesByProject);
+
 // 2️⃣ Get a Share by ID + mode ('c' or 'p')
 router.get("/:shareId/:mode", getShareById);
 
@@ -28,7 +31,5 @@ router.put("/:shareId", updateShare);
 // 4️⃣ Delete a Share
 router.delete("/:shareId", deleteShare);
 
-// 5️⃣ List all Shares for a Project
-router.get("/project/:projectId", listSharesByProject);
 
 export default router;
