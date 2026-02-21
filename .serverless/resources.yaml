@@ -335,6 +335,52 @@ Resources:
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
 
+  ShareTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: Shares
+        AttributeDefinitions:
+          - AttributeName: share_id
+            AttributeType: S
+          - AttributeName: project_id
+            AttributeType: S
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: share_url
+            AttributeType: S
+          - AttributeName: mode
+            AttributeType: S
+        KeySchema:
+          - AttributeName: share_id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ProjectIndex # get shares by project
+            KeySchema:
+              - AttributeName: project_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: UserIndex # get shares created by user
+            KeySchema:
+              - AttributeName: user_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: ShareUrlIndex # lookup by public share URL
+            KeySchema:
+              - AttributeName: share_url
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: ModeIndex # filter collaborative / presentation
+            KeySchema:
+              - AttributeName: mode
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+        
   # Signup Creation Queue + DLQ
   SignupQueue:
     Type: AWS::SQS::Queue
