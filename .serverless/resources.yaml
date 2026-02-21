@@ -80,6 +80,12 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
+        - IndexName: TenantIndex
+          KeySchema:
+            - AttributeName: tenant_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
         - IndexName: ShareUrlIndex # by share_url
           KeySchema:
             - AttributeName: share_url
