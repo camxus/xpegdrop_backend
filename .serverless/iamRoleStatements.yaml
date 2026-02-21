@@ -108,6 +108,19 @@
 
 - Effect: Allow
   Action:
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    - dynamodb:UpdateItem
+    - dynamodb:DeleteItem
+    - dynamodb:Query
+    - dynamodb:Scan
+    - dynamodb:BatchWriteItem
+  Resource:
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Share
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Share/index/*
+
+- Effect: Allow
+  Action:
     - cognito-idp:AdminConfirmSignUp
     - cognito-idp:GetUser
     - cognito-idp:AdminGetUser

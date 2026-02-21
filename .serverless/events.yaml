@@ -276,6 +276,37 @@
     path: /api/history/{project_id}/{project_history_id}
     method: DELETE
 
+# Shares routes
+
+# Public — access a share via shareId + mode (presentation/collaborative)
+- httpApi:
+    path: /api/shares/{shareId}/{mode}
+    method: GET
+
+# Create share
+- httpApi:
+    path: /api/shares
+    method: POST
+    authorizer: jwtAuthorizer
+
+# Update share
+- httpApi:
+    path: /api/shares/{shareId}
+    method: PUT
+    authorizer: jwtAuthorizer
+
+# Delete share
+- httpApi:
+    path: /api/shares/{shareId}
+    method: DELETE
+    authorizer: jwtAuthorizer
+
+# List all shares for a project
+- httpApi:
+    path: /api/shares/project/{projectId}
+    method: GET
+    authorizer: jwtAuthorizer
+
 # Stripe routes
 - httpApi:
     path: /api/stripe/billing

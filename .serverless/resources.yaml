@@ -68,6 +68,8 @@ Resources:
           AttributeType: S
         - AttributeName: share_url
           AttributeType: S
+        - AttributeName: project_url
+          AttributeType: S
       KeySchema:
         - AttributeName: project_id
           KeyType: HASH
@@ -75,6 +77,12 @@ Resources:
         - IndexName: ProjectIndex # by user_id
           KeySchema:
             - AttributeName: user_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: TenantIndex
+          KeySchema:
+            - AttributeName: tenant_id
               KeyType: HASH
           Projection:
             ProjectionType: ALL
