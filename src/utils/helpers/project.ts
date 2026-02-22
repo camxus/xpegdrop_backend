@@ -283,7 +283,10 @@ export const getB2ProjectWithMedia = async (project: Project, handle: string) =>
  * @param handle The tenant's handle
  * @returns The full tenant URL
  */
-export function getHandleUrl(frontendUrl: string | undefined, handle = BASE_SUBDOMAIN): string {
+export function getHandleUrl(
+    frontendUrl: string | undefined,
+    handle = BASE_SUBDOMAIN
+): string {
     if (!frontendUrl) throw new Error("Frontend URL not defined");
     if (!handle) throw new Error("Tenant handle not defined");
 
@@ -298,5 +301,11 @@ export function getHandleUrl(frontendUrl: string | undefined, handle = BASE_SUBD
     // Prepend tenant handle as new subdomain
     const newHostname = `${handle}.${hostParts.join(".")}`;
 
-    return `${url.protocol}//${newHostname}${url.pathname}`;
+    // Remove trailing slash (but keep root "/")
+    let pathname = url.pathname;
+    if (pathname.length > 1 && pathname.endsWith("/")) {
+        pathname = pathname.slice(0, -1);
+    }
+
+    return `${url.protocol}//${newHostname}${pathname}`;
 }
