@@ -858,7 +858,7 @@ export const getProjectByProjectUrl = asyncHandler(
           IndexName: "ProjectUrlIndex",
           KeyConditionExpression: "project_url = :projectUrlPart",
           ExpressionAttributeValues: marshall({
-            ":projectUrlPart": `/${username}/${(projectName)}`,
+            ":projectUrlPart": `/${username}/${encodeURIComponent(projectName)}`,
           }),
         })
       );
@@ -917,7 +917,7 @@ export const getTenantProjectByProjectUrl = asyncHandler(
     try {
       const { tenantHandle, username, projectName } = req.params;
 
-      const projectUrl = `${username}/${projectName}`;
+      const projectUrl = `${username}/${encodeURIComponent(projectName)}`;
 
       const tenantResponse = await client.send(
         new GetItemCommand({
