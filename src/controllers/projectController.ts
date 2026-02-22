@@ -75,12 +75,6 @@ export const createProject = asyncHandler(async (req: any, res: Response) => {
       return res.status(400).json({ error: "No files provided" });
     }
 
-    if (!req.user?.dropbox?.access_token) {
-      return res.status(400).json({
-        error: "Dropbox access token not found. Please connect your Dropbox account.",
-      });
-    }
-
     let tenant: Tenant | undefined = undefined;
 
     if (tenantId) {
