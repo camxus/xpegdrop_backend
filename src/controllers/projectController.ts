@@ -712,12 +712,13 @@ export const getProjectByShareUrl = asyncHandler(
           IndexName: "ShareUrlIndex", // 👈 use the GSI
           KeyConditionExpression: "share_url = :shareUrlPart",
           ExpressionAttributeValues: marshall({
-            ":shareUrlPart": `/${username}/${(projectName)}`,
+            ":shareUrlPart": `/${username}/${encodeURIComponent(projectName)}`,
           }),
         })
       );
 
       if (!response.Items || response.Items.length === 0) {
+        console.log(projectName)
         return res.status(404).json({ error: "Project not found" });
       }
 
