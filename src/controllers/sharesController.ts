@@ -15,7 +15,7 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION_CODE });
 ========================= */
 export const createShare = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { project_id, name, mode, approved_users, approved_emails, is_public, can_download, expires_at } = req.body;
+    const { project_id, name, mode, approved_users, approved_emails, is_public, can_upload, can_download, can_rate, can_note, expires_at } = req.body;
 
     if (!["collaborative", "presentation"].includes(mode)) {
       return res.status(400).json({ error: "INVALID_MODE" });
@@ -66,7 +66,10 @@ export const createShare = asyncHandler(async (req: AuthenticatedRequest, res: R
       approved_users: approved_users || [],
       approved_emails: approved_emails || [],
       is_public: !!is_public,
+      can_upload: !!can_upload,
       can_download: !!can_download,
+      can_rate: !!can_rate,
+      can_note: !!can_note,
       expires_at: expires_at ? new Date(expires_at).toISOString() : null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
