@@ -116,8 +116,8 @@
     - dynamodb:Scan
     - dynamodb:BatchWriteItem
   Resource:
-    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Share
-    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Share/index/*
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Shares
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Shares/index/*
 
 - Effect: Allow
   Action:
