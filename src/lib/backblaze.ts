@@ -122,23 +122,40 @@ export class BackblazeService {
     folderPath: string,
   ): Promise<string> {
 
-    // ---- Original upload ----
-    const originalUpload = (async () => {
-      const uploadUrlResp = await this.b2.getUploadUrl({
-        bucketId: this.bucketId,
-      });
+    const maxAttempts = 4;
 
-      await this.b2.uploadFile({
-        uploadUrl: uploadUrlResp.data.uploadUrl,
-        uploadAuthToken: uploadUrlResp.data.authorizationToken,
-        fileName: `${folderPath}/${fileName}`,
-        data: buffer,
-      });
-    })();
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const { data } = await this.b2.getUploadUrl({
+          bucketId: this.bucketId,
+        });
 
-    await Promise.all([originalUpload]);
+        await this.b2.uploadFile({
+          uploadUrl: data.uploadUrl,
+          uploadAuthToken: data.authorizationToken,
+          fileName: `${folderPath}/${fileName}`,
+          data: buffer,
+        });
 
-    return folderPath;
+        return folderPath; // success
+
+      } catch (err: any) {
+
+        const is503 =
+          err?.response?.status === 503 ||
+          err?.response?.data?.code === "service_unavailable";
+
+        if (!is503 || attempt === maxAttempts) {
+          throw err; // let SQS retry
+        }
+
+        const delay = 300 * Math.pow(2, attempt); // exponential backoff
+        console.warn(`B2 503. Retrying in ${delay}ms...`);
+        await new Promise(res => setTimeout(res, delay));
+      }
+    }
+
+    throw new Error("Upload failed after retries");
   }
 
   // ----------------------
@@ -164,7 +181,12 @@ export class BackblazeService {
       filePaths.push(...batchPaths);
     }
 
-    const shareLink = `https://f003.backblazeb2.com/file/${B2_BUCKET_NAME}/${folderPath}`;
+    const encodedFolderPath = folderPath
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/");
+
+    const shareLink = `https://f003.backblazeb2.com/file/${B2_BUCKET_NAME}/${encodedFolderPath}`;
     console.log("Share link:", shareLink);
 
     return { folder_path: folderPath, share_link: shareLink, filePaths };
