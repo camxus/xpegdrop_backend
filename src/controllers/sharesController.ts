@@ -139,28 +139,36 @@ export const updateShare = asyncHandler(async (req: AuthenticatedRequest, res: R
 
     const updateExpression: string[] = [];
     const expressionValues: Record<string, any> = {};
+    const expressionNames: Record<string, string> = {};
 
     for (const key in updates) {
       if (updates[key] !== undefined) {
-        updateExpression.push(`${key} = :${key}`);
+        // Check if the key is a reserved word
+        const attrName = ["name", "type", "status"].includes(key) ? `#${key}` : key;
+
+        if (attrName.startsWith("#")) expressionNames[attrName] = key;
+
+        updateExpression.push(`${attrName} = :${key}`);
         expressionValues[`:${key}`] = updates[key];
       }
     }
 
+    // Always update updated_at
     updateExpression.push("updated_at = :updated_at");
     expressionValues[":updated_at"] = new Date().toISOString();
 
-    await client.send(
-      new UpdateItemCommand({
-        TableName: SHARES_TABLE,
-        Key: marshall({ share_id: shareId }),
-        UpdateExpression: `SET ${updateExpression.join(", ")}`,
-        ExpressionAttributeValues: marshall(expressionValues),
-        ReturnValues: "ALL_NEW",
-      })
-    );
+    const command = new UpdateItemCommand({
+      TableName: SHARES_TABLE,
+      Key: marshall({ share_id: shareId }),
+      UpdateExpression: `SET ${updateExpression.join(", ")}`,
+      ExpressionAttributeValues: marshall(expressionValues),
+      ExpressionAttributeNames: Object.keys(expressionNames).length ? expressionNames : undefined,
+      ReturnValues: "ALL_NEW",
+    });
 
-    res.status(200).json({ message: "Share updated" });
+    const updated = await client.send(command);
+
+    res.status(200).json({ message: "Share updated", updated });
   } catch (error: any) {
     console.error("Update share error:", error);
     res.status(500).json({ error: error.message || "Failed to update share" });
