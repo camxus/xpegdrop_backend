@@ -58,7 +58,15 @@
     method: GET
     authorizer: jwtAuthorizer
 
-# Projects routes
+
+## Projects routes
+
+# Public share route
+- httpApi:
+    path: /api/projects/share/{username}/{mode}/{shareId}
+    method: GET
+
+# Existing routes
 - httpApi:
     path: /api/projects/project/{username}/{projectName}
     method: GET

@@ -22,17 +22,19 @@ router.get('/share/:username/:mode/:shareId', getProjectByShareId);
 
 // Protected routes (require authentication)
 router.use(authenticate);
+router.get('/tenant/:tenantId', getTenantProjects);
+
 router.get('/project/:username/:projectName', getProjectByProjectUrl);
 router.get('/project/tenant/:tenantHandle/:username/:projectName', getTenantProjectByProjectUrl);
+
 router.post('/', uploadMiddleware, createProject);
 router.get('/', getProjects);
+
 router.get('/:projectId', getProject);
 router.put('/:projectId', updateProject);
 router.delete('/:projectId', deleteProject);
 
-router.get('/tenant/:tenantId', getTenantProjects);
-
-router.post("/:projectId/files", uploadMiddleware, addProjectFiles);
-router.delete("/:projectId/files/:fileName", removeProjectFile);
+router.post('/:projectId/files', uploadMiddleware, addProjectFiles);
+router.delete('/:projectId/files/:fileName', removeProjectFile);
 
 export default router;
