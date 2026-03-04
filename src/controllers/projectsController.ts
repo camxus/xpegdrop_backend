@@ -889,10 +889,10 @@ export const getProjectByProjectUrl = asyncHandler(
         ...projectWithMedia,
         permissions: {
           is_admin: isAdmin,
-          can_note: canEdit,
-          can_rate: canEdit,
-          can_upload: canEdit,
-          can_download: canEdit,
+          can_note: isAdmin || canEdit,
+          can_rate: isAdmin || canEdit,
+          can_upload: isAdmin || canEdit,
+          can_download: isAdmin || canEdit,
         }
       });
     } catch (error: any) {
@@ -993,10 +993,10 @@ export const getTenantProjectByProjectUrl = asyncHandler(
         ...projectWithMedia,
         permissions: {
           is_admin: isAdmin,
-          can_note: canEdit,
-          can_rate: canEdit,
-          can_upload: canEdit,
-          can_download: canEdit,
+          can_note: isAdmin || canEdit,
+          can_rate: isAdmin || canEdit,
+          can_upload: isAdmin || canEdit,
+          can_download: isAdmin || canEdit,
         }
       });
 
