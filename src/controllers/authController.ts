@@ -7,6 +7,7 @@ import {
   GetItemCommand,
   PutItemCommand,
   QueryCommand,
+  UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -189,6 +190,29 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
         TableName: USERS_TABLE,
         Item: marshall(userData, {
           removeUndefinedValues: true,
+        }),
+      })
+    );
+
+    await client.send(
+      new UpdateItemCommand({
+        TableName: USERS_TABLE,
+        Key: marshall({ user_id: createdUserSub }),
+        UpdateExpression: `
+          SET 
+            stripe = :stripe,
+            membership = :membership
+        `,
+        ExpressionAttributeValues: marshall({
+          ":stripe": {
+            customer_id: "signup",
+            subscription_id: "signup",
+            product: "artist",
+          },
+          ":membership": {
+            membership_id: "artist",
+            status: "active",
+          },
         }),
       })
     );
