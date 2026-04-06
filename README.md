@@ -60,4 +60,4 @@ See `.env.example` for required configuration.
 - updated_at (string, optional)
 
 ### READ SHARP LAMDBA LAYER DEPLOYMENT
-https://github.com/cbschuld/sharp-aws-lambda-layer
+https://github.com/cbschuld/sharp-aws-lambda-layer# landing
