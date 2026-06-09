@@ -3,6 +3,7 @@ import {
     QueryCommand,
     UpdateItemCommand,
     PutItemCommand,
+    ScanCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
@@ -36,11 +37,8 @@ async function migrate() {
 
     do {
         const result = await client.send(
-            new QueryCommand({
+            new ScanCommand({
                 TableName: PROJECTS_TABLE,
-                IndexName: "ProjectIndex",
-                KeyConditionExpression: "user_id = :uid",
-                ExpressionAttributeValues: marshall({ ":uid": TARGET_USER_ID }),
                 ExclusiveStartKey: lastEvaluatedKey,
             })
         );

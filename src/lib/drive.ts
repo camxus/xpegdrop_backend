@@ -57,11 +57,9 @@ export class GoogleDriveService {
     return res.data.files?.[0] ?? null;
   }
 
-  private getDownloadUrl(fileId: string) {
+  public getDownloadUrl(fileId: string) {
     return `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
   }
-
-  // -------------------------
   // Check if folder exists
   // -------------------------
   async folderExists(folderName: string, parentId?: string): Promise<boolean> {

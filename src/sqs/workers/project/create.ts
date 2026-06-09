@@ -98,54 +98,57 @@ export const handler: SQSHandler = async (event) => {
 
         const uploadSize = uploadFiles.reduce((acc: number, file: File) => acc + file.size, 0);
 
-        if (storageUsage.allocated < storageUsage.used + uploadSize) {
-          // Not enough space to upload files
-          throw new Error(`Upload exceeds allocated storage`);
-        }
+        console.log(uploadSize, storageUsage)
+        return
 
-        const response = await b2Service.upload(uploadFiles, folderName);
-        folderPath = response.folder_path;
-        shareLink = response.share_link;
+        // if (storageUsage.allocated < storageUsage.used + uploadSize) {
+        //   // Not enough space to upload files
+        //   throw new Error(`Upload exceeds allocated storage`);
+        // }
 
-        // --- CREATE THUMBNAILS AND UPLOAD TO S3 ---
-        for (const file of uploadFiles) {
-          if (allowedVideoTypes.includes(file.type)) {
-            const transcodedService = new BackblazeService(
-              B2_TRANSCODED_MEDIA_BUCKET_ID!,
-              user.user_id!,
-              tenant?.tenant_id
-            );
+        // const response = await b2Service.upload(uploadFiles, folderName);
+        // folderPath = response.folder_path;
+        // shareLink = response.share_link;
 
-            const transcodedFileName = `${folderPath}/${file.name.replace(/\.\w+$/, ".mp4")}`;
-            await transcodedService.authorize();
+        // // --- CREATE THUMBNAILS AND UPLOAD TO S3 ---
+        // for (const file of uploadFiles) {
+        //   if (allowedVideoTypes.includes(file.type)) {
+        //     const transcodedService = new BackblazeService(
+        //       B2_TRANSCODED_MEDIA_BUCKET_ID!,
+        //       user.user_id!,
+        //       tenant?.tenant_id
+        //     );
 
-            const existingFiles = await transcodedService.listFiles(folderPath);
-            const exists = existingFiles.some((f) => f.name === transcodedFileName);
+        //     const transcodedFileName = `${folderPath}/${file.name.replace(/\.\w+$/, ".mp4")}`;
+        //     await transcodedService.authorize();
 
-            if (exists) await transcodedService.deleteFile(folderPath, transcodedFileName);
+        //     const existingFiles = await transcodedService.listFiles(folderPath);
+        //     const exists = existingFiles.some((f) => f.name === transcodedFileName);
 
-            const transcodedBuffer = await transcodeVideoToMp4(Buffer.from(await file.arrayBuffer()));
+        //     if (exists) await transcodedService.deleteFile(folderPath, transcodedFileName);
 
-            await transcodedService.uploadBuffer(transcodedBuffer, transcodedFileName, folderPath)
-          }
+        //     const transcodedBuffer = await transcodeVideoToMp4(Buffer.from(await file.arrayBuffer()));
 
-          try {
-            const thumbnailBuffer = await createThumbnailFromFile(file);
-            const thumbnailKey = `${b2Service.getPrefix(folderName)}/${file.name}`;
+        //     await transcodedService.uploadBuffer(transcodedBuffer, transcodedFileName, folderPath)
+        //   }
 
-            const putCommand = new PutObjectCommand({
-              Bucket: THUMBNAILS_BUCKET,
-              Key: thumbnailKey,
-              Body: thumbnailBuffer,
-              ContentType: "image/jpeg",
-              StorageClass: "INTELLIGENT_TIERING", // S3 Intelligent-Tiering
-            });
+        //   try {
+        //     const thumbnailBuffer = await createThumbnailFromFile(file);
+        //     const thumbnailKey = `${b2Service.getPrefix(folderName)}/${file.name}`;
 
-            await s3Client.send(putCommand);
-          } catch (e) {
-            throw e;
-          }
-        }
+        //     const putCommand = new PutObjectCommand({
+        //       Bucket: THUMBNAILS_BUCKET,
+        //       Key: thumbnailKey,
+        //       Body: thumbnailBuffer,
+        //       ContentType: "image/jpeg",
+        //       StorageClass: "INTELLIGENT_TIERING", // S3 Intelligent-Tiering
+        //     });
+
+        //     await s3Client.send(putCommand);
+        //   } catch (e) {
+        //     throw e;
+        //   }
+        // }
       } else {
         throw new Error(`Unsupported storage provider: ${storageProvider}`);
       }

@@ -428,3 +428,112 @@ Resources:
     Properties:
       QueueName: add-files-cleanup-queue
       VisibilityTimeout: 60
+
+  AgentAssetsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: ${env:EXPRESS_S3_APP_BUCKET}
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - ${env:EXPRESS_PUBLIC_FRONTEND_URL}
+              - http://localhost:3000
+            AllowedHeaders:
+              - Authorization
+              - Content-Type
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            ExposedHeaders:
+              - ETag
+              - x-amz-request-id
+              - x-amz-id-2
+            MaxAge: 3000
+
+  AgentSessionsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: AgentSessions
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: image_id
+          AttributeType: S
+        - AttributeName: agent_type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserIndex
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  AgentInteractionsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: AgentInteractions
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: interaction_id
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: N
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+        - AttributeName: interaction_id
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: CreatedAtIndex
+          KeySchema:
+            - AttributeName: session_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  EnvironmentsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: Environments
+      AttributeDefinitions:
+        - AttributeName: environment_id
+          AttributeType: S
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: environment_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: SessionIndex
+          KeySchema:
+            - AttributeName: session_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: UserIndex
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST

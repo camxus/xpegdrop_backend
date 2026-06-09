@@ -136,6 +136,8 @@ export class DropboxService {
     preview_url: string;
     thumbnail_url: string;
     thumbnail: Buffer;
+    type: string;
+    full_file_url: string;
   }[]> {
     const imageRegex = /\.(jpg|jpeg|png|gif|webp|tiff|tif|heic|heif)$/i;
     const videoRegex = /\.(mp4|mov|webm|mkv|m4v)$/i;
@@ -308,6 +310,11 @@ export class DropboxService {
       (e as any).status = err.status; // preserve the status code
       throw e; // throw a real Error instance    
     }
+  }
+
+  async getFileTemporaryLink(path: string): Promise<string> {
+    const res = await this.dbx.filesGetTemporaryLink({ path });
+    return res.result.link;
   }
 
   async uploadFile(

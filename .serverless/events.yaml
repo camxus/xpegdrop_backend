@@ -328,6 +328,32 @@
     path: /api/stripe/webhook
     method: POST
 
+# Agents routes
+- httpApi:
+    path: /api/agents/from-image
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/agents/{sessionId}/interact
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/agents/{sessionId}
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/agents/{sessionId}/interactions
+    method: GET
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/agents/{sessionId}/environment
+    method: POST
+    authorizer: jwtAuthorizer
+- httpApi:
+    path: /api/agents/{sessionId}/environment
+    method: GET
+    authorizer: jwtAuthorizer
+
 # Health check
 - httpApi:
     path: /health

@@ -178,3 +178,53 @@
     - ses:SendEmail
     - ses:SendRawEmail
   Resource: "*"
+
+- Effect: Allow
+  Action:
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    - dynamodb:UpdateItem
+    - dynamodb:DeleteItem
+    - dynamodb:Query
+    - dynamodb:Scan
+  Resource:
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/AgentSessions
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/AgentSessions/index/*
+
+- Effect: Allow
+  Action:
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    - dynamodb:UpdateItem
+    - dynamodb:DeleteItem
+    - dynamodb:Query
+    - dynamodb:Scan
+  Resource:
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/AgentInteractions
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/AgentInteractions/index/*
+
+- Effect: Allow
+  Action:
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    - dynamodb:UpdateItem
+    - dynamodb:DeleteItem
+    - dynamodb:Query
+    - dynamodb:Scan
+  Resource:
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Environments
+    - arn:aws:dynamodb:${env:AWS_REGION_CODE}:${env:AWS_ACCOUNT_ID}:table/Environments/index/*
+
+- Effect: Allow
+  Action:
+    - s3:ListBucket
+  Resource:
+    - arn:aws:s3:::${env:EXPRESS_S3_APP_BUCKET}
+
+- Effect: Allow
+  Action:
+    - s3:GetObject
+    - s3:PutObject
+    - s3:DeleteObject
+    - s3:ListBucket
+  Resource: arn:aws:s3:::${env:EXPRESS_S3_APP_BUCKET}/*

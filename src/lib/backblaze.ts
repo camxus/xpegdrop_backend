@@ -192,7 +192,7 @@ export class BackblazeService {
     return { folder_path: folderPath, share_link: shareLink, filePaths };
   }
 
-  private async listFilesRaw(folderPath: string): Promise<B2File[]> {
+  public async listFilesRaw(folderPath: string): Promise<B2File[]> {
     await this.authorize();
 
     const resp = await this.b2.listFileNames({
@@ -204,6 +204,18 @@ export class BackblazeService {
     });
 
     return resp.data.files;
+  }
+
+  public async getFileDownloadUrl(fileName: string): Promise<string> {
+    await this.authorize();
+
+    const authResp = await this.b2.getDownloadAuthorization({
+      bucketId: this.bucketId,
+      fileNamePrefix: fileName,
+      validDurationInSeconds: 60 * 60,
+    });
+
+    return `https://f003.backblazeb2.com/file/${process.env.EXPRESS_B2_BUCKET_NAME}/${fileName}?Authorization=${authResp.data.authorizationToken}`;
   }
 
   async listFiles(folderPath: string) {
